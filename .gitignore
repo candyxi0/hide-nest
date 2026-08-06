@@ -1,0 +1,31 @@
+# Local assistant state and private configuration
+.claude/
+.codex/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Java and Gradle outputs
+target/
+build/
+.gradle/
+
+# Node and browser-test outputs
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# IDE, OS, logs, and temporary files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+.tmp/
+temp/

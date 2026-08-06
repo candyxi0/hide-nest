@@ -1,0 +1,228 @@
+{
+  "status": "PASS",
+  "checkedAt": "2026-08-06T07:47:57.054Z",
+  "browser": "Google Chrome headless via Playwright",
+  "results": [
+    {
+      "name": "desktop title visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "six synthetic memories listed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop mobile menu hidden",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "page title uses consistent slant",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "evidence is labeled as a minimal excerpt",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "governance actions have clear hierarchy",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "selected protocol labels are Chinese",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop archive: no horizontal overflow",
+      "passed": true,
+      "detail": "{\"body\":1440,\"viewport\":1440}"
+    },
+    {
+      "name": "complete evidence entry is visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "evidence preview is visibly shortened",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "complete evidence reader opens",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "all saved evidence entries render",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "multi-message evidence uses conversation layout",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "all messages inside saved boundaries render",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "complete evidence body is not truncated",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hide stays left and Xiaolin stays right",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "reader distinguishes evidence from full conversation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "evidence reader focuses close",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "escape closes evidence reader",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "slash focuses search",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "search filters to one",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "isolation preview opens",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "drawer starts on cancel",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "escape closes drawer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "review route renders",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "review page title keeps slant",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "run timeline renders",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "run page title keeps slant",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "run phases use Chinese labels",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "system status renders six cells",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "status page title keeps slant",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "status labels use Chinese",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "failure keeps honest global notice",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop failure: no horizontal overflow",
+      "passed": true,
+      "detail": "{\"body\":1440,\"viewport\":1440}"
+    },
+    {
+      "name": "mobile menu visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile list: no horizontal overflow",
+      "passed": true,
+      "detail": "{\"body\":390,\"viewport\":390}"
+    },
+    {
+      "name": "mobile opens detail",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile back is visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile detail: no horizontal overflow",
+      "passed": true,
+      "detail": "{\"body\":390,\"viewport\":390}"
+    },
+    {
+      "name": "mobile complete evidence reader opens",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile complete evidence: no horizontal overflow",
+      "passed": true,
+      "detail": "{\"body\":390,\"viewport\":390}"
+    },
+    {
+      "name": "mobile returns to list",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "console has no errors",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "page has no uncaught errors",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "failed": []
+}

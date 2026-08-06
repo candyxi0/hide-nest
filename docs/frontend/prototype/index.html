@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="nest console 高保真交互原型，仅含合成数据">
+  <title>nest · 记忆档案</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23d85d7d'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <!--
+    设计假设：
+    - 这是小林设备上的本地治理控制台，不是公网后台。
+    - 关窗确认继续发生在 Codex 对话；本页只负责查看、治理和运行状态。
+    - 所有内容均为合成示例；不连接后端、不保存正文。
+    - 视觉母题来自“有来路、有版本、可治理的记忆档案”：纸页、索引、时间脊线、粉色批注。
+  -->
+  <div class="paper-grain" aria-hidden="true"></div>
+  <div class="app-shell" id="appShell">
+    <aside class="side-rail" id="sideRail">
+      <div class="brand-block">
+        <a class="wordmark" href="#memories" aria-label="nest 首页">
+          <span class="wordmark-dot" aria-hidden="true"></span>
+          <span>nest</span>
+        </a>
+        <p>和时间一起，安静地记住。</p>
+      </div>
+
+      <nav class="primary-nav" aria-label="主要导航">
+        <button class="nav-item is-active" type="button" data-route="memories">
+          <svg aria-hidden="true"><use href="#i-archive"></use></svg>
+          <span>记忆档案</span><span class="nav-count" id="memoryNavCount">6</span>
+        </button>
+        <button class="nav-item" type="button" data-route="reviews">
+          <svg aria-hidden="true"><use href="#i-thread"></use></svg>
+          <span>待续确认</span><span class="nav-count">2</span>
+        </button>
+        <button class="nav-item" type="button" data-route="runs">
+          <svg aria-hidden="true"><use href="#i-pulse"></use></svg>
+          <span>处理记录</span><span class="nav-count">4</span>
+        </button>
+        <button class="nav-item" type="button" data-route="status">
+          <svg aria-hidden="true"><use href="#i-status"></use></svg>
+          <span>系统状态</span>
+        </button>
+      </nav>
+
+      <div class="connection-card" aria-label="本机连接状态">
+        <div class="connection-heading"><span class="breathing-dot"></span><span>本机连接正常</span></div>
+        <p>本地接入器已连接远端核心</p>
+        <span class="connection-time">刚刚校验</span>
+      </div>
+    </aside>
+
+    <main class="main-stage">
+      <header class="top-bar">
+        <button class="icon-button mobile-menu-button" id="mobileMenuButton" type="button" aria-label="打开导航" aria-expanded="false">
+          <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+        </button>
+        <div class="page-heading">
+          <span class="eyebrow" id="pageEyebrow">记忆档案</span>
+          <h1 id="pageTitle" tabindex="-1">留下来的，不必喧哗</h1>
+        </div>
+        <div class="prototype-control">
+          <label for="scenarioSelect">原型状态</label>
+          <select id="scenarioSelect">
+            <option value="normal">正常</option>
+            <option value="loading">加载中</option>
+            <option value="empty">空状态</option>
+            <option value="denied">无权访问</option>
+            <option value="stale">版本过期</option>
+            <option value="failed">连接故障</option>
+          </select>
+        </div>
+      </header>
+
+      <div class="global-notice is-hidden" id="globalNotice" role="status"></div>
+
+      <section class="route-view memory-route is-active" id="memoriesView" aria-labelledby="pageTitle">
+        <section class="archive-index" aria-label="记忆列表">
+          <div class="index-tools">
+            <label class="search-field">
+              <svg aria-hidden="true"><use href="#i-search"></use></svg>
+              <span class="sr-only">搜索记忆</span>
+              <input id="memorySearch" type="search" autocomplete="off" placeholder="搜索记忆、证据片段或关系" aria-keyshortcuts="/">
+              <kbd>/</kbd>
+            </label>
+            <div class="filter-row" role="group" aria-label="记忆状态筛选">
+              <button class="filter-chip is-active" type="button" data-filter="all">全部</button>
+              <button class="filter-chip" type="button" data-filter="ACTIVE">有效</button>
+              <button class="filter-chip" type="button" data-filter="ARCHIVED">归档</button>
+              <button class="filter-chip" type="button" data-filter="ISOLATED">隔离</button>
+            </div>
+          </div>
+          <div class="index-meta">
+            <span id="resultCount">6 条档案</span>
+            <button class="text-button" type="button" id="sortButton">最近变化</button>
+          </div>
+          <div class="memory-list" id="memoryList" aria-live="polite"></div>
+        </section>
+
+        <article class="memory-detail" id="memoryDetail" aria-live="polite"></article>
+      </section>
+
+      <section class="route-view collection-view" id="reviewsView" aria-labelledby="pageTitle"></section>
+      <section class="route-view collection-view" id="runsView" aria-labelledby="pageTitle"></section>
+      <section class="route-view collection-view" id="statusView" aria-labelledby="pageTitle"></section>
+    </main>
+  </div>
+
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="action-drawer" id="actionDrawer" aria-modal="true" role="dialog" aria-labelledby="drawerTitle" aria-describedby="drawerDescription" hidden>
+    <div class="drawer-topline">
+      <span class="eyebrow" id="drawerEyebrow">治理动作</span>
+      <button class="icon-button" type="button" id="drawerClose" aria-label="关闭">
+        <svg aria-hidden="true"><use href="#i-close"></use></svg>
+      </button>
+    </div>
+    <div id="drawerContent"></div>
+  </aside>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <div class="sr-only" id="liveRegion" aria-live="assertive"></div>
+
+  <svg class="svg-sprite" aria-hidden="true">
+    <symbol id="i-archive" viewBox="0 0 24 24"><path d="M4 7.5h16v12H4zM3 4.5h18v3H3zM9 11.5h6"/></symbol>
+    <symbol id="i-thread" viewBox="0 0 24 24"><path d="M6 5h12M6 12h9M6 19h6M18 12c0 3.5-2.2 6-6 7"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 13h4l2.2-6 4 11 2.2-5H21"/></symbol>
+    <symbol id="i-status" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12.5l2.5 2.5 5.5-6"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="1"/><path d="M16 8V5H5v11h3"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  </svg>
+  <script src="assets/app.js"></script>
+</body>
+</html>
