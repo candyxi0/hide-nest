@@ -1,0 +1,2639 @@
+{
+  "baseline": {
+    "repository": "D:\\myproject\\hide-nest",
+    "branch": "main",
+    "head": "cedf8a47bc716ef7b82e7754d9a53c6aae75699d",
+    "parentHead": "7fc98dbde57966271b1d0ff7921d3a32547edb83",
+    "worktreeClean": true,
+    "stagingClean": true,
+    "verifiedAt": "2026-08-07T00:00:00+08:00"
+  },
+  "sources": [
+    {
+      "id": "S01",
+      "path": "C:\\Users\\tangx\\Documents\\hide-talk\\260731-hide协作文件夹\\DevelopmentBaselineManifest-HDM-001-v0.1.json",
+      "role": "architecture+sourceLayout+technologyFamilies+dependencyRules"
+    },
+    {
+      "id": "S02",
+      "path": "C:\\Users\\tangx\\Documents\\hide-talk\\260731-hide协作文件夹\\Task14B-A-HDM-002本地提交验收与任务关闭裁定.md",
+      "role": "HDM-002 closure; HEAD=cedf8a4 confirmed"
+    },
+    {
+      "id": "S03",
+      "path": "C:\\Users\\tangx\\Documents\\hide-talk\\hide记忆系统_正式开发任务_v0.1\\HDM-003-OpenAPI事件与生成链骨架-实施.md",
+      "role": "HDM-003 task definition; allowed scope; invariants"
+    },
+    {
+      "id": "S04",
+      "path": "C:\\Users\\tangx\\Documents\\hide-talk\\hide记忆系统_正式开发详细契约_v0.1.md",
+      "role": "sections 3-5: endpoints, events, failure codes, result categories, async phases"
+    },
+    {
+      "id": "S05",
+      "path": "C:\\Users\\tangx\\Documents\\hide-talk\\hide记忆系统_技术架构决定记录_ADR_v0.1.md",
+      "role": "TADR-005 OpenAPI 3.1.2; TADR-006 outbox"
+    },
+    {
+      "id": "S06",
+      "path": "C:\\Users\\tangx\\Documents\\hide-talk\\hide记忆系统_模型角色权限与上下文包契约_v0.1.md",
+      "role": "section 5 InvocationEnvelope; section 11 result categories"
+    },
+    {
+      "id": "S07",
+      "path": "D:\\myproject\\hide-nest\\docs\\frontend\\nest-console-api-addendum-v0.1.md",
+      "role": "read-only query endpoints; /local/* local endpoints; caching; DTO requirements"
+    },
+    {
+      "id": "S08",
+      "path": "D:\\myproject\\hide-nest\\reports\\HDM-002-执行报告.md",
+      "role": "HDM-002 scaffold evidence; existing tooling baseline"
+    },
+    {
+      "id": "S09",
+      "path": "D:\\myproject\\hide-nest\\pom.xml",
+      "role": "Maven parent; Spring Boot 4.1.0; Java 25; module list"
+    },
+    {
+      "id": "S10",
+      "path": "D:\\myproject\\hide-nest\\package.json",
+      "role": "npm workspaces; TypeScript 6.0.3; Node >=24"
+    },
+    {
+      "id": "S11",
+      "path": "D:\\myproject\\hide-nest\\scripts\\generate.ps1",
+      "role": "fail-closed placeholder; GENERATION_NOT_AVAILABLE_UNTIL_HDM003"
+    }
+  ],
+  "apiOperations": [
+    {
+      "method": "POST",
+      "path": "/v1/identity/sessions",
+      "operationId": "createSession",
+      "callerRole": "device",
+      "parameters": [],
+      "requestSchema": "CreateSessionRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "CreateSessionResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/identity/sessions/{sessionId}",
+      "operationId": "revokeSession",
+      "callerRole": "session-or-governance",
+      "parameters": [
+        {
+          "name": "sessionId",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": null,
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "ActionResultResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "CONDITIONAL",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/capabilities",
+      "operationId": "issueCapability",
+      "callerRole": "session",
+      "parameters": [],
+      "requestSchema": "IssueCapabilityRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "IssueCapabilityResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/closeout-submissions",
+      "operationId": "submitCloseout",
+      "callerRole": "hide-with-proof",
+      "parameters": [],
+      "requestSchema": "CloseoutSubmissionRequest",
+      "successResponses": [
+        {
+          "status": 202,
+          "schema": "CloseoutReceipt"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        409,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "GET",
+      "path": "/v1/runs/{runId}",
+      "operationId": "getRunStatus",
+      "callerRole": "authorized",
+      "parameters": [
+        {
+          "name": "runId",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": null,
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "RunStatusResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404
+      ],
+      "idempotencyRequired": false,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "GET",
+      "path": "/v1/review-sessions",
+      "operationId": "listReviewSessions",
+      "callerRole": "authorized",
+      "parameters": [],
+      "requestSchema": null,
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "ReviewSessionListResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403
+      ],
+      "idempotencyRequired": false,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "GET",
+      "path": "/v1/review-sessions/{id}",
+      "operationId": "getReviewSession",
+      "callerRole": "authorized",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": null,
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "ReviewSessionDetailResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404
+      ],
+      "idempotencyRequired": false,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/review-sessions/{id}/final-submissions",
+      "operationId": "submitReviewFinal",
+      "callerRole": "hide-with-proof",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": "ReviewFinalSubmissionRequest",
+      "successResponses": [
+        {
+          "status": 202,
+          "schema": "AsyncAcceptedResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        409,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/review-sessions/{id}/cancel",
+      "operationId": "cancelReviewSession",
+      "callerRole": "authorized",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": null,
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "ActionResultResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/context-packs",
+      "operationId": "createContextPack",
+      "callerRole": "session",
+      "parameters": [],
+      "requestSchema": "ContextPackRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "ContextPackResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/context-packs/deep-search",
+      "operationId": "deepSearchContextPack",
+      "callerRole": "authorized-deep",
+      "parameters": [],
+      "requestSchema": "DeepSearchRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "DeepSearchResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/context-packs/hook-bootstrap",
+      "operationId": "hookBootstrapContextPack",
+      "callerRole": "hook",
+      "parameters": [],
+      "requestSchema": "HookBootstrapRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "HookBootstrapResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/context-packs/{deliveryId}/invalidate",
+      "operationId": "invalidateContextPack",
+      "callerRole": "session",
+      "parameters": [
+        {
+          "name": "deliveryId",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": null,
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "ActionResultResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        410
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/memories/{id}/archive",
+      "operationId": "archiveMemory",
+      "callerRole": "governance",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": "GovernanceActionRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "ActionResultResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404,
+        409,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/memories/{id}/restore-active",
+      "operationId": "restoreActiveMemory",
+      "callerRole": "governance",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": "GovernanceActionRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "ActionResultResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404,
+        409,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/memories/{id}/isolate",
+      "operationId": "isolateMemory",
+      "callerRole": "governance",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": "GovernanceActionRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "ActionResultResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404,
+        409,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/memories/{id}/isolation-restore-previews",
+      "operationId": "createIsolationRestorePreview",
+      "callerRole": "governance",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": "GovernanceActionRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "IsolationRestorePreviewResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/isolation-restore-previews/{id}/confirm",
+      "operationId": "confirmIsolationRestore",
+      "callerRole": "xiaolin",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": "GovernanceActionRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "ActionResultResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404,
+        409,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/deletion-previews",
+      "operationId": "createDeletionPreview",
+      "callerRole": "governance",
+      "parameters": [],
+      "requestSchema": "GovernanceActionRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "DeletionPreviewResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/deletion-previews/{id}/confirm",
+      "operationId": "confirmDeletion",
+      "callerRole": "xiaolin",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": "DeletionConfirmRequest",
+      "successResponses": [
+        {
+          "status": 202,
+          "schema": "AsyncAcceptedResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404,
+        409,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "GET",
+      "path": "/v1/deletion-runs/{runId}",
+      "operationId": "getDeletionRun",
+      "callerRole": "governance",
+      "parameters": [
+        {
+          "name": "runId",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": null,
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "RunStatusResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404
+      ],
+      "idempotencyRequired": false,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/exports",
+      "operationId": "createExport",
+      "callerRole": "xiaolin-governance",
+      "parameters": [],
+      "requestSchema": "ExportRequest",
+      "successResponses": [
+        {
+          "status": 202,
+          "schema": "AsyncAcceptedResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/restores/validations",
+      "operationId": "createRestoreValidation",
+      "callerRole": "restore-service",
+      "parameters": [],
+      "requestSchema": "RestoreValidationRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "ActionResultResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/restores/{id}/activate",
+      "operationId": "activateRestore",
+      "callerRole": "xiaolin",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": "GovernanceActionRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "ActionResultResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404,
+        409,
+        422
+      ],
+      "idempotencyRequired": true,
+      "capabilityRequired": "REQUIRED",
+      "noStoreRequired": true,
+      "source": "S04-3.2",
+      "unresolved": []
+    },
+    {
+      "method": "GET",
+      "path": "/v1/memories",
+      "operationId": "listMemories",
+      "callerRole": "authorized",
+      "parameters": [
+        {
+          "name": "query",
+          "in": "query",
+          "schema": "string"
+        },
+        {
+          "name": "state",
+          "in": "query",
+          "schema": "MemoryState"
+        },
+        {
+          "name": "memoryType",
+          "in": "query",
+          "schema": "MemoryType"
+        },
+        {
+          "name": "perspectiveActorId",
+          "in": "query",
+          "schema": "uuid"
+        },
+        {
+          "name": "sourceAvailability",
+          "in": "query",
+          "schema": "SourceAvailability"
+        },
+        {
+          "name": "cursor",
+          "in": "query",
+          "schema": "string"
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "schema": "integer"
+        }
+      ],
+      "requestSchema": null,
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "MemoryListResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        422
+      ],
+      "idempotencyRequired": false,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S07-2.1",
+      "unresolved": []
+    },
+    {
+      "method": "GET",
+      "path": "/v1/memories/{memoryId}",
+      "operationId": "getMemory",
+      "callerRole": "authorized",
+      "parameters": [
+        {
+          "name": "memoryId",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": null,
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "MemoryDetailResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404
+      ],
+      "idempotencyRequired": false,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S07-2.2",
+      "unresolved": []
+    },
+    {
+      "method": "GET",
+      "path": "/v1/memories/{memoryId}/trajectory",
+      "operationId": "getMemoryTrajectory",
+      "callerRole": "authorized",
+      "parameters": [
+        {
+          "name": "memoryId",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        },
+        {
+          "name": "cursor",
+          "in": "query",
+          "schema": "string"
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "schema": "integer"
+        }
+      ],
+      "requestSchema": null,
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "MemoryTrajectoryResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404
+      ],
+      "idempotencyRequired": false,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S07-2.3",
+      "unresolved": []
+    },
+    {
+      "method": "GET",
+      "path": "/v1/memories/{memoryId}/evidence",
+      "operationId": "getMemoryEvidence",
+      "callerRole": "xiaolin-governance",
+      "parameters": [
+        {
+          "name": "memoryId",
+          "in": "path",
+          "required": true,
+          "schema": "uuid"
+        },
+        {
+          "name": "revisionId",
+          "in": "query",
+          "schema": "uuid"
+        }
+      ],
+      "requestSchema": null,
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "MemoryEvidenceResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        404
+      ],
+      "idempotencyRequired": false,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S07-2.4",
+      "unresolved": []
+    },
+    {
+      "method": "GET",
+      "path": "/v1/runs",
+      "operationId": "listRuns",
+      "callerRole": "authorized",
+      "parameters": [
+        {
+          "name": "kind",
+          "in": "query",
+          "schema": "string"
+        },
+        {
+          "name": "state",
+          "in": "query",
+          "schema": "string"
+        },
+        {
+          "name": "cursor",
+          "in": "query",
+          "schema": "string"
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "schema": "integer"
+        }
+      ],
+      "requestSchema": null,
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "RunListResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        422
+      ],
+      "idempotencyRequired": false,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S07-2.5",
+      "unresolved": []
+    },
+    {
+      "method": "GET",
+      "path": "/v1/system/status",
+      "operationId": "getSystemStatus",
+      "callerRole": "authorized",
+      "parameters": [],
+      "requestSchema": null,
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "SystemStatusResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403
+      ],
+      "idempotencyRequired": false,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "S07-2.6",
+      "unresolved": []
+    }
+  ],
+  "localOperationsExcluded": [
+    {
+      "method": "GET",
+      "path": "/local/status",
+      "source": "S07-3",
+      "reason": "loopback only; not remote OpenAPI"
+    },
+    {
+      "method": "POST",
+      "path": "/local/codex-reference",
+      "source": "S07-3",
+      "reason": "loopback only; not remote OpenAPI"
+    },
+    {
+      "method": "POST",
+      "path": "/local/console/close",
+      "source": "S07-3",
+      "reason": "loopback only; not remote OpenAPI"
+    }
+  ],
+  "privateEndpointsExcluded": [
+    {
+      "method": "GET",
+      "path": "/actuator/health/liveness",
+      "source": "S04-3.2",
+      "reason": "host/container private network only"
+    },
+    {
+      "method": "GET",
+      "path": "/actuator/health/readiness",
+      "source": "S04-3.2",
+      "reason": "host/container private network only"
+    }
+  ],
+  "schemas": {
+    "apiSchemas": [
+      {
+        "name": "ProblemDetail",
+        "type": "response",
+        "source": "S04-5.1",
+        "mediaType": "application/problem+json"
+      },
+      {
+        "name": "CreateSessionRequest",
+        "type": "request",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "CreateSessionResponse",
+        "type": "response",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "IssueCapabilityRequest",
+        "type": "request",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "IssueCapabilityResponse",
+        "type": "response",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "CloseoutSubmissionRequest",
+        "type": "request",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "CloseoutReceipt",
+        "type": "response",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "RunStatusResponse",
+        "type": "response",
+        "source": "S04-3.2-3.3"
+      },
+      {
+        "name": "ReviewSessionListResponse",
+        "type": "response",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "ReviewSessionDetailResponse",
+        "type": "response",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "ReviewFinalSubmissionRequest",
+        "type": "request",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "ContextPackRequest",
+        "type": "request",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "ContextPackResponse",
+        "type": "response",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "DeepSearchRequest",
+        "type": "request",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "DeepSearchResponse",
+        "type": "response",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "HookBootstrapRequest",
+        "type": "request",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "HookBootstrapResponse",
+        "type": "response",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "MemoryListResponse",
+        "type": "response",
+        "source": "S07-2.1"
+      },
+      {
+        "name": "MemoryListItem",
+        "type": "model",
+        "source": "S07-2.1"
+      },
+      {
+        "name": "MemoryDetailResponse",
+        "type": "response",
+        "source": "S07-2.2"
+      },
+      {
+        "name": "MemoryTrajectoryResponse",
+        "type": "response",
+        "source": "S07-2.3"
+      },
+      {
+        "name": "MemoryEvidenceResponse",
+        "type": "response",
+        "source": "S07-2.4"
+      },
+      {
+        "name": "RunListResponse",
+        "type": "response",
+        "source": "S07-2.5"
+      },
+      {
+        "name": "SystemStatusResponse",
+        "type": "response",
+        "source": "S07-2.6"
+      },
+      {
+        "name": "GovernanceActionRequest",
+        "type": "request",
+        "source": "S07-4",
+        "description": "Unified write DTO: targetId, expectedRevision, expectedPolicyRevision, requestManifestHash"
+      },
+      {
+        "name": "DeletionConfirmRequest",
+        "type": "request",
+        "source": "S07-4",
+        "description": "extends GovernanceActionRequest with previewId, previewRevision, manifestHash"
+      },
+      {
+        "name": "IsolationRestorePreviewResponse",
+        "type": "response",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "DeletionPreviewResponse",
+        "type": "response",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "ExportRequest",
+        "type": "request",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "RestoreValidationRequest",
+        "type": "request",
+        "source": "S04-3.2"
+      },
+      {
+        "name": "PaginatedCursorResponse",
+        "type": "model",
+        "source": "S04-3.1+S07",
+        "description": "Opaque cursor pagination; nextCursor field"
+      },
+      {
+        "name": "ActionResultResponse",
+        "type": "response",
+        "source": "Task15A-R2 §4.1",
+        "description": "Minimal synchronous action result: requestId (required), resultCategory (required), targetId (optional), revision (optional), policyRevision (optional)"
+      },
+      {
+        "name": "AsyncAcceptedResponse",
+        "type": "response",
+        "source": "Task15A-R2 §4.2",
+        "description": "Async accepted result: requestId (required), resultCategory (required), runId (required), statusUrl (required), phase=RECEIVED (required). Must not claim canonical or index completion via 202."
+      }
+    ],
+    "sharedEnums": [
+      {
+        "name": "ResultCategory",
+        "values": [
+          "SUCCEEDED",
+          "NO_RELEVANT_RESULT",
+          "DENIED",
+          "STALE",
+          "FAILED",
+          "PARTIALLY_DEGRADED"
+        ],
+        "source": "S04-5.2"
+      },
+      {
+        "name": "MemoryState",
+        "values": [
+          "ACTIVE",
+          "ARCHIVED"
+        ],
+        "source": "S04-2.2"
+      },
+      {
+        "name": "MemoryType",
+        "values": [
+          "EVENT",
+          "CLAIM",
+          "QUOTE",
+          "INTERPRETATION",
+          "CALIBRATION",
+          "PRINCIPLE"
+        ],
+        "source": "S04-2.2"
+      },
+      {
+        "name": "RelationType",
+        "values": [
+          "EVIDENCED_BY",
+          "INTERPRETS",
+          "SUPPORTS",
+          "REFINES",
+          "SUPERSEDES",
+          "CONFLICTS_WITH",
+          "CALIBRATES",
+          "PART_OF_TRAJECTORY",
+          "MERGED_INTO"
+        ],
+        "source": "S04-2.2"
+      },
+      {
+        "name": "ReviewSessionState",
+        "values": [
+          "OPEN",
+          "COMPLETED",
+          "CANCELLED",
+          "EXPIRED"
+        ],
+        "source": "S04-2.3"
+      },
+      {
+        "name": "RunPhase",
+        "values": [
+          "RECEIVED",
+          "DECISIONS_COMMITTED",
+          "CANONICAL_COMMITTED",
+          "INDEX_READY",
+          "FINAL_FAILED"
+        ],
+        "source": "S04-3.3"
+      },
+      {
+        "name": "SourceAvailability",
+        "values": [
+          "AVAILABLE",
+          "UNAVAILABLE"
+        ],
+        "source": "S04-3.1+S07-2.1",
+        "note": "UNAVAILABLE is for SourcePayload unavailability; distinguished from empty body. UNRESOLVED removed per hide ruling."
+      },
+      {
+        "name": "ComponentHealth",
+        "values": [
+          "HEALTHY",
+          "DEGRADED",
+          "UNAVAILABLE",
+          "DISABLED"
+        ],
+        "source": "S07-2.6"
+      },
+      {
+        "name": "FailureCode",
+        "values": [
+          "REQUEST_SCHEMA_INVALID",
+          "REQUEST_TOO_LARGE",
+          "UNSUPPORTED_CONTRACT_VERSION",
+          "IDEMPOTENCY_KEY_REQUIRED",
+          "IDEMPOTENCY_KEY_REUSED",
+          "DEVICE_CREDENTIAL_INVALID",
+          "DEVICE_CREDENTIAL_EXPIRED",
+          "IDENTITY_ENTRY_UNREGISTERED",
+          "IDENTITY_BASELINE_STALE",
+          "MODEL_ROUTE_UNACCEPTED",
+          "IDENTITY_SESSION_EXPIRED",
+          "IDENTITY_SESSION_REVOKED",
+          "CAPABILITY_REQUIRED",
+          "CAPABILITY_EXPIRED",
+          "CAPABILITY_ALREADY_CONSUMED",
+          "CAPABILITY_SCOPE_MISMATCH",
+          "ACCESS_DENIED",
+          "POLICY_REVISION_STALE",
+          "DERIVATION_BLOCKED",
+          "DELETION_FENCED",
+          "THREAD_READER_UNSUPPORTED",
+          "THREAD_SCHEMA_UNKNOWN",
+          "SOURCE_RANGE_GAP",
+          "SOURCE_ORDER_INVALID",
+          "SOURCE_PAYLOAD_UNAVAILABLE",
+          "CAPTURE_SCOPE_STALE",
+          "REVIEW_SESSION_NOT_OPEN",
+          "REVIEW_MEMBER_MISMATCH",
+          "REVIEW_FINAL_INCOMPLETE",
+          "USER_CONFIRMATION_PROOF_INVALID",
+          "EXPECTED_REVISION_STALE",
+          "PROPOSAL_CONFLICT",
+          "CANONICAL_COMMIT_FAILED",
+          "RETRIEVAL_NO_MATCH",
+          "FTS_ROUTE_UNAVAILABLE",
+          "VECTOR_ROUTE_UNAVAILABLE",
+          "RANK_OUTPUT_INVALID",
+          "CONTEXT_PACK_EXPIRED",
+          "CONTEXT_PACK_INVALIDATED",
+          "DELETION_PREVIEW_STALE",
+          "DELETION_CLOSURE_MISMATCH",
+          "DELETION_EXECUTION_FAILED",
+          "RESTORE_CHECKPOINT_INVALID",
+          "RESTORE_GOVERNANCE_INCOMPLETE",
+          "RESTORE_TRUST_ANCHOR_INVALID",
+          "DATABASE_UNAVAILABLE",
+          "PAYLOAD_STORE_UNAVAILABLE",
+          "MODEL_PROVIDER_UNAVAILABLE",
+          "OUTBOX_FINAL_FAILED",
+          "INTERNAL_FAILURE"
+        ],
+        "source": "S04-5.3",
+        "count": 50
+      }
+    ],
+    "eventSchemas": [
+      {
+        "name": "PinkEventEnvelope",
+        "kind": "envelope",
+        "contractVersion": "pink.event.v1",
+        "source": "S04-4.1",
+        "additionalProperties": false,
+        "fields": {
+          "contractVersion": {
+            "type": "string",
+            "const": "pink.event.v1",
+            "required": true
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUIDv7",
+            "required": true
+          },
+          "sequenceNo": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "database identity",
+            "required": true
+          },
+          "eventType": {
+            "type": "string",
+            "$ref": "#/schemas/eventSchemas/EventType",
+            "required": true
+          },
+          "aggregate": {
+            "$ref": "#/schemas/eventSchemas/AggregateRef",
+            "required": true
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC RFC3339",
+            "required": true
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "required": true
+          },
+          "policyRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "required": true
+          },
+          "manifest": {
+            "$ref": "#/schemas/eventSchemas/EventManifestRef",
+            "required": true
+          }
+        },
+        "forbiddenFields": [
+          "body_text",
+          "sourcePayload",
+          "prompt",
+          "toolParameters",
+          "token",
+          "apiKey",
+          "sql",
+          "stackTrace",
+          "secret"
+        ]
+      },
+      {
+        "name": "EventType",
+        "kind": "enum",
+        "source": "S04-4.2",
+        "values": [
+          "closeout.received.v1",
+          "review.opened.v1",
+          "review.decisions-committed.v1",
+          "memory.canonical-committed.v1",
+          "memory.state-changed.v1",
+          "memory.policy-changed.v1",
+          "deletion.authorized.v1",
+          "deletion.completed.v1",
+          "deletion.failed.v1",
+          "index.sync-completed.v1",
+          "index.sync-final-failed.v1",
+          "retrieval.route-health-changed.v1"
+        ],
+        "count": 12
+      },
+      {
+        "name": "AggregateRef",
+        "kind": "object",
+        "source": "S04-4.1",
+        "additionalProperties": false,
+        "fields": {
+          "kind": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "constrained string; no business enum invented"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true
+          }
+        }
+      },
+      {
+        "name": "EventManifestRef",
+        "kind": "object",
+        "source": "S04-4.1",
+        "additionalProperties": false,
+        "fields": {
+          "manifestHash": {
+            "type": "string",
+            "minLength": 1,
+            "description": "required"
+          },
+          "memoryRevisionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "optional"
+          }
+        }
+      }
+    ],
+    "totalSchemaCount": 46
+  },
+  "failureCodes": [
+    {
+      "code": "REQUEST_SCHEMA_INVALID",
+      "category": "request",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "REQUEST_TOO_LARGE",
+      "category": "request",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "UNSUPPORTED_CONTRACT_VERSION",
+      "category": "request",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "IDEMPOTENCY_KEY_REQUIRED",
+      "category": "request",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "IDEMPOTENCY_KEY_REUSED",
+      "category": "request",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "DEVICE_CREDENTIAL_INVALID",
+      "category": "identity",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "DEVICE_CREDENTIAL_EXPIRED",
+      "category": "identity",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "IDENTITY_ENTRY_UNREGISTERED",
+      "category": "identity",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "IDENTITY_BASELINE_STALE",
+      "category": "identity",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "MODEL_ROUTE_UNACCEPTED",
+      "category": "identity",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "IDENTITY_SESSION_EXPIRED",
+      "category": "identity",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "IDENTITY_SESSION_REVOKED",
+      "category": "identity",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "CAPABILITY_REQUIRED",
+      "category": "capability",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "CAPABILITY_EXPIRED",
+      "category": "capability",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "CAPABILITY_ALREADY_CONSUMED",
+      "category": "capability",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "CAPABILITY_SCOPE_MISMATCH",
+      "category": "capability",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "ACCESS_DENIED",
+      "category": "capability",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "POLICY_REVISION_STALE",
+      "category": "capability",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "DERIVATION_BLOCKED",
+      "category": "capability",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "DELETION_FENCED",
+      "category": "capability",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "THREAD_READER_UNSUPPORTED",
+      "category": "codex-source",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "THREAD_SCHEMA_UNKNOWN",
+      "category": "codex-source",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "SOURCE_RANGE_GAP",
+      "category": "codex-source",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "SOURCE_ORDER_INVALID",
+      "category": "codex-source",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "SOURCE_PAYLOAD_UNAVAILABLE",
+      "category": "codex-source",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "CAPTURE_SCOPE_STALE",
+      "category": "codex-source",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "REVIEW_SESSION_NOT_OPEN",
+      "category": "review-canonical",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "REVIEW_MEMBER_MISMATCH",
+      "category": "review-canonical",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "REVIEW_FINAL_INCOMPLETE",
+      "category": "review-canonical",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "USER_CONFIRMATION_PROOF_INVALID",
+      "category": "review-canonical",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "EXPECTED_REVISION_STALE",
+      "category": "review-canonical",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "PROPOSAL_CONFLICT",
+      "category": "review-canonical",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "CANONICAL_COMMIT_FAILED",
+      "category": "review-canonical",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "RETRIEVAL_NO_MATCH",
+      "category": "retrieval",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "FTS_ROUTE_UNAVAILABLE",
+      "category": "retrieval",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "VECTOR_ROUTE_UNAVAILABLE",
+      "category": "retrieval",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "RANK_OUTPUT_INVALID",
+      "category": "retrieval",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "CONTEXT_PACK_EXPIRED",
+      "category": "retrieval",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "CONTEXT_PACK_INVALIDATED",
+      "category": "retrieval",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "DELETION_PREVIEW_STALE",
+      "category": "deletion-restore",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "DELETION_CLOSURE_MISMATCH",
+      "category": "deletion-restore",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "DELETION_EXECUTION_FAILED",
+      "category": "deletion-restore",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "RESTORE_CHECKPOINT_INVALID",
+      "category": "deletion-restore",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "RESTORE_GOVERNANCE_INCOMPLETE",
+      "category": "deletion-restore",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "RESTORE_TRUST_ANCHOR_INVALID",
+      "category": "deletion-restore",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "DATABASE_UNAVAILABLE",
+      "category": "dependency-internal",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "PAYLOAD_STORE_UNAVAILABLE",
+      "category": "dependency-internal",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "MODEL_PROVIDER_UNAVAILABLE",
+      "category": "dependency-internal",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "OUTBOX_FINAL_FAILED",
+      "category": "dependency-internal",
+      "source": "S04-5.3"
+    },
+    {
+      "code": "INTERNAL_FAILURE",
+      "category": "dependency-internal",
+      "source": "S04-5.3"
+    }
+  ],
+  "asyncStages": [
+    {
+      "phase": "RECEIVED",
+      "meaning": "远端已安全接收，本地待发副本可删除",
+      "source": "S04-3.3"
+    },
+    {
+      "phase": "DECISIONS_COMMITTED",
+      "meaning": "审阅最终版的逐项 Decision 已原子成立",
+      "source": "S04-3.3"
+    },
+    {
+      "phase": "CANONICAL_COMMITTED",
+      "meaning": "规范对象已经完整保存",
+      "source": "S04-3.3"
+    },
+    {
+      "phase": "INDEX_READY",
+      "meaning": "派生检索已经追上规范 revision",
+      "source": "S04-3.3"
+    },
+    {
+      "phase": "FINAL_FAILED",
+      "meaning": "自动重试耗尽或不可恢复失败",
+      "source": "S04-3.3"
+    }
+  ],
+  "events": [
+    {
+      "eventType": "closeout.received.v1",
+      "transaction": "submission 幂等接收",
+      "consumer": "closeout worker",
+      "source": "S04-4.2"
+    },
+    {
+      "eventType": "review.opened.v1",
+      "transaction": "hide 封卷",
+      "consumer": "通知/状态投影",
+      "source": "S04-4.2"
+    },
+    {
+      "eventType": "review.decisions-committed.v1",
+      "transaction": "最终版原子提交",
+      "consumer": "canonical publisher",
+      "source": "S04-4.2"
+    },
+    {
+      "eventType": "memory.canonical-committed.v1",
+      "transaction": "首发或修订事务",
+      "consumer": "FTS/vector index worker",
+      "source": "S04-4.2"
+    },
+    {
+      "eventType": "memory.state-changed.v1",
+      "transaction": "ACTIVE/ARCHIVED 原子迁移",
+      "consumer": "索引清理或重建、ContextPack 失效器",
+      "source": "S04-4.2"
+    },
+    {
+      "eventType": "memory.policy-changed.v1",
+      "transaction": "隔离、隔离恢复或撤权事务",
+      "consumer": "索引清理、ContextPack 失效器",
+      "source": "S04-4.2"
+    },
+    {
+      "eventType": "deletion.authorized.v1",
+      "transaction": "永久删除最终确认",
+      "consumer": "deletion worker",
+      "source": "S04-4.2"
+    },
+    {
+      "eventType": "deletion.completed.v1",
+      "transaction": "在线清理验证完成",
+      "consumer": "通知、恢复阻断投影",
+      "source": "S04-4.2"
+    },
+    {
+      "eventType": "deletion.failed.v1",
+      "transaction": "本轮执行失败",
+      "consumer": "告警/通知；不解除隔离",
+      "source": "S04-4.2"
+    },
+    {
+      "eventType": "index.sync-completed.v1",
+      "transaction": "当前 revision 索引成功",
+      "consumer": "run 状态投影",
+      "source": "S04-4.2"
+    },
+    {
+      "eventType": "index.sync-final-failed.v1",
+      "transaction": "8 次失败",
+      "consumer": "直接故障通知",
+      "source": "S04-4.2"
+    },
+    {
+      "eventType": "retrieval.route-health-changed.v1",
+      "transaction": "硬健康校验",
+      "consumer": "直接故障/恢复通知",
+      "source": "S04-4.2"
+    }
+  ],
+  "generationTargets": [
+    {
+      "id": "GT01",
+      "name": "OpenAPI 3.1.2 specification",
+      "source": "contracts/openapi/hide-nest-api.yaml",
+      "target": "contracts/openapi/",
+      "mavenWorkspace": "N/A (contract-first source)",
+      "allowedInRepo": true,
+      "description": "Authoritative OpenAPI spec; hand-authored or assembled from fragments"
+    },
+    {
+      "id": "GT02",
+      "name": "JSON Schema for events and ProblemDetail",
+      "source": "contracts/events/pink-event-v1.schema.json + contracts/openapi/problem-detail.schema.json",
+      "target": "contracts/events/ + contracts/openapi/",
+      "mavenWorkspace": "N/A",
+      "allowedInRepo": true,
+      "description": "JSON Schema 2020-12 for event envelope, event payloads, and application/problem+json"
+    },
+    {
+      "id": "GT03",
+      "name": "Java interfaces and DTOs",
+      "source": "contracts/openapi/hide-nest-api.yaml",
+      "target": "modules/*/target/generated-sources/openapi OR a dedicated contracts module",
+      "mavenWorkspace": "openapi-generator-maven-plugin",
+      "allowedInRepo": false,
+      "description": "Generated into target/; not committed. Java source + spring interfaces"
+    },
+    {
+      "id": "GT04",
+      "name": "TypeScript fetch client",
+      "source": "contracts/openapi/hide-nest-api.yaml",
+      "target": "packages/api-client-ts/src/generated/",
+      "mavenWorkspace": "N/A (npm workspace @hide-nest/api-client-ts)",
+      "allowedInRepo": "UNRESOLVED_requires_hide_decision",
+      "description": "typescript-fetch output; README says 'generated from OpenAPI'"
+    },
+    {
+      "id": "GT05",
+      "name": "Event TypeScript types",
+      "source": "contracts/events/pink-event-v1.schema.json",
+      "target": "apps/codex-adapter/src/generated/events/",
+      "mavenWorkspace": "N/A (npm workspace)",
+      "allowedInRepo": false,
+      "description": "Generated from event JSON Schema; consumed by CodexAdapter"
+    },
+    {
+      "id": "GT06",
+      "name": "Synthetic contract fixtures",
+      "source": "contracts/openapi/ + contracts/events/",
+      "target": "packages/ui-contract-fixtures/src/",
+      "mavenWorkspace": "N/A (npm workspace @hide-nest/ui-contract-fixtures)",
+      "allowedInRepo": true,
+      "description": "Valid/invalid sample payloads for schema validation testing"
+    }
+  ],
+  "toolCandidates": [
+    {
+      "id": "TC01",
+      "capability": "OpenAPI Generator: Java interface/DTO + typescript-fetch",
+      "coordinate": "org.openapitools:openapi-generator-maven-plugin",
+      "version": "7.24.0",
+      "releaseStatus": "GA",
+      "license": "Apache-2.0",
+      "javaCompatible": "verified POM requires Maven 3.9.6; compilation target Java 17 with JVM forward-compatibility; Java 25 should work but runtime testing recommended during HDM-003",
+      "nodeCompatible": "N/A (Maven plugin)",
+      "placement": "pom.xml pluginManagement or per-module plugin",
+      "newDirectDependency": true,
+      "transitiveRisk": "moderate; pulls openapi-generator core + all generators",
+      "offlineCapable": true,
+      "evidenceSource": "repo.maven.apache.org/maven2/org/openapitools/openapi-generator-maven-plugin/maven-metadata.xml",
+      "alternativeA": {
+        "coordinate": "@openapitools/openapi-generator-cli",
+        "version": "2.40.1",
+        "license": "Apache-2.0",
+        "nodeCompatible": "engines.node >=22.0.0; compatible with Node 24",
+        "placement": "npm devDependency or global",
+        "newDirectDependency": true,
+        "transitiveRisk": "high; pulls @nestjs/core, axios, proxy-agent, etc.",
+        "offlineCapable": "after first download of generator jar",
+        "evidenceSource": "registry.npmjs.org/@openapitools/openapi-generator-cli/2.40.1"
+      },
+      "alternativeB": "Use Maven plugin for Java generation and npm CLI wrapper for TypeScript generation; both use same underlying OpenAPI Generator 7.24.0 engine"
+    },
+    {
+      "id": "TC02",
+      "capability": "OpenAPI 3.1 validation/lint",
+      "coordinate": "openapi-generator (built-in validation)",
+      "version": "7.24.0",
+      "releaseStatus": "GA",
+      "license": "Apache-2.0",
+      "description": "OpenAPI Generator includes spec validation via `openapi-generator validate` command; supports OpenAPI 3.1",
+      "placement": "Same tool as TC01; no additional dependency",
+      "newDirectDependency": false,
+      "transitiveRisk": "none (already required for TC01)",
+      "offlineCapable": true,
+      "alternativeA": {
+        "coordinate": "@stoplight/spectral-cli",
+        "version": "6.16.0",
+        "license": "Apache-2.0",
+        "nodeCompatible": "compatible with Node 24",
+        "description": "General-purpose spec linting; supports OpenAPI 3.1; custom rulesets",
+        "placement": "npm devDependency",
+        "newDirectDependency": true,
+        "offlineCapable": true,
+        "evidenceSource": "background agent registry lookup"
+      },
+      "alternativeB": {
+        "coordinate": "openapi-spec-validator (Python)",
+        "note": "NOT EVALUATED; Python tool outside Java/Node scope"
+      }
+    },
+    {
+      "id": "TC03",
+      "capability": "JSON Schema 2020-12 validation (Java)",
+      "coordinate": "com.networknt:json-schema-validator",
+      "version": "3.0.6",
+      "releaseStatus": "GA",
+      "license": "Apache-2.0",
+      "javaCompatible": "supports Java 8+; compatible with Java 25",
+      "description": "Supports draft v4, v6, v7, v2019-09 and v2020-12",
+      "placement": "modules/contracts (new Maven module) or test scope",
+      "newDirectDependency": true,
+      "transitiveRisk": "low; minimal dependencies",
+      "offlineCapable": true,
+      "evidenceSource": "repo.maven.apache.org/maven2/com/networknt/json-schema-validator/3.0.6/json-schema-validator-3.0.6.pom"
+    },
+    {
+      "id": "TC04",
+      "capability": "JSON Schema 2020-12 validation (Node.js)",
+      "coordinate": "ajv",
+      "version": "8.20.0",
+      "releaseStatus": "GA",
+      "license": "MIT",
+      "nodeCompatible": "compatible with Node 24",
+      "description": "Full JSON Schema 2020-12 support with ajv-formats",
+      "placement": "npm devDependency in packages/ui-contract-fixtures or root",
+      "newDirectDependency": true,
+      "transitiveRisk": "low; fast-uri, fast-deep-equal, require-from-string",
+      "offlineCapable": true,
+      "evidenceSource": "registry.npmjs.org/ajv/8.20.0"
+    },
+    {
+      "id": "TC05",
+      "capability": "Breaking-change detection",
+      "coordinate": "org.openapitools.openapidiff:openapi-diff-maven",
+      "version": "2.1.7",
+      "releaseStatus": "GA",
+      "license": "Apache-2.0",
+      "javaCompatible": "compiled at Java 1.8; forward-compatible with Java 25",
+      "description": "Maven plugin by OpenAPITools; compares two OpenAPI specs and reports breaking/non-breaking differences. Same organization as openapi-generator.",
+      "placement": "pom.xml plugin or standalone Maven execution",
+      "newDirectDependency": true,
+      "transitiveRisk": "moderate; depends on swagger-parser-v3",
+      "offlineCapable": true,
+      "evidenceSource": "repo.maven.apache.org/maven2/org/openapitools/openapidiff/openapi-diff-maven/maven-metadata.xml",
+      "alternativeA": {
+        "coordinate": "openapi-diff (npm)",
+        "version": "0.24.1",
+        "license": "Apache-2.0",
+        "note": "Atlassian npm CLI; may have limited OpenAPI 3.1 support"
+      },
+      "alternativeB": {
+        "coordinate": "oasdiff (Go binary)",
+        "version": "v1.28.0",
+        "license": "Apache-2.0",
+        "note": "Standalone Go binary; v2.2.0-openapi31.beta.4 for 3.1; not on Maven Central or npm"
+      },
+      "alternativeC": "Custom script: git diff on generated Java DTOs and TypeScript types"
+    },
+    {
+      "id": "TC06",
+      "capability": "Generation stability (byte-identical rerun)",
+      "coordinate": "N/A (script-based approach)",
+      "version": "N/A",
+      "description": "Run generate.ps1 twice, then compare output directories with git diff --no-index or file hash. OpenAPI Generator supports --additional-properties for deterministic output. No external tool needed.",
+      "placement": "scripts/generate.ps1 enhancement",
+      "newDirectDependency": false,
+      "offlineCapable": true
+    }
+  ],
+  "proposedRuntimeRegistry": {
+    "description": "Per-failure-code HTTP status, retryable, and terminal mappings. All entries are NON_AUTHORITATIVE_DEFERRED — not contract facts. To be finalized during identity/business-API/retrieval/deletion implementation phases.",
+    "authoritativeness": "NON_AUTHORITATIVE_DEFERRED",
+    "defaultAutoRetry": false,
+    "rules": [
+      "HDM-003 default auto-retry is false; no client per-code auto-retry logic",
+      "Async terminal failure codes may appear in 200 RunStatusResponse; not equal to immediate Problem HTTP status",
+      "RETRIEVAL_NO_MATCH → normal NO_RELEVANT_RESULT; not a Problem leak",
+      "RANK_OUTPUT_INVALID → system cannot reliably accept model output; not a client 422 fact",
+      "CANONICAL_COMMIT_FAILED and DELETION_EXECUTION_FAILED must not authorize client blind replay of write actions",
+      "Authoritative general HTTP mapping rules from S04-5.3 preserved in report"
+    ],
+    "entries": [
+      {
+        "code": "REQUEST_SCHEMA_INVALID",
+        "proposedHttpStatus": 422,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "REQUEST_TOO_LARGE",
+        "proposedHttpStatus": 413,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "UNSUPPORTED_CONTRACT_VERSION",
+        "proposedHttpStatus": 400,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "IDEMPOTENCY_KEY_REQUIRED",
+        "proposedHttpStatus": 400,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "IDEMPOTENCY_KEY_REUSED",
+        "proposedHttpStatus": 409,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "DEVICE_CREDENTIAL_INVALID",
+        "proposedHttpStatus": 401,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "DEVICE_CREDENTIAL_EXPIRED",
+        "proposedHttpStatus": 401,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "IDENTITY_ENTRY_UNREGISTERED",
+        "proposedHttpStatus": 401,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "IDENTITY_BASELINE_STALE",
+        "proposedHttpStatus": 401,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "MODEL_ROUTE_UNACCEPTED",
+        "proposedHttpStatus": 401,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "IDENTITY_SESSION_EXPIRED",
+        "proposedHttpStatus": 401,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "IDENTITY_SESSION_REVOKED",
+        "proposedHttpStatus": 401,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "CAPABILITY_REQUIRED",
+        "proposedHttpStatus": 403,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "CAPABILITY_EXPIRED",
+        "proposedHttpStatus": 403,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "CAPABILITY_ALREADY_CONSUMED",
+        "proposedHttpStatus": 403,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "CAPABILITY_SCOPE_MISMATCH",
+        "proposedHttpStatus": 403,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "ACCESS_DENIED",
+        "proposedHttpStatus": 403,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "POLICY_REVISION_STALE",
+        "proposedHttpStatus": 409,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "DERIVATION_BLOCKED",
+        "proposedHttpStatus": 403,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "DELETION_FENCED",
+        "proposedHttpStatus": 403,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "THREAD_READER_UNSUPPORTED",
+        "proposedHttpStatus": 422,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "THREAD_SCHEMA_UNKNOWN",
+        "proposedHttpStatus": 422,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "SOURCE_RANGE_GAP",
+        "proposedHttpStatus": 422,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "SOURCE_ORDER_INVALID",
+        "proposedHttpStatus": 422,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "SOURCE_PAYLOAD_UNAVAILABLE",
+        "proposedHttpStatus": 410,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "CAPTURE_SCOPE_STALE",
+        "proposedHttpStatus": 409,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "REVIEW_SESSION_NOT_OPEN",
+        "proposedHttpStatus": 409,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "REVIEW_MEMBER_MISMATCH",
+        "proposedHttpStatus": 422,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "REVIEW_FINAL_INCOMPLETE",
+        "proposedHttpStatus": 422,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "USER_CONFIRMATION_PROOF_INVALID",
+        "proposedHttpStatus": 403,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "EXPECTED_REVISION_STALE",
+        "proposedHttpStatus": 409,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "PROPOSAL_CONFLICT",
+        "proposedHttpStatus": 409,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "CANONICAL_COMMIT_FAILED",
+        "proposedHttpStatus": 500,
+        "proposedRetryable": false,
+        "proposedTerminal": false,
+        "note": "must not authorize client blind replay"
+      },
+      {
+        "code": "RETRIEVAL_NO_MATCH",
+        "proposedHttpStatus": null,
+        "proposedRetryable": false,
+        "proposedTerminal": false,
+        "resultCategory": "NO_RELEVANT_RESULT",
+        "note": "normal NO_RELEVANT_RESULT; not a Problem leak"
+      },
+      {
+        "code": "FTS_ROUTE_UNAVAILABLE",
+        "proposedHttpStatus": 503,
+        "proposedRetryable": false,
+        "proposedTerminal": false
+      },
+      {
+        "code": "VECTOR_ROUTE_UNAVAILABLE",
+        "proposedHttpStatus": 503,
+        "proposedRetryable": false,
+        "proposedTerminal": false
+      },
+      {
+        "code": "RANK_OUTPUT_INVALID",
+        "proposedHttpStatus": null,
+        "proposedRetryable": false,
+        "proposedTerminal": false,
+        "note": "system cannot reliably accept model output; not client 422"
+      },
+      {
+        "code": "CONTEXT_PACK_EXPIRED",
+        "proposedHttpStatus": 410,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "CONTEXT_PACK_INVALIDATED",
+        "proposedHttpStatus": 410,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "DELETION_PREVIEW_STALE",
+        "proposedHttpStatus": 409,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "DELETION_CLOSURE_MISMATCH",
+        "proposedHttpStatus": 409,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "DELETION_EXECUTION_FAILED",
+        "proposedHttpStatus": 500,
+        "proposedRetryable": false,
+        "proposedTerminal": false,
+        "note": "must not authorize client blind replay"
+      },
+      {
+        "code": "RESTORE_CHECKPOINT_INVALID",
+        "proposedHttpStatus": 422,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "RESTORE_GOVERNANCE_INCOMPLETE",
+        "proposedHttpStatus": 422,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "RESTORE_TRUST_ANCHOR_INVALID",
+        "proposedHttpStatus": 403,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "DATABASE_UNAVAILABLE",
+        "proposedHttpStatus": 503,
+        "proposedRetryable": false,
+        "proposedTerminal": false
+      },
+      {
+        "code": "PAYLOAD_STORE_UNAVAILABLE",
+        "proposedHttpStatus": 503,
+        "proposedRetryable": false,
+        "proposedTerminal": false
+      },
+      {
+        "code": "MODEL_PROVIDER_UNAVAILABLE",
+        "proposedHttpStatus": 503,
+        "proposedRetryable": false,
+        "proposedTerminal": false
+      },
+      {
+        "code": "OUTBOX_FINAL_FAILED",
+        "proposedHttpStatus": 500,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      },
+      {
+        "code": "INTERNAL_FAILURE",
+        "proposedHttpStatus": 500,
+        "proposedRetryable": false,
+        "proposedTerminal": true
+      }
+    ]
+  },
+  "resolvedTechnicalDecisions": [
+    {
+      "id": "TD01",
+      "decision": "OpenAPI Generator 工具",
+      "ruling": "org.openapitools:openapi-generator-maven-plugin:7.24.0 only",
+      "note": "不安装 npm CLI 包装器",
+      "source": "Task15A-A §3.2"
+    },
+    {
+      "id": "TD02",
+      "decision": "Java 生成目标",
+      "ruling": "modules/contracts/target/generated-sources",
+      "note": "不入库",
+      "source": "Task15A-A §3.2"
+    },
+    {
+      "id": "TD03",
+      "decision": "TypeScript fetch 客户端生成目标",
+      "ruling": "packages/api-client-ts/src/generated",
+      "note": "入库",
+      "source": "Task15A-A §3.2"
+    },
+    {
+      "id": "TD04",
+      "decision": "事件 TypeScript 类型生成目标",
+      "ruling": "apps/codex-adapter/src/generated/events",
+      "note": "入库",
+      "source": "Task15A-A §3.2"
+    },
+    {
+      "id": "TD05",
+      "decision": "JSON Schema 验证器",
+      "ruling": "com.networknt:json-schema-validator:3.0.6 test scope",
+      "note": "不再同时增加 Ajv",
+      "source": "Task15A-A §3.3"
+    },
+    {
+      "id": "TD06",
+      "decision": "OpenAPI 验证",
+      "ruling": "OpenAPI Generator 7.24.0 内置验证",
+      "note": "不额外增加 Spectral",
+      "source": "Task15A-A §3.3"
+    },
+    {
+      "id": "TD07",
+      "decision": "Breaking-change 检查",
+      "ruling": "org.openapitools.openapidiff:openapi-diff-maven:2.1.7 with OpenAPI 3.1 fixture gate",
+      "note": "实施前必须用合成双 fixture 实测；若不能正确判定，停止请求 hide 裁定",
+      "source": "Task15A-A §3.3"
+    },
+    {
+      "id": "TD08",
+      "decision": "Java 运行时",
+      "ruling": "Temurin 25 only; failure blocks",
+      "note": "不安装 JDK 17",
+      "source": "Task15A-A §3.3"
+    },
+    {
+      "id": "TD09",
+      "decision": "事件 TS 类型生成适配",
+      "ruling": "只 $ref 权威事件 JSON Schema，不复制字段",
+      "note": "不形成第二份事实源",
+      "source": "Task15A-A §3.2"
+    }
+  ],
+  "reclassifiedGaps": {
+    "implementationBlockingUnresolved": [],
+    "implementationBlockingUnresolvedCount": 0,
+    "deferredRuntimeDecisions": [
+      {
+        "id": "DEF01",
+        "description": "逐 failure code 的运行时 retryable 注册表",
+        "note": "由身份、业务API、检索与后台任务实施阶段分别落成；默认不得自动重试"
+      },
+      {
+        "id": "DEF02",
+        "description": "逐 failure code 的精确 HTTP status 映射",
+        "note": "S04-5.3 给出通用映射规则但非逐 code 规范事实"
+      },
+      {
+        "id": "DEF03",
+        "description": "业务 handler、Controller、数据库、身份判断、事务、outbox",
+        "note": "不属于 HDM-003 范围"
+      },
+      {
+        "id": "DEF04",
+        "description": "异步终态 failure code 在 200 RunStatusResponse 中的呈现",
+        "note": "不等于该 code 的即时 Problem HTTP status"
+      }
+    ],
+    "deferredRuntimeDecisionsCount": 4,
+    "approvedTechnicalCompletions": [
+      {
+        "id": "APR01",
+        "description": "30 个 operationId（lowerCamelCase，生成所需技术命名）"
+      },
+      {
+        "id": "APR02",
+        "description": "SourceAvailability = AVAILABLE, UNAVAILABLE"
+      },
+      {
+        "id": "APR03",
+        "description": "目录与工具选择（TD01-TD09）"
+      },
+      {
+        "id": "APR04",
+        "description": "50 个 failure code 枚举与 8 个类别"
+      },
+      {
+        "id": "APR05",
+        "description": "12 个 eventType 值"
+      },
+      {
+        "id": "APR06",
+        "description": "事件信封 pink.event.v1 结构"
+      },
+      {
+        "id": "APR07",
+        "description": "已知业务上限照契约编码，未知任意上限不猜，只保留 type/format/required/nullable 等已知约束"
+      }
+    ],
+    "approvedTechnicalCompletionsCount": 7,
+    "rejectedProposals": [
+      {
+        "id": "REJ01",
+        "description": "12 套事件专属 payload schema",
+        "reason": "制造新业务事实；hide 裁定只允许信封+4个引用类型"
+      },
+      {
+        "id": "REJ02",
+        "description": "双生成器（Maven + npm CLI）",
+        "reason": "hide 裁定只用 openapi-generator-maven-plugin:7.24.0"
+      },
+      {
+        "id": "REJ03",
+        "description": "任意限制猜测",
+        "reason": "不得凭空发明字段限制"
+      },
+      {
+        "id": "REJ04",
+        "description": "SourceAvailability.UNRESOLVED",
+        "reason": "不能成为业务枚举"
+      },
+      {
+        "id": "REJ05",
+        "description": "50 项逐 code 注册表作为规范事实",
+        "reason": "hide 裁定不创建逐 code 注册表作为规范事实"
+      },
+      {
+        "id": "REJ06",
+        "description": "Ajv + Spectral 额外工具",
+        "reason": "hide 裁定只用 json-schema-validator test scope + generator 内置验证"
+      }
+    ],
+    "rejectedProposalsCount": 6
+  },
+  "contractConflicts": [],
+  "unresolvedFields": [
+    {
+      "id": "UF01",
+      "field": "逐 code retryable 与 HTTP 映射",
+      "description": "S04-5.3 给出通用规则但不逐 code 指定",
+      "impact": "已移入 proposedRuntimeRegistry，标为 NON_AUTHORITATIVE_DEFERRED",
+      "classification": "deferredRuntimeDecision",
+      "source": "S04-5.3"
+    },
+    {
+      "id": "UF03",
+      "field": "精确字段长度/大小上限",
+      "description": "契约部分限制已知（FTS≤40 等）但多数 DTO 字段的 maxLength/minItems/maxItems 未指定",
+      "impact": "HDM-003 为已知限制字段写入约束；未知限制的字段不加业务上限",
+      "classification": "implementationBlockingUnresolved",
+      "source": "S04-3.2+S07"
+    },
+    {
+      "id": "UF05",
+      "field": "部分 failure code 的 HTTP 状态",
+      "description": "S04-5.3 通用映射规则已保留；逐 code 精确映射已移入 proposedRuntimeRegistry",
+      "impact": "deferred to implementation phases",
+      "classification": "deferredRuntimeDecision",
+      "source": "S04-5.3"
+    }
+  ],
+  "proposedAdditions": [
+    {
+      "id": "PA01",
+      "item": "30 个操作的 OpenAPI operationId",
+      "reason": "代码生成命名所需",
+      "authority": "HDM-003 实施必需；不是新业务能力",
+      "status": "approved"
+    },
+    {
+      "id": "PA04",
+      "item": "Java DTO 生成目标模块 modules/contracts",
+      "reason": "基线 manifest 指定 TS 输出路径但未指定 Java 输出模块",
+      "authority": "HDM-003 实施必需",
+      "status": "approved"
+    }
+  ],
+  "forbiddenLeakFields": [
+    {
+      "field": "memory body text / body_text",
+      "rule": "API must not return memory content body",
+      "source": "S04-3.1"
+    },
+    {
+      "field": "SourcePayload raw content",
+      "rule": "API must not return original evidence text",
+      "source": "S04-3.1"
+    },
+    {
+      "field": "prompt / tool parameters",
+      "rule": "No prompt or tool parameters in responses",
+      "source": "S04-4.1"
+    },
+    {
+      "field": "token / tokenHash",
+      "rule": "Tokens never enter URL, Cookie, log, trace, error, Hook output, prompt or ContextPack",
+      "source": "S04-6.1"
+    },
+    {
+      "field": "supplier keys / apiKey / apiKeyRef",
+      "rule": "No supplier keys in any output",
+      "source": "S04-4.1"
+    },
+    {
+      "field": "SQL statements",
+      "rule": "No SQL in error responses",
+      "source": "S04-3.1"
+    },
+    {
+      "field": "internal stack trace",
+      "rule": "No stack traces in error responses",
+      "source": "S04-3.1"
+    },
+    {
+      "field": "supplier exception text",
+      "rule": "No supplier exceptions in error responses",
+      "source": "S04-3.1"
+    },
+    {
+      "field": "object_ref / bucket / OSS URL",
+      "rule": "No internal storage references in responses",
+      "source": "S07-2.4"
+    },
+    {
+      "field": "content hash",
+      "rule": "No content hash in evidence responses",
+      "source": "S07-2.4"
+    },
+    {
+      "field": "device secret / original credential",
+      "rule": "Device secrets never enter envelope",
+      "source": "S04-3.2"
+    },
+    {
+      "field": "unauthorized object title/content",
+      "rule": "Error title must not concatenate object content",
+      "source": "S04-5.1"
+    },
+    {
+      "field": "hostname / IP / database connection",
+      "rule": "System status must not return hostname, IP, database info",
+      "source": "S07-2.6"
+    },
+    {
+      "field": "policy grant internal structure",
+      "rule": "Memory detail must not return policy grant internals",
+      "source": "S07-2.2"
+    },
+    {
+      "field": "provider metadata",
+      "rule": "Memory detail must not return provider metadata",
+      "source": "S07-2.2"
+    },
+    {
+      "field": "hidden chain of thought",
+      "rule": "No hidden thinking chain in any output",
+      "source": "角色权限契约-8.2"
+    }
+  ],
+  "statistics": {
+    "remoteApiOperations": 30,
+    "localExcludedOperations": 3,
+    "privateExcludedEndpoints": 2,
+    "apiSchemas": 33,
+    "sharedEnums": 9,
+    "eventSchemas": 4,
+    "totalSchemaCount": 46,
+    "failureCodes": 50,
+    "asyncStages": 5,
+    "eventTypes": 12,
+    "contractConflicts": 0,
+    "unresolvedFields": 3,
+    "proposedAdditions": 2,
+    "forbiddenLeakFields": 16,
+    "toolCandidates": 6,
+    "resolvedTechnicalDecisions": 9,
+    "implementationBlockingUnresolved": 0,
+    "deferredRuntimeDecisions": 4,
+    "approvedTechnicalCompletions": 7,
+    "rejectedProposals": 6,
+    "proposedRuntimeRegistryEntries": 50,
+    "proposedRuntimeRegistryAuthoritativeness": "NON_AUTHORITATIVE_DEFERRED"
+  }
+}

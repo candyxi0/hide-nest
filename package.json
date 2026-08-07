@@ -15,7 +15,9 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspaces --if-present",
+    "generate:openapi": "powershell.exe -ExecutionPolicy Bypass -File scripts/generate.ps1 -Target openapi",
+    "generate:events": "powershell.exe -ExecutionPolicy Bypass -File scripts/generate.ps1 -Target events"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

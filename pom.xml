@@ -27,6 +27,7 @@
         <module>modules/memory</module>
         <module>modules/runtime</module>
         <module>modules/security</module>
+        <module>modules/contracts</module>
         <module>modules/architecture-tests</module>
         <module>apps/api</module>
         <module>apps/worker</module>
@@ -41,6 +42,9 @@
                 <configuration>
                     <java>
                         <palantirJavaFormat/>
+                        <excludes>
+                            <exclude>**/generated-sources/**</exclude>
+                        </excludes>
                     </java>
                 </configuration>
             </plugin>

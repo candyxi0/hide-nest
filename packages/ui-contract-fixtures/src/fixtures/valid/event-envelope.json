@@ -1,0 +1,17 @@
+{
+  "contractVersion": "pink.event.v1",
+  "eventId": "01945a7c-3e8f-7000-a000-000000000008",
+  "sequenceNo": 1,
+  "eventType": "memory.canonical-committed.v1",
+  "aggregate": {
+    "kind": "MEMORY",
+    "id": "01945a7c-3e8f-7000-a000-000000000009",
+    "revision": 3
+  },
+  "occurredAt": "2026-08-07T10:00:00Z",
+  "purpose": "INDEX_SYNC",
+  "policyRevision": 7,
+  "manifest": {
+    "manifestHash": "sha256:synthetic-manifest"
+  }
+}

@@ -155,6 +155,20 @@ class ArchitectureTest {
     }
 
     @Test
+    void domainModulesMustNotDependOnContracts() {
+        JavaClasses domainClasses = new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages(EVIDENCE, MEMORY, RUNTIME, SECURITY);
+
+        ArchRule rule = noClasses()
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage("io.github.candyxi0.hidenest.contracts..");
+
+        rule.check(domainClasses);
+    }
+
+    @Test
     void negativeFixtureMustViolateForbiddenFrameworkRule() {
         JavaClasses allIncludingTests = importAll();
 

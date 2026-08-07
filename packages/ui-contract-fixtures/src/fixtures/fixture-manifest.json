@@ -1,0 +1,85 @@
+{
+  "version": "hdm003-r1-fixtures-v1",
+  "fixtures": [
+    {
+      "id": "openapi.create-session.request.valid",
+      "family": "openapi",
+      "schemaRef": "contracts/openapi/hide-nest-api.yaml#/components/schemas/CreateSessionRequest",
+      "expectedValid": true,
+      "fixturePath": "packages/ui-contract-fixtures/src/fixtures/valid/create-session-request.json"
+    },
+    {
+      "id": "openapi.create-session.response.valid",
+      "family": "openapi",
+      "schemaRef": "contracts/openapi/hide-nest-api.yaml#/components/schemas/CreateSessionResponse",
+      "expectedValid": true,
+      "fixturePath": "packages/ui-contract-fixtures/src/fixtures/valid/create-session-response.json"
+    },
+    {
+      "id": "openapi.context-pack.response.valid",
+      "family": "openapi",
+      "schemaRef": "contracts/openapi/hide-nest-api.yaml#/components/schemas/ContextPackResponse",
+      "expectedValid": true,
+      "fixturePath": "packages/ui-contract-fixtures/src/fixtures/valid/context-pack-response.json"
+    },
+    {
+      "id": "problem.detail.valid",
+      "family": "openapi",
+      "schemaRef": "contracts/openapi/problem-detail.schema.json",
+      "expectedValid": true,
+      "fixturePath": "packages/ui-contract-fixtures/src/fixtures/valid/problem-detail.json"
+    },
+    {
+      "id": "event.envelope.valid",
+      "family": "event",
+      "schemaRef": "contracts/events/pink-event-v1.schema.json",
+      "expectedValid": true,
+      "fixturePath": "packages/ui-contract-fixtures/src/fixtures/valid/event-envelope.json"
+    },
+    {
+      "id": "openapi.create-session.response.unknown-field",
+      "family": "openapi",
+      "schemaRef": "contracts/openapi/hide-nest-api.yaml#/components/schemas/CreateSessionResponse",
+      "expectedValid": false,
+      "expectedKeyword": "additionalProperties",
+      "expectedInstancePath": "",
+      "fixturePath": "packages/ui-contract-fixtures/src/fixtures/invalid/create-session-response-unknown-field.json"
+    },
+    {
+      "id": "problem.detail.unknown-enum",
+      "family": "openapi",
+      "schemaRef": "contracts/openapi/problem-detail.schema.json",
+      "expectedValid": false,
+      "expectedKeyword": "enum",
+      "expectedInstancePath": "/resultCategory",
+      "fixturePath": "packages/ui-contract-fixtures/src/fixtures/invalid/problem-detail-unknown-enum.json"
+    },
+    {
+      "id": "event.unknown-version",
+      "family": "event",
+      "schemaRef": "contracts/events/pink-event-v1.schema.json",
+      "expectedValid": false,
+      "expectedKeyword": "const",
+      "expectedInstancePath": "/contractVersion",
+      "fixturePath": "packages/ui-contract-fixtures/src/fixtures/invalid/event-unknown-version.json"
+    },
+    {
+      "id": "event.forbidden-field",
+      "family": "event",
+      "schemaRef": "contracts/events/pink-event-v1.schema.json",
+      "expectedValid": false,
+      "expectedKeyword": "additionalProperties",
+      "expectedInstancePath": "",
+      "fixturePath": "packages/ui-contract-fixtures/src/fixtures/invalid/event-forbidden-field.json"
+    },
+    {
+      "id": "event.purpose-known-limit",
+      "family": "event",
+      "schemaRef": "contracts/events/pink-event-v1.schema.json",
+      "expectedValid": false,
+      "expectedKeyword": "maxLength",
+      "expectedInstancePath": "/purpose",
+      "fixturePath": "packages/ui-contract-fixtures/src/fixtures/invalid/event-purpose-over-limit.json"
+    }
+  ]
+}

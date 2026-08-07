@@ -1,0 +1,12 @@
+{
+  "requestId": "01945a7c-3e8f-7000-a000-000000000003",
+  "resultCategory": "NO_RELEVANT_RESULT",
+  "deliveryId": "01945a7c-3e8f-7000-a000-000000000004",
+  "threadId": "01945a7c-3e8f-7000-a000-000000000005",
+  "turnId": "01945a7c-3e8f-7000-a000-000000000006",
+  "purpose": "synthetic-test",
+  "policyRevisionSet": [],
+  "issuedAt": "2026-08-07T10:00:00Z",
+  "expiresAt": "2026-08-07T10:10:00Z",
+  "budgetLimited": true
+}

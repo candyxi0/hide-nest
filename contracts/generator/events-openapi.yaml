@@ -1,0 +1,14 @@
+openapi: "3.1.2"
+info:
+  title: Pink Event Type Adapter
+  version: "1.0.0"
+  description: >
+    Generator-only adapter. Event structure is owned exclusively by the
+    referenced JSON Schema and is never copied into this document.
+paths: {}
+components:
+  schemas:
+    PinkEventEnvelope:
+      $ref: "../events/pink-event-v1.schema.json#/$defs/PinkEventEnvelope"
+    EventType:
+      $ref: "../events/pink-event-v1.schema.json#/$defs/EventType"

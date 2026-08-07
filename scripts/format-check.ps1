@@ -24,6 +24,7 @@ try {
 Pop-Location
 
 # 2. Prettier check (Node) — offline-only via repo-local binary
+# Includes contract YAML/JSON files; excludes generated directories
 Write-Host "`n[2/2] Prettier check (Node)..." -ForegroundColor Yellow
 Push-Location $repoRoot
 try {
@@ -38,7 +39,12 @@ try {
         "eslint.config.mjs" `
         ".prettierrc.json" `
         "apps/**/*.{ts,tsx,js,json,css,md}" `
-        "packages/**/*.{ts,tsx,js,json,css,md}"
+        "!apps/codex-adapter/src/generated/**" `
+        "packages/**/*.{ts,tsx,js,json,css,md}" `
+        "!packages/api-client-ts/src/generated/**" `
+        "contracts/**/*.yaml" `
+        "contracts/**/*.json" `
+        "!contracts/inventory/ContractInventory-HDM-003-v0.1.json"
     if ($LASTEXITCODE -ne 0) { throw "Prettier check failed" }
     Write-Host "PASS: Prettier check" -ForegroundColor Green
 } catch {

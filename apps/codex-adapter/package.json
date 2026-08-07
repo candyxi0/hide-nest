@@ -7,7 +7,8 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc",
+    "clean:dist": "node --input-type=module -e \"import { rmSync } from 'node:fs'; import { relative, resolve } from 'node:path'; const workspace = resolve(process.cwd()); const dist = resolve(workspace, 'dist'); if (relative(workspace, dist) !== 'dist') throw new Error('Refusing to remove a path outside this workspace'); rmSync(dist, { recursive: true, force: true });\"",
+    "build": "npm run clean:dist && tsc",
     "lint": "eslint src/",
     "test": "vitest run",
     "doctor": "node dist/doctor.js",

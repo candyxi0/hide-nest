@@ -1,0 +1,9 @@
+{
+  "type": "urn:pink:problem:invalid",
+  "title": "Invalid result",
+  "status": 400,
+  "requestId": "01945a7c-3e8f-7000-a000-000000000013",
+  "resultCategory": "NOT_A_REAL_RESULT",
+  "failureCode": "REQUEST_SCHEMA_INVALID",
+  "retryable": false
+}

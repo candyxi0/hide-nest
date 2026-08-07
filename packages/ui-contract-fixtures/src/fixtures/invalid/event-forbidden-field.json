@@ -1,0 +1,17 @@
+{
+  "contractVersion": "pink.event.v1",
+  "eventId": "01945a7c-3e8f-7000-a000-000000000016",
+  "sequenceNo": 1,
+  "eventType": "closeout.received.v1",
+  "aggregate": {
+    "kind": "MEMORY",
+    "id": "01945a7c-3e8f-7000-a000-000000000017"
+  },
+  "occurredAt": "2026-08-07T10:00:00Z",
+  "purpose": "CLOSEOUT",
+  "policyRevision": 0,
+  "manifest": {
+    "manifestHash": "sha256:synthetic-manifest"
+  },
+  "body_text": "synthetic forbidden body"
+}

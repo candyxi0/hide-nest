@@ -1,0 +1,8 @@
+{
+  "generatorName": "typescript-fetch",
+  "configOptions": {
+    "supportsES6": "true",
+    "importFileExtension": ".js",
+    "hideGenerationTimestamp": "true"
+  }
+}

@@ -1,13 +1,12 @@
 /**
- * UI contract fixtures placeholder.
- * Real fixtures will be produced in HDM-003 alongside OpenAPI Generator.
+ * UI contract fixtures for hide-nest.
+ * Provides valid samples, invalid samples, and canary regression detection.
+ * Generated as part of HDM-003 contract-first skeleton.
  */
-const GENERATION_NOT_AVAILABLE = "GENERATION_NOT_AVAILABLE_UNTIL_HDM003";
 
-export function getFixtures(): never {
-  throw new Error(GENERATION_NOT_AVAILABLE);
-}
+export { validFixtures } from "./valid-fixtures.js";
+export type { FixtureManifestEntry } from "./valid-fixtures.js";
 
-export function getFixtureStatus(): string {
-  return GENERATION_NOT_AVAILABLE;
-}
+export { invalidFixtures } from "./invalid-fixtures.js";
+
+export { CANARY_HASH, computeCanaryHash } from "./canary.js";

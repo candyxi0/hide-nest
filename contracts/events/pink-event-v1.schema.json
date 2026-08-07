@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hide-nest.local/schemas/pink-event-v1.schema.json",
+  "title": "PinkEventV1",
+  "description": "Event envelope and referenced types for pink.event.v1 contract",
+  "$ref": "#/$defs/PinkEventEnvelope",
+  "$defs": {
+    "PinkEventEnvelope": {
+      "type": "object",
+      "required": [
+        "contractVersion",
+        "eventId",
+        "sequenceNo",
+        "eventType",
+        "aggregate",
+        "occurredAt",
+        "purpose",
+        "policyRevision",
+        "manifest"
+      ],
+      "properties": {
+        "contractVersion": {
+          "type": "string",
+          "const": "pink.event.v1"
+        },
+        "eventId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUIDv7"
+        },
+        "sequenceNo": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Database identity"
+        },
+        "eventType": {
+          "$ref": "#/$defs/EventType"
+        },
+        "aggregate": {
+          "$ref": "#/$defs/AggregateRef"
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "UTC RFC3339"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "policyRevision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "manifest": {
+          "$ref": "#/$defs/EventManifestRef"
+        }
+      },
+      "additionalProperties": false,
+      "not": {
+        "anyOf": [
+          { "required": ["body_text"] },
+          { "required": ["sourcePayload"] },
+          { "required": ["prompt"] },
+          { "required": ["toolParameters"] },
+          { "required": ["token"] },
+          { "required": ["apiKey"] },
+          { "required": ["sql"] },
+          { "required": ["stackTrace"] },
+          { "required": ["secret"] }
+        ]
+      }
+    },
+    "EventType": {
+      "type": "string",
+      "enum": [
+        "closeout.received.v1",
+        "review.opened.v1",
+        "review.decisions-committed.v1",
+        "memory.canonical-committed.v1",
+        "memory.state-changed.v1",
+        "memory.policy-changed.v1",
+        "deletion.authorized.v1",
+        "deletion.completed.v1",
+        "deletion.failed.v1",
+        "index.sync-completed.v1",
+        "index.sync-final-failed.v1",
+        "retrieval.route-health-changed.v1"
+      ]
+    },
+    "AggregateRef": {
+      "type": "object",
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Constrained string; no business enum invented"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "EventManifestRef": {
+      "type": "object",
+      "required": ["manifestHash"],
+      "properties": {
+        "manifestHash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memoryRevisionId": {
+          "type": ["string", "null"],
+          "format": "uuid"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

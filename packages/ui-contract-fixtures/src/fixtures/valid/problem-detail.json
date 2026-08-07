@@ -1,0 +1,9 @@
+{
+  "type": "urn:pink:problem:memory-not-found",
+  "title": "Memory not found",
+  "status": 404,
+  "requestId": "01945a7c-3e8f-7000-a000-000000000007",
+  "resultCategory": "DENIED",
+  "failureCode": "ACCESS_DENIED",
+  "retryable": false
+}

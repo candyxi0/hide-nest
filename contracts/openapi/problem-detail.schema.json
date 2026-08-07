@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hide-nest.local/schemas/problem-detail.schema.json",
+  "title": "ProblemDetail",
+  "description": "RFC 9457 application/problem+json with hide-nest extensions",
+  "type": "object",
+  "required": [
+    "type",
+    "title",
+    "status",
+    "requestId",
+    "resultCategory",
+    "failureCode",
+    "retryable"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "format": "uri"
+    },
+    "title": {
+      "type": "string"
+    },
+    "status": {
+      "type": "integer"
+    },
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "resultCategory": {
+      "$ref": "#/$defs/ResultCategory"
+    },
+    "failureCode": {
+      "$ref": "#/$defs/FailureCode"
+    },
+    "retryable": {
+      "type": "boolean"
+    },
+    "affectedScope": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "ResultCategory": {
+      "type": "string",
+      "enum": ["SUCCEEDED", "NO_RELEVANT_RESULT", "DENIED", "STALE", "FAILED", "PARTIALLY_DEGRADED"]
+    },
+    "FailureCode": {
+      "type": "string",
+      "enum": [
+        "REQUEST_SCHEMA_INVALID",
+        "REQUEST_TOO_LARGE",
+        "UNSUPPORTED_CONTRACT_VERSION",
+        "IDEMPOTENCY_KEY_REQUIRED",
+        "IDEMPOTENCY_KEY_REUSED",
+        "DEVICE_CREDENTIAL_INVALID",
+        "DEVICE_CREDENTIAL_EXPIRED",
+        "IDENTITY_ENTRY_UNREGISTERED",
+        "IDENTITY_BASELINE_STALE",
+        "MODEL_ROUTE_UNACCEPTED",
+        "IDENTITY_SESSION_EXPIRED",
+        "IDENTITY_SESSION_REVOKED",
+        "CAPABILITY_REQUIRED",
+        "CAPABILITY_EXPIRED",
+        "CAPABILITY_ALREADY_CONSUMED",
+        "CAPABILITY_SCOPE_MISMATCH",
+        "ACCESS_DENIED",
+        "POLICY_REVISION_STALE",
+        "DERIVATION_BLOCKED",
+        "DELETION_FENCED",
+        "THREAD_READER_UNSUPPORTED",
+        "THREAD_SCHEMA_UNKNOWN",
+        "SOURCE_RANGE_GAP",
+        "SOURCE_ORDER_INVALID",
+        "SOURCE_PAYLOAD_UNAVAILABLE",
+        "CAPTURE_SCOPE_STALE",
+        "REVIEW_SESSION_NOT_OPEN",
+        "REVIEW_MEMBER_MISMATCH",
+        "REVIEW_FINAL_INCOMPLETE",
+        "USER_CONFIRMATION_PROOF_INVALID",
+        "EXPECTED_REVISION_STALE",
+        "PROPOSAL_CONFLICT",
+        "CANONICAL_COMMIT_FAILED",
+        "RETRIEVAL_NO_MATCH",
+        "FTS_ROUTE_UNAVAILABLE",
+        "VECTOR_ROUTE_UNAVAILABLE",
+        "RANK_OUTPUT_INVALID",
+        "CONTEXT_PACK_EXPIRED",
+        "CONTEXT_PACK_INVALIDATED",
+        "DELETION_PREVIEW_STALE",
+        "DELETION_CLOSURE_MISMATCH",
+        "DELETION_EXECUTION_FAILED",
+        "RESTORE_CHECKPOINT_INVALID",
+        "RESTORE_GOVERNANCE_INCOMPLETE",
+        "RESTORE_TRUST_ANCHOR_INVALID",
+        "DATABASE_UNAVAILABLE",
+        "PAYLOAD_STORE_UNAVAILABLE",
+        "MODEL_PROVIDER_UNAVAILABLE",
+        "OUTBOX_FINAL_FAILED",
+        "INTERNAL_FAILURE"
+      ]
+    }
+  }
+}

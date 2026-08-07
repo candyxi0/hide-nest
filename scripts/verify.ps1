@@ -1,114 +1,75 @@
-# verify.ps1 - Unified verification script for hide-nest HDM-002
-# Runs Java build, Node typecheck, lint, test, and production build
-# Exits non-zero on any failure
+# HDM-003-R1 fail-closed verification entry point.
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$exitCode = 0
+$javaHome = "C:\Program Files\Eclipse Adoptium\jdk-25.0.4-hotspot"
+$env:JAVA_HOME = $javaHome
+$env:Path = "$javaHome\bin;$env:Path"
+$env:npm_config_registry = "https://registry.npmjs.org/"
+$env:PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
 
-Write-Host "=== hide-nest verify ===" -ForegroundColor Cyan
-
-# 1. Java 25 check
-Write-Host "`n[1/7] Checking Java 25..." -ForegroundColor Yellow
-$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-25.0.4-hotspot"
-$env:Path = "$env:JAVA_HOME\bin;$env:Path"
-$prevEAP = $ErrorActionPreference
-$ErrorActionPreference = "Continue"
-$javaVersion = & java -version 2>&1 | Select-String "25.0.4"
-$ErrorActionPreference = $prevEAP
-if (-not $javaVersion) {
-    Write-Host "FAIL: Java 25 not found" -ForegroundColor Red
-    exit 1
+function Invoke-Checked {
+    param([string]$Label, [string]$Executable, [string[]]$Arguments)
+    Write-Host "`n[$Label] $Executable $($Arguments -join ' ')" -ForegroundColor Yellow
+    & $Executable @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Label failed with exit code $LASTEXITCODE"
+    }
 }
-Write-Host "PASS: Java 25 found" -ForegroundColor Green
 
-# 2. Maven clean verify
-Write-Host "`n[2/7] Maven clean verify..." -ForegroundColor Yellow
+function Invoke-OpenApiValidation {
+    param([string]$InputSpec, [bool]$ExpectedSuccess, [string]$Label)
+    $args = @(
+        "-o",
+        "org.openapitools:openapi-generator-maven-plugin:7.24.0:validate",
+        "-Dopenapi.generator.maven.plugin.inputSpec=$InputSpec"
+    )
+    Write-Host "`n[$Label] mvnw.cmd $($args -join ' ')" -ForegroundColor Yellow
+    $output = & (Join-Path $repoRoot "mvnw.cmd") @args 2>&1
+    $code = $LASTEXITCODE
+    if ($ExpectedSuccess -and $code -ne 0) {
+        $output | Select-Object -Last 80
+        throw "$Label expected OpenAPI validation success, got exit code $code"
+    }
+    if (-not $ExpectedSuccess -and $code -eq 0) {
+        throw "$Label accepted a broken OpenAPI $ref"
+    }
+    Write-Host "$Label exit=$code" -ForegroundColor Green
+}
+
 Push-Location $repoRoot
 try {
-    & "$repoRoot\mvnw.cmd" clean verify
-    if ($LASTEXITCODE -ne 0) { throw "Maven build failed" }
-    Write-Host "PASS: Maven clean verify" -ForegroundColor Green
-} catch {
-    Write-Host "FAIL: $_" -ForegroundColor Red
-    $exitCode = 1
-}
-Pop-Location
-if ($exitCode -ne 0) { exit $exitCode }
+    Invoke-Checked "maven-clean-verify" (Join-Path $repoRoot "mvnw.cmd") @("clean", "verify")
 
-# 3. npm lock check
-Write-Host "`n[3/7] npm ci..." -ForegroundColor Yellow
-Push-Location $repoRoot
-try {
-    $env:PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
-    & npm ci
-    if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
-    Write-Host "PASS: npm ci" -ForegroundColor Green
-} catch {
-    Write-Host "FAIL: $_" -ForegroundColor Red
-    $exitCode = 1
-}
-Pop-Location
-if ($exitCode -ne 0) { exit $exitCode }
+    Invoke-OpenApiValidation (Join-Path $repoRoot "contracts/openapi/hide-nest-api.yaml") $true "openapi-valid"
 
-# 4. typecheck
-Write-Host "`n[4/7] Node typecheck..." -ForegroundColor Yellow
-Push-Location $repoRoot
-try {
-    & npm run typecheck --workspaces --if-present
-    if ($LASTEXITCODE -ne 0) { throw "typecheck failed" }
-    Write-Host "PASS: typecheck" -ForegroundColor Green
-} catch {
-    Write-Host "FAIL: $_" -ForegroundColor Red
-    $exitCode = 1
-}
-Pop-Location
-if ($exitCode -ne 0) { exit $exitCode }
+    $negativeRoot = Join-Path $env:TEMP ("hdm003-r1-openapi-negative-" + [guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $negativeRoot -Force | Out-Null
+    try {
+        $negativeSpec = Join-Path $negativeRoot "broken.yaml"
+        Copy-Item -LiteralPath (Join-Path $repoRoot "contracts/openapi/hide-nest-api.yaml") -Destination $negativeSpec -Force
+        $brokenText = Get-Content -Raw -Encoding UTF8 $negativeSpec
+        $brokenText = $brokenText.Replace("#/components/schemas/ProblemDetail", "#/components/schemas/__HDM003_MISSING__")
+        [IO.File]::WriteAllText($negativeSpec, $brokenText, [Text.UTF8Encoding]::new($false))
+        Invoke-OpenApiValidation $negativeSpec $false "openapi-broken-ref-negative"
+    } finally {
+        if (Test-Path -LiteralPath $negativeRoot) {
+            Remove-Item -LiteralPath $negativeRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 
-# 5. lint
-Write-Host "`n[5/7] Node lint..." -ForegroundColor Yellow
-Push-Location $repoRoot
-try {
-    & npm run lint --workspaces --if-present
-    if ($LASTEXITCODE -ne 0) { throw "lint failed" }
-    Write-Host "PASS: lint" -ForegroundColor Green
-} catch {
-    Write-Host "FAIL: $_" -ForegroundColor Red
-    $exitCode = 1
+    Invoke-Checked "npm-ci" "npm.cmd" @("ci")
+    Invoke-Checked "npm-ls-all" "npm.cmd" @("ls", "--all")
+    Invoke-Checked "generate-all" "powershell.exe" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $repoRoot "scripts/generate.ps1"), "-Target", "all")
+    Invoke-Checked "generate-all-check" "powershell.exe" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $repoRoot "scripts/generate.ps1"), "-Target", "all", "-Check")
+    Invoke-Checked "npm-typecheck-workspaces" "npm.cmd" @("run", "typecheck", "--workspaces", "--if-present")
+    Invoke-Checked "npm-lint-workspaces" "npm.cmd" @("run", "lint", "--workspaces", "--if-present")
+    Invoke-Checked "npm-test-workspaces" "npm.cmd" @("run", "test", "--workspaces", "--if-present")
+    Invoke-Checked "npm-build-workspaces" "npm.cmd" @("run", "build", "--workspaces", "--if-present")
+    Invoke-Checked "compatibility" "powershell.exe" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $repoRoot "scripts/contract-compatibility.ps1"))
+    Invoke-Checked "format-check" "powershell.exe" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $repoRoot "scripts/format-check.ps1"))
+    Write-Host "`nHDM003_VERIFY_PASS" -ForegroundColor Green
+    exit 0
+} finally {
+    Pop-Location
 }
-Pop-Location
-if ($exitCode -ne 0) { exit $exitCode }
-
-# 6. test
-Write-Host "`n[6/7] Node test..." -ForegroundColor Yellow
-Push-Location $repoRoot
-try {
-    & npm run test --workspaces --if-present
-    if ($LASTEXITCODE -ne 0) { throw "test failed" }
-    Write-Host "PASS: test" -ForegroundColor Green
-} catch {
-    Write-Host "FAIL: $_" -ForegroundColor Red
-    $exitCode = 1
-}
-Pop-Location
-if ($exitCode -ne 0) { exit $exitCode }
-
-# 7. production build
-Write-Host "`n[7/7] Node production build..." -ForegroundColor Yellow
-Push-Location $repoRoot
-try {
-    & npm run build --workspaces --if-present
-    if ($LASTEXITCODE -ne 0) { throw "build failed" }
-    Write-Host "PASS: production build" -ForegroundColor Green
-} catch {
-    Write-Host "FAIL: $_" -ForegroundColor Red
-    $exitCode = 1
-}
-Pop-Location
-
-if ($exitCode -eq 0) {
-    Write-Host "`n=== ALL CHECKS PASSED ===" -ForegroundColor Green
-} else {
-    Write-Host "`n=== VERIFICATION FAILED ===" -ForegroundColor Red
-}
-exit $exitCode

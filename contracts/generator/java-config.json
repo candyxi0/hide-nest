@@ -1,0 +1,15 @@
+{
+  "generatorName": "spring",
+  "configOptions": {
+    "interfaceOnly": "true",
+    "useJakartaEe": "true",
+    "useSpringBoot3": "true",
+    "annotationLibrary": "none",
+    "documentationProvider": "none",
+    "openApiNullable": "false",
+    "hideGenerationTimestamp": "true",
+    "useBeanValidation": "false",
+    "performBeanValidation": "false",
+    "skipDefaultInterface": "true"
+  }
+}

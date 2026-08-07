@@ -1,0 +1,2225 @@
+openapi: "3.1.2"
+info:
+  title: HideNest API
+  version: "0.1.0"
+  description: >
+    hide-nest memory system remote API.
+    All responses carry Cache-Control: no-store.
+    Error media type is application/problem+json (RFC 9457).
+
+servers:
+  - url: /v1
+    description: Base path for all remote operations
+
+# ──────────────────────────────────────────────────────────
+# Security schemes
+# ──────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    bearerSession:
+      type: http
+      scheme: bearer
+      bearerFormat: UUIDv7
+      description: Session token issued by createSession
+    deviceCredential:
+      type: apiKey
+      in: header
+      name: X-Device-Credential
+      description: Device proof for session creation
+    actionCapability:
+      type: apiKey
+      in: header
+      name: X-Action-Capability
+      description: Action capability token for capability-gated operations
+
+  # ────────────────────────────────────────────────────────
+  # Reusable parameters
+  # ────────────────────────────────────────────────────────
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Client-generated UUIDv7 idempotency key
+    PathSessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PathRunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PathMemoryId:
+      name: memoryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PathDeliveryId:
+      name: deliveryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    QueryCursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    QueryLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+
+  # ────────────────────────────────────────────────────────
+  # Reusable Problem responses
+  # ────────────────────────────────────────────────────────
+  responses:
+    ProblemBadRequest:
+      description: Bad request
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    ProblemUnauthorized:
+      description: Unauthorized
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    ProblemForbidden:
+      description: Forbidden
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    ProblemNotFound:
+      description: Not found
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    ProblemConflict:
+      description: Conflict
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    ProblemGone:
+      description: Gone
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    ProblemUnprocessable:
+      description: Unprocessable entity
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    ProblemUnavailable:
+      description: Service unavailable
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+
+  # ────────────────────────────────────────────────────────
+  # Schemas (42 total: 9 enums + 33 API/DTO schemas)
+  # ────────────────────────────────────────────────────────
+  schemas:
+    # ─── Shared enums (9) ──────────────────────────────────
+    ResultCategory:
+      type: string
+      enum:
+        - SUCCEEDED
+        - NO_RELEVANT_RESULT
+        - DENIED
+        - STALE
+        - FAILED
+        - PARTIALLY_DEGRADED
+
+    MemoryState:
+      type: string
+      enum:
+        - ACTIVE
+        - ARCHIVED
+
+    MemoryType:
+      type: string
+      enum:
+        - EVENT
+        - CLAIM
+        - QUOTE
+        - INTERPRETATION
+        - CALIBRATION
+        - PRINCIPLE
+
+    RelationType:
+      type: string
+      enum:
+        - EVIDENCED_BY
+        - INTERPRETS
+        - SUPPORTS
+        - REFINES
+        - SUPERSEDES
+        - CONFLICTS_WITH
+        - CALIBRATES
+        - PART_OF_TRAJECTORY
+        - MERGED_INTO
+
+    ReviewSessionState:
+      type: string
+      enum:
+        - OPEN
+        - COMPLETED
+        - CANCELLED
+        - EXPIRED
+
+    RunPhase:
+      type: string
+      enum:
+        - RECEIVED
+        - DECISIONS_COMMITTED
+        - CANONICAL_COMMITTED
+        - INDEX_READY
+        - FINAL_FAILED
+
+    SourceAvailability:
+      type: string
+      enum:
+        - AVAILABLE
+        - UNAVAILABLE
+
+    ComponentHealth:
+      type: string
+      enum:
+        - HEALTHY
+        - DEGRADED
+        - UNAVAILABLE
+        - DISABLED
+
+    FailureCode:
+      type: string
+      enum:
+        - REQUEST_SCHEMA_INVALID
+        - REQUEST_TOO_LARGE
+        - UNSUPPORTED_CONTRACT_VERSION
+        - IDEMPOTENCY_KEY_REQUIRED
+        - IDEMPOTENCY_KEY_REUSED
+        - DEVICE_CREDENTIAL_INVALID
+        - DEVICE_CREDENTIAL_EXPIRED
+        - IDENTITY_ENTRY_UNREGISTERED
+        - IDENTITY_BASELINE_STALE
+        - MODEL_ROUTE_UNACCEPTED
+        - IDENTITY_SESSION_EXPIRED
+        - IDENTITY_SESSION_REVOKED
+        - CAPABILITY_REQUIRED
+        - CAPABILITY_EXPIRED
+        - CAPABILITY_ALREADY_CONSUMED
+        - CAPABILITY_SCOPE_MISMATCH
+        - ACCESS_DENIED
+        - POLICY_REVISION_STALE
+        - DERIVATION_BLOCKED
+        - DELETION_FENCED
+        - THREAD_READER_UNSUPPORTED
+        - THREAD_SCHEMA_UNKNOWN
+        - SOURCE_RANGE_GAP
+        - SOURCE_ORDER_INVALID
+        - SOURCE_PAYLOAD_UNAVAILABLE
+        - CAPTURE_SCOPE_STALE
+        - REVIEW_SESSION_NOT_OPEN
+        - REVIEW_MEMBER_MISMATCH
+        - REVIEW_FINAL_INCOMPLETE
+        - USER_CONFIRMATION_PROOF_INVALID
+        - EXPECTED_REVISION_STALE
+        - PROPOSAL_CONFLICT
+        - CANONICAL_COMMIT_FAILED
+        - RETRIEVAL_NO_MATCH
+        - FTS_ROUTE_UNAVAILABLE
+        - VECTOR_ROUTE_UNAVAILABLE
+        - RANK_OUTPUT_INVALID
+        - CONTEXT_PACK_EXPIRED
+        - CONTEXT_PACK_INVALIDATED
+        - DELETION_PREVIEW_STALE
+        - DELETION_CLOSURE_MISMATCH
+        - DELETION_EXECUTION_FAILED
+        - RESTORE_CHECKPOINT_INVALID
+        - RESTORE_GOVERNANCE_INCOMPLETE
+        - RESTORE_TRUST_ANCHOR_INVALID
+        - DATABASE_UNAVAILABLE
+        - PAYLOAD_STORE_UNAVAILABLE
+        - MODEL_PROVIDER_UNAVAILABLE
+        - OUTBOX_FINAL_FAILED
+        - INTERNAL_FAILURE
+
+    # ─── Core DTOs (3) ─────────────────────────────────────
+    ProblemDetail:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - requestId
+        - resultCategory
+        - failureCode
+        - retryable
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        failureCode:
+          $ref: "#/components/schemas/FailureCode"
+        retryable:
+          type: boolean
+        affectedScope:
+          type: string
+      additionalProperties: false
+
+    ActionResultResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        targetId:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          minimum: 0
+        policyRevision:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+
+    AsyncAcceptedResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - runId
+        - statusUrl
+        - phase
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        runId:
+          type: string
+          format: uuid
+        statusUrl:
+          type: string
+          format: uri
+        phase:
+          $ref: "#/components/schemas/RunPhase"
+      additionalProperties: false
+
+    # ─── Identity DTOs ─────────────────────────────────────
+    CreateSessionRequest:
+      type: object
+      required:
+        - deviceCredential
+      properties:
+        deviceCredential:
+          type: string
+      additionalProperties: false
+
+    CreateSessionResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - sessionId
+        - sessionToken
+        - expiresAt
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        sessionId:
+          type: string
+          format: uuid
+        sessionToken:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    IssueCapabilityRequest:
+      type: object
+      required:
+        - purpose
+        - threadId
+        - targetKind
+        - targetId
+        - targetRevision
+        - requestHash
+      properties:
+        purpose:
+          type: string
+        threadId:
+          type: string
+          format: uuid
+        targetKind:
+          type: string
+        targetId:
+          type: string
+          format: uuid
+        targetRevision:
+          type: integer
+          minimum: 0
+        requestHash:
+          type: string
+      additionalProperties: false
+
+    IssueCapabilityResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - capabilityToken
+        - expiresAt
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        capabilityToken:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    # ─── Closeout & Review DTOs ────────────────────────────
+    CloseoutSubmissionRequest:
+      type: object
+      required:
+        - submissionId
+        - threadId
+        - hideSelection
+        - userConfirmation
+        - sourceAnchors
+        - threadReaderManifest
+        - confirmationProof
+      properties:
+        submissionId:
+          type: string
+          format: uuid
+        threadId:
+          type: string
+          format: uuid
+        hideSelection:
+          type: object
+          additionalProperties: false
+        userConfirmation:
+          type: object
+          additionalProperties: false
+        sourceAnchors:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+        threadReaderManifest:
+          type: object
+          additionalProperties: false
+        confirmationProof:
+          type: string
+      additionalProperties: false
+
+    CloseoutReceipt:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - runId
+        - statusUrl
+        - phase
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        runId:
+          type: string
+          format: uuid
+        statusUrl:
+          type: string
+          format: uri
+        phase:
+          $ref: "#/components/schemas/RunPhase"
+      additionalProperties: false
+
+    RunStatusResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - runId
+        - phase
+        - retryable
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        runId:
+          type: string
+          format: uuid
+        phase:
+          $ref: "#/components/schemas/RunPhase"
+        retryable:
+          type: boolean
+        failureCode:
+          $ref: "#/components/schemas/FailureCode"
+        startedAt:
+          type: string
+          format: date-time
+        terminalAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    ReviewSessionListResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - items
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+        nextCursor:
+          type: string
+      additionalProperties: false
+
+    ReviewSessionDetailResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - reviewSessionId
+        - state
+        - proposalRevisions
+        - members
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        reviewSessionId:
+          type: string
+          format: uuid
+        state:
+          $ref: "#/components/schemas/ReviewSessionState"
+        proposalRevisions:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+        members:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+      additionalProperties: false
+
+    ReviewFinalSubmissionRequest:
+      type: object
+      required:
+        - submissionId
+        - threadId
+        - userDecisions
+        - threadReaderManifest
+        - confirmationProof
+      properties:
+        submissionId:
+          type: string
+          format: uuid
+        threadId:
+          type: string
+          format: uuid
+        userDecisions:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+        threadReaderManifest:
+          type: object
+          additionalProperties: false
+        confirmationProof:
+          type: string
+      additionalProperties: false
+
+    # ─── Context Pack DTOs ─────────────────────────────────
+    ContextPackRequest:
+      type: object
+      required:
+        - threadId
+        - turnId
+        - purpose
+        - query
+      properties:
+        threadId:
+          type: string
+          format: uuid
+        turnId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+        query:
+          type: string
+      additionalProperties: false
+
+    ContextPackResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - deliveryId
+        - threadId
+        - turnId
+        - purpose
+        - policyRevisionSet
+        - issuedAt
+        - expiresAt
+        - budgetLimited
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        deliveryId:
+          type: string
+          format: uuid
+        threadId:
+          type: string
+          format: uuid
+        turnId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+        policyRevisionSet:
+          type: array
+          items:
+            type: string
+        issuedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        budgetLimited:
+          type: boolean
+        memories:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+      additionalProperties: false
+
+    DeepSearchRequest:
+      type: object
+      required:
+        - threadId
+        - turnId
+        - purpose
+        - query
+      properties:
+        threadId:
+          type: string
+          format: uuid
+        turnId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+        query:
+          type: string
+      additionalProperties: false
+
+    DeepSearchResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - deliveryId
+        - threadId
+        - turnId
+        - purpose
+        - policyRevisionSet
+        - issuedAt
+        - expiresAt
+        - budgetLimited
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        deliveryId:
+          type: string
+          format: uuid
+        threadId:
+          type: string
+          format: uuid
+        turnId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+        policyRevisionSet:
+          type: array
+          items:
+            type: string
+        issuedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        budgetLimited:
+          type: boolean
+        memories:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+      additionalProperties: false
+
+    HookBootstrapRequest:
+      type: object
+      required:
+        - threadId
+        - purpose
+      properties:
+        threadId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+      additionalProperties: false
+
+    HookBootstrapResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - deliveryId
+        - identityLayer
+        - expiresAt
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        deliveryId:
+          type: string
+          format: uuid
+        identityLayer:
+          type: object
+          additionalProperties: false
+        expiresAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    # ─── Governance DTOs ───────────────────────────────────
+    GovernanceActionRequest:
+      type: object
+      required:
+        - targetId
+        - expectedRevision
+        - expectedPolicyRevision
+        - requestManifestHash
+      properties:
+        targetId:
+          type: string
+          format: uuid
+        expectedRevision:
+          type: integer
+          minimum: 1
+        expectedPolicyRevision:
+          type: integer
+          minimum: 1
+        requestManifestHash:
+          type: string
+      additionalProperties: false
+
+    IsolationRestorePreviewResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - previewId
+        - previewRevision
+        - manifestHash
+        - affectedItems
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        previewId:
+          type: string
+          format: uuid
+        previewRevision:
+          type: integer
+          minimum: 1
+        manifestHash:
+          type: string
+        affectedItems:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+      additionalProperties: false
+
+    DeletionPreviewResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - previewId
+        - previewRevision
+        - manifestHash
+        - closureMembers
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        previewId:
+          type: string
+          format: uuid
+        previewRevision:
+          type: integer
+          minimum: 1
+        manifestHash:
+          type: string
+        closureMembers:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+      additionalProperties: false
+
+    DeletionConfirmRequest:
+      type: object
+      required:
+        - targetId
+        - expectedRevision
+        - expectedPolicyRevision
+        - requestManifestHash
+        - previewId
+        - previewRevision
+        - manifestHash
+      properties:
+        targetId:
+          type: string
+          format: uuid
+        expectedRevision:
+          type: integer
+          minimum: 1
+        expectedPolicyRevision:
+          type: integer
+          minimum: 1
+        requestManifestHash:
+          type: string
+        previewId:
+          type: string
+          format: uuid
+        previewRevision:
+          type: integer
+          minimum: 1
+        manifestHash:
+          type: string
+      additionalProperties: false
+
+    ExportRequest:
+      type: object
+      required:
+        - scope
+        - format
+      properties:
+        scope:
+          type: string
+        format:
+          type: string
+      additionalProperties: false
+
+    RestoreValidationRequest:
+      type: object
+      required:
+        - checkpointId
+      properties:
+        checkpointId:
+          type: string
+          format: uuid
+      additionalProperties: false
+
+    # ─── Read-only Query DTOs ──────────────────────────────
+    PaginatedCursorResponse:
+      type: object
+      properties:
+        nextCursor:
+          type: string
+      additionalProperties: false
+
+    MemoryListResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - items
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemoryListItem"
+        nextCursor:
+          type: string
+      additionalProperties: false
+
+    MemoryListItem:
+      type: object
+      required:
+        - memoryId
+        - currentRevisionId
+        - revisionNo
+        - state
+        - isolated
+        - memoryType
+        - perspective
+        - title
+        - summary
+        - sourceAvailability
+        - updatedAt
+      properties:
+        memoryId:
+          type: string
+          format: uuid
+        currentRevisionId:
+          type: string
+          format: uuid
+        revisionNo:
+          type: integer
+          minimum: 1
+        state:
+          $ref: "#/components/schemas/MemoryState"
+        isolated:
+          type: boolean
+        memoryType:
+          $ref: "#/components/schemas/MemoryType"
+        perspective:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        sourceAvailability:
+          $ref: "#/components/schemas/SourceAvailability"
+        uncertaintyCode:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    MemoryDetailResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - memory
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        memory:
+          type: object
+          additionalProperties: false
+      additionalProperties: false
+
+    MemoryTrajectoryResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - items
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+        nextCursor:
+          type: string
+      additionalProperties: false
+
+    MemoryEvidenceResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - evidenceItems
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        evidenceItems:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+      additionalProperties: false
+
+    RunListResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - items
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+        nextCursor:
+          type: string
+      additionalProperties: false
+
+    SystemStatusResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - components
+        - productionAcceptsRealMaterial
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        components:
+          type: array
+          items:
+            type: object
+            required:
+              - name
+              - status
+            properties:
+              name:
+                type: string
+              status:
+                $ref: "#/components/schemas/ComponentHealth"
+              lastSuccessAt:
+                type: string
+                format: date-time
+            additionalProperties: false
+        productionAcceptsRealMaterial:
+          type: boolean
+      additionalProperties: false
+
+# ──────────────────────────────────────────────────────────
+# Paths (30 operations)
+# ──────────────────────────────────────────────────────────
+paths:
+  /identity/sessions:
+    post:
+      operationId: createSession
+      x-caller-role: device
+      tags:
+        - identity
+      description: "Create a new session. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "200":
+          description: Session created
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateSessionResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - deviceCredential: []
+
+  /identity/sessions/{sessionId}:
+    delete:
+      operationId: revokeSession
+      x-caller-role: session-or-governance
+      tags:
+        - identity
+      description: "Revoke a session. Capability: CONDITIONAL (self-session or governance authority)."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/PathSessionId"
+      responses:
+        "200":
+          description: Session revoked
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResultResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+      security:
+        - bearerSession: []
+        - actionCapability: []
+
+  /capabilities:
+    post:
+      operationId: issueCapability
+      x-caller-role: session
+      tags:
+        - capabilities
+      description: "Issue an action capability. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IssueCapabilityRequest"
+      responses:
+        "200":
+          description: Capability issued
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueCapabilityResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+
+  /closeout-submissions:
+    post:
+      operationId: submitCloseout
+      x-caller-role: hide-with-proof
+      tags:
+        - closeout
+      description: "Submit a closeout. The body binds submissionId to Idempotency-Key. Capability: REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloseoutSubmissionRequest"
+      responses:
+        "202":
+          description: Closeout accepted
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloseoutReceipt"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "409":
+          $ref: "#/components/responses/ProblemConflict"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+          actionCapability: []
+
+  /runs/{runId}:
+    get:
+      operationId: getRunStatus
+      x-caller-role: authorized
+      tags:
+        - runs
+      description: "Get run status. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/PathRunId"
+      responses:
+        "200":
+          description: Run status
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunStatusResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+      security:
+        - bearerSession: []
+
+  /review-sessions:
+    get:
+      operationId: listReviewSessions
+      x-caller-role: authorized
+      tags:
+        - review-sessions
+      description: "List review sessions. Capability: NOT_REQUIRED."
+      responses:
+        "200":
+          description: Review sessions
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewSessionListResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+      security:
+        - bearerSession: []
+
+  /review-sessions/{id}:
+    get:
+      operationId: getReviewSession
+      x-caller-role: authorized
+      tags:
+        - review-sessions
+      description: "Get review session detail. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/PathId"
+      responses:
+        "200":
+          description: Review session detail
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewSessionDetailResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+      security:
+        - bearerSession: []
+
+  /review-sessions/{id}/final-submissions:
+    post:
+      operationId: submitReviewFinal
+      x-caller-role: hide-with-proof
+      tags:
+        - review-sessions
+      description: "Submit review final. Capability: NOT_REQUIRED (小林确认来自 review manifest + ThreadReader + 注册设备证明)."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/PathId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewFinalSubmissionRequest"
+      responses:
+        "202":
+          description: Review final accepted
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncAcceptedResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "409":
+          $ref: "#/components/responses/ProblemConflict"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+
+  /review-sessions/{id}/cancel:
+    post:
+      operationId: cancelReviewSession
+      x-caller-role: authorized
+      tags:
+        - review-sessions
+      description: "Cancel a review session. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/PathId"
+      responses:
+        "200":
+          description: Session cancelled
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResultResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+      security:
+        - bearerSession: []
+
+  /context-packs:
+    post:
+      operationId: createContextPack
+      x-caller-role: session
+      tags:
+        - context-packs
+      description: "Create a context pack. budgetLimited=true is a valid small package, not a failure. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContextPackRequest"
+      responses:
+        "200":
+          description: Context pack created
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContextPackResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+
+  /context-packs/deep-search:
+    post:
+      operationId: deepSearchContextPack
+      x-caller-role: authorized-deep
+      tags:
+        - context-packs
+      description: "Deep search context pack. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeepSearchRequest"
+      responses:
+        "200":
+          description: Deep search result
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeepSearchResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+
+  /context-packs/hook-bootstrap:
+    post:
+      operationId: hookBootstrapContextPack
+      x-caller-role: hook
+      tags:
+        - context-packs
+      description: "Hook bootstrap context pack. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HookBootstrapRequest"
+      responses:
+        "200":
+          description: Hook bootstrap result
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HookBootstrapResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+
+  /context-packs/{deliveryId}/invalidate:
+    post:
+      operationId: invalidateContextPack
+      x-caller-role: session
+      tags:
+        - context-packs
+      description: "Invalidate a context pack. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/PathDeliveryId"
+      responses:
+        "200":
+          description: Context pack invalidated
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResultResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "410":
+          $ref: "#/components/responses/ProblemGone"
+      security:
+        - bearerSession: []
+
+  /memories/{id}/archive:
+    post:
+      operationId: archiveMemory
+      x-caller-role: governance
+      tags:
+        - memories
+      description: "Archive a memory. Capability: REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/PathId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GovernanceActionRequest"
+      responses:
+        "200":
+          description: Memory archived
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResultResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+        "409":
+          $ref: "#/components/responses/ProblemConflict"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+          actionCapability: []
+
+  /memories/{id}/restore-active:
+    post:
+      operationId: restoreActiveMemory
+      x-caller-role: governance
+      tags:
+        - memories
+      description: "Restore a memory to active. Capability: REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/PathId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GovernanceActionRequest"
+      responses:
+        "200":
+          description: Memory restored
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResultResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+        "409":
+          $ref: "#/components/responses/ProblemConflict"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+          actionCapability: []
+
+  /memories/{id}/isolate:
+    post:
+      operationId: isolateMemory
+      x-caller-role: governance
+      tags:
+        - memories
+      description: "Isolate a memory. Capability: REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/PathId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GovernanceActionRequest"
+      responses:
+        "200":
+          description: Memory isolated
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResultResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+        "409":
+          $ref: "#/components/responses/ProblemConflict"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+          actionCapability: []
+
+  /memories/{id}/isolation-restore-previews:
+    post:
+      operationId: createIsolationRestorePreview
+      x-caller-role: governance
+      tags:
+        - isolation
+      description: "Create isolation/restore preview. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/PathId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GovernanceActionRequest"
+      responses:
+        "200":
+          description: Preview created
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IsolationRestorePreviewResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+
+  /isolation-restore-previews/{id}/confirm:
+    post:
+      operationId: confirmIsolationRestore
+      x-caller-role: xiaolin
+      tags:
+        - isolation
+      description: "Confirm isolation/restore. Capability: REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/PathId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GovernanceActionRequest"
+      responses:
+        "200":
+          description: Confirmed
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResultResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+        "409":
+          $ref: "#/components/responses/ProblemConflict"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+          actionCapability: []
+
+  /deletion-previews:
+    post:
+      operationId: createDeletionPreview
+      x-caller-role: governance
+      tags:
+        - deletion
+      description: "Create deletion preview. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GovernanceActionRequest"
+      responses:
+        "200":
+          description: Deletion preview created
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletionPreviewResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+
+  /deletion-previews/{id}/confirm:
+    post:
+      operationId: confirmDeletion
+      x-caller-role: xiaolin
+      tags:
+        - deletion
+      description: "Confirm deletion. Capability: REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/PathId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeletionConfirmRequest"
+      responses:
+        "202":
+          description: Deletion accepted
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncAcceptedResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+        "409":
+          $ref: "#/components/responses/ProblemConflict"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+          actionCapability: []
+
+  /deletion-runs/{runId}:
+    get:
+      operationId: getDeletionRun
+      x-caller-role: governance
+      tags:
+        - deletion
+      description: "Get deletion run status. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/PathRunId"
+      responses:
+        "200":
+          description: Deletion run status
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunStatusResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+      security:
+        - bearerSession: []
+
+  /exports:
+    post:
+      operationId: createExport
+      x-caller-role: xiaolin-governance
+      tags:
+        - exports
+      description: "Create export. Capability: REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExportRequest"
+      responses:
+        "202":
+          description: Export accepted
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncAcceptedResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+          actionCapability: []
+
+  /restores/validations:
+    post:
+      operationId: createRestoreValidation
+      x-caller-role: restore-service
+      tags:
+        - restores
+      description: "Create restore validation. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RestoreValidationRequest"
+      responses:
+        "200":
+          description: Validation completed
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResultResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+
+  /restores/{id}/activate:
+    post:
+      operationId: activateRestore
+      x-caller-role: xiaolin
+      tags:
+        - restores
+      description: "Activate restore. Capability: REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/PathId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GovernanceActionRequest"
+      responses:
+        "200":
+          description: Restore activated
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResultResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+        "409":
+          $ref: "#/components/responses/ProblemConflict"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+          actionCapability: []
+
+  /memories:
+    get:
+      operationId: listMemories
+      x-caller-role: authorized
+      tags:
+        - memories
+      description: "List memories. Capability: NOT_REQUIRED."
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            $ref: "#/components/schemas/MemoryState"
+        - name: memoryType
+          in: query
+          schema:
+            $ref: "#/components/schemas/MemoryType"
+        - name: perspectiveActorId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: sourceAvailability
+          in: query
+          schema:
+            $ref: "#/components/schemas/SourceAvailability"
+        - $ref: "#/components/parameters/QueryCursor"
+        - $ref: "#/components/parameters/QueryLimit"
+      responses:
+        "200":
+          description: Memory list
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryListResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+
+  /memories/{memoryId}:
+    get:
+      operationId: getMemory
+      x-caller-role: authorized
+      tags:
+        - memories
+      description: "Get memory detail. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/PathMemoryId"
+      responses:
+        "200":
+          description: Memory detail
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryDetailResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+      security:
+        - bearerSession: []
+
+  /memories/{memoryId}/trajectory:
+    get:
+      operationId: getMemoryTrajectory
+      x-caller-role: authorized
+      tags:
+        - memories
+      description: "Get memory trajectory. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/PathMemoryId"
+        - $ref: "#/components/parameters/QueryCursor"
+        - $ref: "#/components/parameters/QueryLimit"
+      responses:
+        "200":
+          description: Trajectory
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryTrajectoryResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+      security:
+        - bearerSession: []
+
+  /memories/{memoryId}/evidence:
+    get:
+      operationId: getMemoryEvidence
+      x-caller-role: xiaolin-governance
+      tags:
+        - memories
+      description: "Get memory evidence. Capability: NOT_REQUIRED."
+      parameters:
+        - $ref: "#/components/parameters/PathMemoryId"
+        - name: revisionId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Evidence
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryEvidenceResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "404":
+          $ref: "#/components/responses/ProblemNotFound"
+      security:
+        - bearerSession: []
+
+  /runs:
+    get:
+      operationId: listRuns
+      x-caller-role: authorized
+      tags:
+        - runs
+      description: "List runs. Capability: NOT_REQUIRED."
+      parameters:
+        - name: kind
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/QueryCursor"
+        - $ref: "#/components/parameters/QueryLimit"
+      responses:
+        "200":
+          description: Run list
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunListResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+
+  /system/status:
+    get:
+      operationId: getSystemStatus
+      x-caller-role: authorized
+      tags:
+        - system
+      description: "Get system status. Capability: NOT_REQUIRED."
+      responses:
+        "200":
+          description: System status
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStatusResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+      security:
+        - bearerSession: []
