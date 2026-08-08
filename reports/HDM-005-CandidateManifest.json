@@ -1,0 +1,426 @@
+{
+  "schemaVersion": "HDM-005-CANDIDATE-R1",
+  "status": "HDM005_PREFLIGHT_R2_READY_FOR_IMPLEMENTATION_ORDER",
+  "baselineHead": "8877cc72ecbd320a31ce2f922e579c1d00495c55",
+  "implementationAuthorized": false,
+  "reportScope": "read-only preflight correction; no repository implementation or artifact acquisition",
+  "counts": {
+    "directDependencyCandidates": 9,
+    "licenseGaps": 0,
+    "layoutCandidates": 2,
+    "recommendedLayout": "L1R",
+    "databaseDesignGates": 8,
+    "hideDecisionsResolved": 10,
+    "unresolvedBlockers": 0,
+    "implementationSlices": 4,
+    "repositoryImplementationChanges": 0,
+    "downloadedArtifacts": 0,
+    "cacheChanges": 0
+  },
+  "directDependencyCandidates": [
+    {
+      "id": "DEP-01",
+      "coordinate": "org.flywaydb:flyway-core",
+      "candidateVersion": "12.4.0",
+      "purpose": "migration core",
+      "license": "Apache-2.0",
+      "versionManagement": "Spring Boot dependency management"
+    },
+    {
+      "id": "DEP-02",
+      "coordinate": "org.flywaydb:flyway-database-postgresql",
+      "candidateVersion": "12.4.0",
+      "purpose": "PostgreSQL migration support",
+      "license": "Apache-2.0",
+      "versionManagement": "Spring Boot dependency management"
+    },
+    {
+      "id": "DEP-03",
+      "coordinate": "org.flywaydb:flyway-maven-plugin",
+      "candidateVersion": "12.4.0",
+      "purpose": "build-time migration tool",
+      "license": "Apache-2.0",
+      "versionManagement": "Spring Boot plugin management"
+    },
+    {
+      "id": "DEP-04",
+      "coordinate": "org.springframework.boot:spring-boot-starter-jooq",
+      "candidateVersion": "4.1.0",
+      "purpose": "single direct jOOQ and Spring data-access entry point",
+      "license": "Apache-2.0",
+      "versionManagement": "Spring Boot dependency management",
+      "expectedTransitivesToVerifyInSliceA": {
+        "jooq": "3.21.5",
+        "springJdbc": "7.0.8",
+        "springTx": "7.0.8"
+      }
+    },
+    {
+      "id": "DEP-05",
+      "coordinate": "org.jooq:jooq-codegen-maven",
+      "candidateVersion": "3.21.5",
+      "purpose": "build-time jOOQ generation",
+      "license": "Apache-2.0",
+      "versionManagement": "Spring Boot dependency management"
+    },
+    {
+      "id": "DEP-06",
+      "coordinate": "org.postgresql:postgresql",
+      "candidateVersion": "42.7.11",
+      "purpose": "PostgreSQL JDBC driver",
+      "license": "BSD-2-Clause",
+      "versionManagement": "Spring Boot dependency management"
+    },
+    {
+      "id": "DEP-07",
+      "coordinate": "org.junit.jupiter:junit-jupiter",
+      "candidateVersion": "6.0.3",
+      "purpose": "unit tests",
+      "license": "EPL-2.0",
+      "versionManagement": "Spring Boot dependency management"
+    },
+    {
+      "id": "DEP-08",
+      "coordinate": "org.testcontainers:testcontainers-junit-jupiter",
+      "candidateVersion": "2.0.5",
+      "purpose": "JUnit Testcontainers integration",
+      "license": "MIT",
+      "versionManagement": "Spring Boot dependency management"
+    },
+    {
+      "id": "DEP-09",
+      "coordinate": "org.testcontainers:testcontainers-postgresql",
+      "candidateVersion": "2.0.5",
+      "purpose": "PostgreSQL Testcontainers support",
+      "license": "MIT",
+      "versionManagement": "Spring Boot dependency management"
+    }
+  ],
+  "transitiveResolution": {
+    "state": "not resolved in this report run",
+    "requiredSlice": "A",
+    "requiredEvidence": [
+      "effective POM",
+      "resolved coordinates and versions",
+      "license evidence"
+    ],
+    "directCoordinatesExcludedByDecision": [
+      "org.jooq:jooq",
+      "org.springframework.boot:spring-boot-starter-jdbc"
+    ]
+  },
+  "containerCandidates": [
+    {
+      "image": "pgvector/pgvector:0.8.2-pg18",
+      "state": "candidate only; immutable evidence pending Slice A authorization",
+      "mustRecordBeforePullOrFormalConfiguration": [
+        "immutable digest",
+        "image source",
+        "tag",
+        "PostgreSQL major",
+        "pgvector version",
+        "license evidence",
+        "SBOM evidence"
+      ],
+      "artifactPulledInThisRun": false
+    }
+  ],
+  "layoutCandidates": [
+    {
+      "id": "L1R",
+      "recommended": true,
+      "newModules": [
+        "modules/application",
+        "modules/database-adapter"
+      ],
+      "moduleDependencyRules": {
+        "applicationMayDependOn": [
+          "evidence domain/port",
+          "memory domain/port",
+          "runtime domain/port",
+          "security domain/port"
+        ],
+        "applicationMustNotDependOn": [
+          "jOOQ",
+          "JDBC",
+          "Flyway",
+          "generated database types",
+          "database-adapter"
+        ],
+        "databaseAdapterOwns": [
+          "migrations",
+          "jOOQ configuration",
+          "unique generated tree",
+          "database port implementations"
+        ],
+        "databaseAdapterMayDependOn": [
+          "domain ports"
+        ],
+        "reverseDependenciesForbidden": [
+          "domain modules to database-adapter"
+        ],
+        "compilationTopology": {
+          "application": "application depends only on evidence, memory, runtime, and security ports plus formal transaction abstractions",
+          "databaseAdapter": "database-adapter implements evidence, memory, runtime, and security ports",
+          "applicationAndDatabaseAdapter": "no compile-time dependency exists between these modules",
+          "apps": "apps/api and apps/worker may each depend on application, database-adapter, and domains; they are mutually independent"
+        },
+        "domainPurity": "evidence, memory, runtime, and security stay mutually isolated; domain and port layers remain pure"
+      },
+      "positiveExamples": [
+        "application orchestrates evidence and memory ports in one transaction",
+        "Slice C database-adapter jOOQ port adapter uses generated types internally"
+      ],
+      "negativeExamples": [
+        "domain or port imports a database adapter",
+        "application imports jOOQ, JDBC, Flyway, or generated types"
+      ],
+      "impactAndRisk": {
+        "implementationImpact": "add application and database-adapter first, then redirect API and Worker dependencies through the approved module graph",
+        "primaryRisk": "incorrect new-module dependency",
+        "mitigation": "Slice A skeleton plus Slice D bidirectional negative architecture tests"
+      }
+    },
+    {
+      "id": "L2D",
+      "recommended": false,
+      "reasonNotChosen": "distributed access ownership cannot provide the required unique transaction entry and database ownership"
+    }
+  ],
+  "databaseDesignGates": [
+    {
+      "id": "B01",
+      "status": "ACCEPT",
+      "rule": "all formal foreign keys use explicit ON DELETE NO ACTION"
+    },
+    {
+      "id": "B02",
+      "status": "ACCEPT_WITH_REVISION",
+      "rule": "closed internal state, kind, and purpose use text COLLATE C with CHECK and migration drift checks; external contract registration or independently evolving registries such as exact 50 failure codes use immutable code tables; no PostgreSQL enum or invented varchar length"
+    },
+    {
+      "id": "B03",
+      "status": "ACCEPT",
+      "rule": "partial final key is review_session_id plus proposal_revision_id; created_by_decision_id is NOT NULL UNIQUE; deferred guard validates same ProposalRevision before commit; stage B is reference only"
+    },
+    {
+      "id": "B04",
+      "status": "ACCEPT_WITH_REVISION",
+      "rule": "one policy one exact owner, UNIQUE(owner_kind, owner_id), one current authority; scope is omitted when redundant or EXACT_OBJECT; reject wildcard, JSON scope, and unconfirmed actor-owned scope; actor role, purpose, effect, and exact owner all match"
+    },
+    {
+      "id": "B08",
+      "status": "ACCEPT",
+      "rule": "privilege plus trigger plus append-only port"
+    },
+    {
+      "id": "B09",
+      "status": "ACCEPT_WITH_REVISION",
+      "rule": "typed governed and operational outbox; nullable ChangeEvent foreign key with category CHECK and deferred constraint trigger"
+    },
+    {
+      "id": "B10",
+      "status": "ACCEPT",
+      "rule": "exact immutable registry of 50 failure codes; no invented retry or HTTP mapping"
+    },
+    {
+      "id": "B12",
+      "status": "ACCEPT",
+      "rule": "external migrations and fail-closed db.ps1; no automatic migrate, repair, or clean"
+    }
+  ],
+  "outboxPolicy": {
+    "eventCategory": {
+      "storage": "text COLLATE C",
+      "allowedValues": [
+        "GOVERNED",
+        "OPERATIONAL"
+      ]
+    },
+    "changeEventId": "nullable foreign key",
+    "governed": {
+      "appliesTo": [
+        "canonical writes",
+        "policy writes",
+        "governance writes"
+      ],
+      "requires": [
+        "matching ChangeEvent in the same transaction",
+        "deferred aggregate/revision/event consistency guard"
+      ]
+    },
+    "operational": {
+      "appliesTo": [
+        "closeout received",
+        "index complete",
+        "route health"
+      ],
+      "changeEventAllowed": false,
+      "requires": [
+        "exactly one run, effect, or fact identity",
+        "idempotency key",
+        "no business body"
+      ]
+    },
+    "enforcement": [
+      "category CHECK proves governed requires a ChangeEvent and operational does not use one",
+      "constraint trigger validates governed aggregate/revision/event alignment before commit",
+      "CHECK proves operational has exactly one permitted identity"
+    ],
+    "positiveExamples": [
+      "policy change writes matching ChangeEvent and GOVERNED outbox in one transaction",
+      "index completion writes OPERATIONAL outbox with run identity and no ChangeEvent"
+    ],
+    "counterexamplesRejected": [
+      "governed outbox without ChangeEvent",
+      "operational outbox without run/effect/fact identity"
+    ]
+  },
+  "hideDecisionRecords": [
+    {
+      "id": "Q01",
+      "status": "ACCEPT_WITH_REVISION",
+      "resolved": true,
+      "decision": "nine direct candidates with starter-jooq as the direct jOOQ/JDBC entry"
+    },
+    {
+      "id": "Q02",
+      "status": "CHOOSE_L1R",
+      "resolved": true,
+      "decision": "application and database-adapter establish transaction and database ownership"
+    },
+    {
+      "id": "Q03",
+      "status": "ACCEPT",
+      "resolved": true,
+      "decision": "explicit NO ACTION foreign keys"
+    },
+    {
+      "id": "Q04",
+      "status": "ACCEPT_WITH_REVISION",
+      "resolved": true,
+      "decision": "internal closed values use text, C collation, CHECK, and drift checking"
+    },
+    {
+      "id": "Q05",
+      "status": "ACCEPT",
+      "resolved": true,
+      "decision": "final-decision ProposalRevision guard"
+    },
+    {
+      "id": "Q06",
+      "status": "ACCEPT_WITH_REVISION",
+      "resolved": true,
+      "decision": "exact owner and single-current-authority policy"
+    },
+    {
+      "id": "Q07",
+      "status": "ACCEPT",
+      "resolved": true,
+      "decision": "append-only audit enforcement"
+    },
+    {
+      "id": "Q08",
+      "status": "ACCEPT_WITH_REVISION",
+      "resolved": true,
+      "decision": "governed and operational outbox categories"
+    },
+    {
+      "id": "Q09",
+      "status": "ACCEPT",
+      "resolved": true,
+      "decision": "exact immutable 50-code failure registry"
+    },
+    {
+      "id": "Q10",
+      "status": "ACCEPT",
+      "resolved": true,
+      "decision": "external fail-closed migration process"
+    }
+  ],
+  "unresolved": [],
+  "blockers": [],
+  "implementationSlices": [
+    {
+      "id": "A",
+      "name": "structure and dependency baseline",
+      "allowlist": [
+        "pom.xml reactor and dependency declarations",
+        "modules/application/pom.xml and source skeleton",
+        "modules/database-adapter/pom.xml and source skeleton",
+        "API and Worker dependency declarations",
+        "architecture test skeleton",
+        "scripts/db.ps1",
+        "effective POM evidence",
+        "container immutable evidence lock"
+      ],
+      "prohibited": [
+        "migrations",
+        "generated tree",
+        "automatic migration",
+        "repair",
+        "clean",
+        "artifact pull before evidence"
+      ]
+    },
+    {
+      "id": "B",
+      "name": "database ownership",
+      "allowlist": [
+        "modules/database-adapter/src/main/resources/db/migration six migrations",
+        "modules/database-adapter jOOQ configuration",
+        "modules/database-adapter unique generated tree",
+        "database constraints, privileges, migration, and generation verification"
+      ],
+      "prohibited": [
+        "database implementation in any domain module",
+        "generated types outside database-adapter"
+      ]
+    },
+    {
+      "id": "C",
+      "name": "domain ports and two reference transactions",
+      "allowlist": [
+        "evidence domain and port",
+        "memory domain and port",
+        "runtime domain and port",
+        "security domain and port",
+        "modules/application coordinator",
+        "modules/database-adapter database port implementations (jOOQ port adapters)",
+        "two reference transactions before mechanical expansion"
+      ],
+      "prohibited": [
+        "infrastructure imports in domain or port",
+        "coordinator placement in a domain module"
+      ]
+    },
+    {
+      "id": "D",
+      "name": "negative architecture and transaction gates",
+      "allowlist": [
+        "domain and application infrastructure-import negative tests",
+        "database-adapter reverse-pollution tests",
+        "governed missing ChangeEvent failure test",
+        "legal operational no-ChangeEvent passing test",
+        "non-exact scope rejection tests"
+      ],
+      "prohibited": [
+        "relaxing existing purity rules",
+        "bypassing fail-closed migration controls"
+      ]
+    }
+  ],
+  "verificationRequirements": {
+    "outputEncoding": "UTF-8",
+    "jsonMustParse": true,
+    "git": {
+      "headMustRemain": "8877cc72ecbd320a31ce2f922e579c1d00495c55",
+      "trackedChanges": 0,
+      "stagedChanges": 0,
+      "onlyAllowedUntracked": [
+        "reports/HDM-005-预检报告.md",
+        "reports/HDM-005-CandidateManifest.json"
+      ]
+    }
+  }
+}

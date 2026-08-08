@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "HDM-005-SLICE-A-CONTAINER-LOCK-R2-v1",
+  "status": "HDM005_SLICE_A_R2_READY_FOR_HIDE_REVIEW",
+  "accepted": true,
+  "candidate": "pgvector/pgvector:0.8.2-pg18",
+  "metadataQueryPerformed": true,
+  "registryDomainsContacted": [
+    "auth.docker.io",
+    "registry-1.docker.io",
+    "hub.docker.com",
+    "raw.githubusercontent.com"
+  ],
+  "manifestMediaType": "application/vnd.oci.image.index.v1+json",
+  "indexDigest": "sha256:42e7f6b4e1eceb02ff14e3e6bc6108bbe259abbe83879dc1845d0da1ddeb555d",
+  "linuxAmd64ChildDigest": "sha256:2ac2c62ac8f030b414b19ea633a6d1d4d37c03abe52ce91887a4e5b4fbb5c73c",
+  "linuxAmd64ResponseDigestMatch": true,
+  "linuxAmd64ConfigDigest": "sha256:5a9c2dbe6ab521f35e87c81124aa5137678992ddabb9c11ef46e04e5172af73c",
+  "declaredLayerCount": 15,
+  "postgresqlMajorEvidence": {
+    "PG_MAJOR": "18",
+    "PG_VERSION": "18.4-1.pgdg12+1",
+    "source": "OCI config environment metadata"
+  },
+  "pgvectorVersionEvidence": {
+    "version": "0.8.2",
+    "source": "OCI config history ADD https://github.com/pgvector/pgvector.git#v0.8.2"
+  },
+  "licenseEvidence": {
+    "source": "https://raw.githubusercontent.com/pgvector/pgvector/v0.8.2/LICENSE",
+    "sha256": "6bba9ebeb73e27477463b05e5ef1bf303bccbddb3db9bbc95905d351604d6a87",
+    "bytes": 1104
+  },
+  "attestationEvidence": {
+    "linuxAmd64AttestationManifestDigest": "sha256:ff3fe515c87501a71d16650f6951c62169369a2a7a38e047e7754b5a884f56c2",
+    "referenceType": "attestation-manifest",
+    "referrersApiSupported": true
+  },
+  "sbomEvidence": "NOT_PUBLISHED_OR_NOT_DISCOVERABLE_WITH_METADATA_ONLY",
+  "dockerBaseline": {
+    "images": 15,
+    "containers": 1,
+    "volumes": 37
+  },
+  "dockerFinalObserved": {
+    "images": 15,
+    "containers": 1,
+    "volumes": 37
+  },
+  "dockerLayerDownloads": 0,
+  "dockerPullCreateRunBuildPerformed": false,
+  "historicalMavenBlockPreserved": true,
+  "historicalStopReason": "R1 stopped because the former ruling authorized reactive-streams 1.0.3 while Central resolved 1.0.4; the R2 authority corrected the allowed effective version to 1.0.4.",
+  "metadataEvidenceSha256": "715B41A001710699CD4F305139DD7B67C6663F0BA5F99DABA75718C3B4942C5B"
+}

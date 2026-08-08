@@ -1,0 +1,167 @@
+{
+  "schemaVersion": "HDM-005-SLICE-A-DEPENDENCY-LOCK-R2-v1",
+  "status": "HDM005_SLICE_A_R2_READY_FOR_HIDE_REVIEW",
+  "accepted": true,
+  "baselineHead": "8877cc72ecbd320a31ce2f922e579c1d00495c55",
+  "officialMavenSource": "https://repo.maven.apache.org/maven2",
+  "artifactTransferDomains": [
+    "repo.maven.apache.org"
+  ],
+  "youzanArtifactsAccepted": 0,
+  "isolatedExecution": {
+    "settingsUsed": true,
+    "localRepositoryUsed": true,
+    "settingsSha256": "236067D5A284B25FCA75DA61DDE3E701A3B433CEEECC9AB4972941F9E489D714",
+    "userSettingsModified": false,
+    "globalRepositoryFilesChangedDuringR2": 0,
+    "temporaryEvidenceCleanedAfterReporting": true
+  },
+  "historicalRejectedAttempt": {
+    "repository": "https://maven.youzanyun.com/repository/maven-public",
+    "accepted": false,
+    "globalCacheFilesChanged": 33,
+    "globalCacheCleanupPerformed": false
+  },
+  "counts": {
+    "directCandidates": 9,
+    "licenseGaps": 0,
+    "unauthorizedDirectDependencies": 0,
+    "r2dbcDirectDependencies": 0,
+    "r2dbcProviders": 0,
+    "productionSourceReactiveApiReferences": 0,
+    "allowedTransitiveApisObserved": 2,
+    "allowedTransitiveApisExact": 2,
+    "apiRuntimeFlyway": 0,
+    "workerRuntimeFlyway": 0
+  },
+  "directCandidates": [
+    {
+      "coordinate": "org.flywaydb:flyway-core",
+      "version": "12.4.0",
+      "scope": "database-tools plugin dependency",
+      "acceptancePath": "database-adapter -> database-tools -> flyway-maven-plugin -> flyway-core",
+      "license": "Apache-2.0",
+      "source": "Maven Central"
+    },
+    {
+      "coordinate": "org.flywaydb:flyway-database-postgresql",
+      "version": "12.4.0",
+      "scope": "database-tools plugin dependency",
+      "acceptancePath": "database-adapter -> database-tools -> flyway-maven-plugin -> flyway-database-postgresql",
+      "license": "Apache-2.0",
+      "source": "Maven Central"
+    },
+    {
+      "coordinate": "org.flywaydb:flyway-maven-plugin",
+      "version": "12.4.0",
+      "scope": "database-tools Maven plugin; no default lifecycle binding",
+      "acceptancePath": "database-adapter -> database-tools -> flyway-maven-plugin",
+      "license": "Apache-2.0",
+      "source": "Maven Central"
+    },
+    {
+      "coordinate": "org.springframework.boot:spring-boot-starter-jooq",
+      "version": "4.1.0",
+      "scope": "compile",
+      "acceptancePath": "database-adapter -> spring-boot-starter-jooq",
+      "license": "Apache-2.0",
+      "source": "Maven Central"
+    },
+    {
+      "coordinate": "org.jooq:jooq-codegen-maven",
+      "version": "3.21.5",
+      "scope": "database-tools Maven plugin; no default lifecycle binding",
+      "acceptancePath": "database-adapter -> database-tools -> jooq-codegen-maven",
+      "license": "Apache-2.0",
+      "source": "Maven Central"
+    },
+    {
+      "coordinate": "org.postgresql:postgresql",
+      "version": "42.7.11",
+      "scope": "runtime",
+      "acceptancePath": "database-adapter -> postgresql",
+      "license": "BSD-2-Clause",
+      "source": "Maven Central"
+    },
+    {
+      "coordinate": "org.junit.jupiter:junit-jupiter",
+      "version": "6.0.3",
+      "scope": "test",
+      "acceptancePath": "database-adapter -> junit-jupiter",
+      "license": "EPL-2.0",
+      "source": "Maven Central"
+    },
+    {
+      "coordinate": "org.testcontainers:testcontainers-junit-jupiter",
+      "version": "2.0.5",
+      "scope": "test",
+      "acceptancePath": "database-adapter -> testcontainers-junit-jupiter",
+      "license": "MIT",
+      "source": "Maven Central"
+    },
+    {
+      "coordinate": "org.testcontainers:testcontainers-postgresql",
+      "version": "2.0.5",
+      "scope": "test",
+      "acceptancePath": "database-adapter -> testcontainers-postgresql",
+      "license": "MIT",
+      "source": "Maven Central"
+    }
+  ],
+  "effectiveVersions": {
+    "org.jooq:jooq": "3.21.5",
+    "org.springframework:spring-jdbc": "7.0.8",
+    "org.springframework:spring-tx": "7.0.8",
+    "org.postgresql:postgresql": "42.7.11",
+    "org.testcontainers:testcontainers-junit-jupiter": "2.0.5",
+    "org.testcontainers:testcontainers-postgresql": "2.0.5"
+  },
+  "r2dbcJudge": {
+    "status": "PASS",
+    "directDeclarationCount": 0,
+    "providerCount": 0,
+    "productionSourceReferenceCount": 0,
+    "bytecodeRule": "PASS",
+    "observedPath": [
+      "org.springframework.boot:spring-boot-starter-jooq:4.1.0",
+      "org.springframework.boot:spring-boot-jooq:4.1.0",
+      "org.jooq:jooq:3.21.5",
+      "io.r2dbc:r2dbc-spi:1.0.0.RELEASE",
+      "org.reactivestreams:reactive-streams:1.0.4"
+    ],
+    "authorizedExactPath": [
+      "org.jooq:jooq:3.21.5",
+      "io.r2dbc:r2dbc-spi:1.0.0.RELEASE",
+      "org.reactivestreams:reactive-streams:1.0.4"
+    ],
+    "reactiveStreamsUpstreamDeclared": "1.0.3",
+    "reactiveStreamsManagedFrom": "1.0.3",
+    "reactiveStreamsEffectiveResolved": "1.0.4",
+    "resolutionNote": "Spring Boot 4.1.0 dependency management legitimately resolves reactive-streams to 1.0.4 on the authorized jOOQ 3.21.5 -> r2dbc-spi 1.0.0.RELEASE path; no direct declaration, downgrade, exclusion, or override was added."
+  },
+  "evidence": {
+    "effectivePomSha256": "E94580423DAD299617EA469C0A4FCFA6F1CB7B2C7C5DE93E826D97666C62504D",
+    "databaseDependencyTreeSha256": "3A3CEAA62BA2502E68C2AE6606AEBD9B5E21D352BE967BA2CC792AC0D1B8821D",
+    "apiRuntimeDependencyTreeSha256": "3264378EE036ECC0568D8A2D6DAF03D88552C40FA0D03F08E7E141721051A00C",
+    "workerRuntimeDependencyTreeSha256": "9529EEFB2358D788696132252187811002565ED5608C73607C6AC473ABFB821D",
+    "jooqPomSha256": "5BFF2824BD8720129662D98FB9FBB5AC5D82D210850A61DFDF78B072835FCF34",
+    "finalOfflineCleanVerifySha256": "5CEE0EF00D831FEE4ADEB04A7A65A1D8E48E4DD6842F798149D5E3EBCB30C819",
+    "candidateCopyOfflineCleanVerifySha256": "F039CA07E2AE445E9562307DED5F0E289C87DA3D5F2C1385E399EE055D396D1D"
+  },
+  "completedCommands": {
+    "centralOnlineCleanVerify": "PASS",
+    "effectivePom": "PASS",
+    "databaseDependencyTreeVerbose": "PASS",
+    "apiRuntimeDependencyTree": "PASS",
+    "workerRuntimeDependencyTree": "PASS",
+    "databaseToolsPluginResolution": "PASS",
+    "offlineCleanVerify": "PASS",
+    "architectureFormalRules": "12/12 PASS",
+    "sameRuleNegativeFixtures": "4/4 PASS",
+    "dbFailClosedJudge": "PASS",
+    "fullVerifyNodeContractsFormat": "PASS",
+    "apiWorkerSmoke": "PASS/PASS",
+    "candidateCopyOfflineCleanVerify": "PASS",
+    "gitDiffCheck": "PASS"
+  }
+}

@@ -27,10 +27,12 @@
         <module>modules/memory</module>
         <module>modules/runtime</module>
         <module>modules/security</module>
+        <module>modules/application</module>
+        <module>modules/database-adapter</module>
         <module>modules/contracts</module>
-        <module>modules/architecture-tests</module>
         <module>apps/api</module>
         <module>apps/worker</module>
+        <module>modules/architecture-tests</module>
     </modules>
 
     <build>

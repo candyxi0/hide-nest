@@ -18,6 +18,8 @@ class ArchitectureTest {
     private static final String MEMORY = "io.github.candyxi0.hidenest.memory";
     private static final String RUNTIME = "io.github.candyxi0.hidenest.runtime";
     private static final String SECURITY = "io.github.candyxi0.hidenest.security";
+    private static final String APPLICATION = "io.github.candyxi0.hidenest.application";
+    private static final String DATABASE = "io.github.candyxi0.hidenest.database";
 
     /**
      * Factory: forbidden framework / infrastructure dependency rule for formal domain modules.
@@ -53,6 +55,8 @@ class ArchitectureTest {
         assertMarkerPresent(mainClasses, MEMORY);
         assertMarkerPresent(mainClasses, RUNTIME);
         assertMarkerPresent(mainClasses, SECURITY);
+        assertMarkerPresent(mainClasses, APPLICATION);
+        assertMarkerPresent(mainClasses, DATABASE);
     }
 
     private static void assertMarkerPresent(JavaClasses classes, String pkg) {

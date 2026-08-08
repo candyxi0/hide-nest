@@ -40,6 +40,11 @@
             <artifactId>hide-nest-security</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.github.candyxi0.hidenest</groupId>
+            <artifactId>hide-nest-application</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
