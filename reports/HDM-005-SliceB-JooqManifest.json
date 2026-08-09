@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "hdm005.slice-b.jooq-manifest.v1",
+  "status": "HDM005_SLICE_B_R5_READY_FOR_HIDE_REVIEW",
+  "generator": {
+    "name": "jOOQ",
+    "version": "3.21.5",
+    "package": "io.github.candyxi0.hidenest.database.generated",
+    "output": "modules/database-adapter/src/generated/java",
+    "database": "PostgreSQL 18.4",
+    "sourceMigrationCount": 6
+  },
+  "counts": {
+    "files": 47,
+    "databaseTables": 16,
+    "deferredObjects": 0,
+    "generatedTypesOutsideOutput": 0
+  },
+  "determinism": {
+    "generationAEqualsGenerationB": true,
+    "generationAEqualsTracked": true,
+    "generationBEqualsTracked": true,
+    "compiledByMaven": true,
+    "spotlessExcluded": true
+  },
+  "r3Regeneration": {
+    "executed": true,
+    "judge": "powershell -File scripts/db.ps1 -Action Generate && powershell -File scripts/db.ps1 -Action GenerateCheck",
+    "generateExitCode": 0,
+    "generateCheckExitCode": 0,
+    "oldSignatureCount": 0
+  },
+  "mutationGates": {
+    "deleteMutationManifestMismatch": true,
+    "modifyMutationHashMismatch": true,
+    "extraFileMutationCountMismatch": true,
+    "baselineRestoredAfterMutations": true,
+    "productionScript": "scripts/r3-generatecheck-mutation.ps1"
+  },
+  "evidence": {
+    "generateCheckLogRelPath": "reports/HDM-005-SliceB-R4-JudgeEvidence.json",
+    "generateCheckLogSha256": "97746c3b33f006da750ff5f1a659cf49d23f7eb9669427d218c165bcba6bceab",
+    "r4ProducerScriptSha256": "f685aacf2294ab56cbfd4b3936a539ebdd19a751ffd9b00a1c48eff45c6d4dac",
+    "databaseTestCount": 35,
+    "databaseTestPassed": 35,
+    "databaseTestFailed": 0,
+    "testFile": "modules/database-adapter/src/test/java/io/github/candyxi0/hidenest/database/DatabaseSliceBContractTest.java",
+    "testFileSha256": "ee0ab42de30b99a73ca9e85560f902a19c04b4884c06b643f803d037335fc319"
+  }
+}

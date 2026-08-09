@@ -9,6 +9,7 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
 import io.github.candyxi0.hidenest.application.ApplicationForbiddenDependencyFixture;
+import io.github.candyxi0.hidenest.application.ApplicationForbiddenGeneratedTypeFixture;
 import io.github.candyxi0.hidenest.application.ApplicationForbiddenReactiveFixture;
 import io.github.candyxi0.hidenest.database.DatabaseForbiddenApplicationFixture;
 import io.github.candyxi0.hidenest.evidence.EvidenceForbiddenDatabaseFixture;
@@ -71,6 +72,15 @@ class DatabaseBoundaryTest {
                 .resideInAnyPackage(APPLICATION, API, WORKER);
     }
 
+    static ArchRule generatedTypeBoundaryRule() {
+        return noClasses()
+                .that()
+                .resideInAnyPackage(EVIDENCE, MEMORY, RUNTIME, SECURITY, APPLICATION)
+                .should()
+                .dependOnClassesThat()
+                .resideInAPackage(ROOT + "database.generated..");
+    }
+
     static ArchRule projectClassesMustNotUseReactiveDatabaseApisRule() {
         return noClasses()
                 .that()
@@ -93,6 +103,7 @@ class DatabaseBoundaryTest {
         assertDoesNotThrow(() -> domainBoundaryRule().check(mainClasses));
         assertDoesNotThrow(() -> applicationBoundaryRule().check(mainClasses));
         assertDoesNotThrow(() -> databaseBoundaryRule().check(mainClasses));
+        assertDoesNotThrow(() -> generatedTypeBoundaryRule().check(mainClasses));
         assertDoesNotThrow(
                 () -> projectClassesMustNotUseReactiveDatabaseApisRule().check(mainClasses));
     }
@@ -116,6 +127,13 @@ class DatabaseBoundaryTest {
         JavaClasses fixture = new ClassFileImporter().importClasses(DatabaseForbiddenApplicationFixture.class);
 
         assertThrows(AssertionError.class, () -> databaseBoundaryRule().check(fixture));
+    }
+
+    @Test
+    void generatedTypeFixtureIsRejectedByTheFormalGeneratedTypeRule() {
+        JavaClasses fixture = new ClassFileImporter().importClasses(ApplicationForbiddenGeneratedTypeFixture.class);
+
+        assertThrows(AssertionError.class, () -> generatedTypeBoundaryRule().check(fixture));
     }
 
     @Test

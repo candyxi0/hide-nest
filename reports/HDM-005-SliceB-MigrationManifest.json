@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "hdm005.slice-b.migration-manifest.v1",
+  "status": "HDM005_SLICE_B_R5_READY_FOR_HIDE_REVIEW",
+  "sliceA": {
+    "commit": "5ab8d88d6cd1f0574188b9ccdc7ce9c1d692a15f",
+    "parent": "8877cc72ecbd320a31ce2f922e579c1d00495c55",
+    "pathCount": 21
+  },
+  "database": {
+    "postgresqlMajor": 18,
+    "observedServerVersion": "18.4",
+    "pgvectorVersion": "0.8.2",
+    "imageLinuxAmd64Digest": "sha256:2ac2c62ac8f030b414b19ea633a6d1d4d37c03abe52ce91887a4e5b4fbb5c73c"
+  },
+  "counts": {
+    "migrations": 6,
+    "schemas": 4,
+    "approvedTables": 16,
+    "failureCodes": 50,
+    "eventTypes": 12,
+    "jooqFiles": 47
+  },
+  "migrations": [
+    { "version": "001", "sha256": "17e8533c206288b6c21f0261b323041eb5a3607949843bae8e5399e78a2c4fcd", "bytes": 1030 },
+    { "version": "002", "sha256": "4fbdc588a73d62741fd3cb567eb0e6af0920c2a7ccb39ce84efc188edd8d1cd9", "bytes": 4971 },
+    { "version": "003", "sha256": "a516a411262c0bca8826715b0c4ef41a6a6515275c921d6dd186121039c390cb", "bytes": 7862 },
+    { "version": "004", "sha256": "d5e72ea4701e83e58e8b204f82483beb4d5ca5bdeb924f60446ecd0ea8dd721f", "bytes": 5041 },
+    { "version": "005", "sha256": "9273aadc87e2480e447afd9c40721878ce9f0d9282f31ecd6095771e5dd3a737", "bytes": 27841 },
+    { "version": "006", "sha256": "fac190a80229ee0bf24a2bf80d43f5a35da81871258cb9fb0f82750f7e09a6f3", "bytes": 3383 }
+  ],
+  "r3Gates": {
+    "R3_01_finalVerdictDualNonNull": "PASS",
+    "R3_02_stalePolicyMemoryPointer": "PASS",
+    "R3_03_stateDecisionTargetRevisionRef": "PASS",
+    "R3_04_reviewCompletionBidirectionalSet": "PASS",
+    "R3_05_jsonAllowKeyValueFormat": "PASS",
+    "R3_06_generateCheckMutationProduction": "PASS",
+    "R3_07_machineEvidenceRealValues": "PASS"
+  },
+  "r4Evidence": {
+    "path": "reports/HDM-005-SliceB-R4-JudgeEvidence.json",
+    "sha256": "97746c3b33f006da750ff5f1a659cf49d23f7eb9669427d218c165bcba6bceab",
+    "producerScriptSha256": "f685aacf2294ab56cbfd4b3936a539ebdd19a751ffd9b00a1c48eff45c6d4dac"
+  },
+  "dynamicGates": {
+    "testsRun": 35,
+    "testsPassed": 35,
+    "testsFailed": 0,
+    "databaseLeakageCanaryCount": 0,
+    "publicFunctionExecuteCount": 0,
+    "generateCheckExitCode": 0,
+    "generateCheckLogSha256": "ddc365f0ecfd2aa467b8d13d8774449f6d0b431054e037c66cc87809cbc635d8"
+  }
+}

@@ -51,6 +51,16 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
@@ -62,6 +72,22 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <sourceDirectory>${project.basedir}/src</sourceDirectory>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>main/java/**/*.java</include>
+                        <include>generated/java/**/*.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
     <profiles>
         <profile>
             <id>database-tools</id>
@@ -71,6 +97,21 @@
                         <groupId>org.flywaydb</groupId>
                         <artifactId>flyway-maven-plugin</artifactId>
                         <version>${flyway.version}</version>
+                        <configuration>
+                            <url>${env.HDM005_DB_URL}</url>
+                            <user>${env.HDM005_DB_USER}</user>
+                            <password>${env.HDM005_DB_PASSWORD}</password>
+                            <locations>
+                                <location>filesystem:${project.basedir}/src/main/resources/db/migration</location>
+                            </locations>
+                            <defaultSchema>public</defaultSchema>
+                            <table>flyway_schema_history</table>
+                            <cleanDisabled>true</cleanDisabled>
+                            <baselineOnMigrate>false</baselineOnMigrate>
+                            <outOfOrder>false</outOfOrder>
+                            <validateMigrationNaming>true</validateMigrationNaming>
+                            <validateOnMigrate>true</validateOnMigrate>
+                        </configuration>
                         <dependencies>
                             <dependency>
                                 <groupId>org.flywaydb</groupId>
@@ -88,6 +129,42 @@
                         <groupId>org.jooq</groupId>
                         <artifactId>jooq-codegen-maven</artifactId>
                         <version>${jooq.version}</version>
+                        <configuration>
+                            <jdbc>
+                                <driver>org.postgresql.Driver</driver>
+                                <url>${env.HDM005_DB_URL}</url>
+                                <user>${env.HDM005_DB_USER}</user>
+                                <password>${env.HDM005_DB_PASSWORD}</password>
+                            </jdbc>
+                            <generator>
+                                <database>
+                                    <name>org.jooq.meta.postgres.PostgresDatabase</name>
+                                    <includes>.*</includes>
+                                    <excludes>flyway_schema_history</excludes>
+                                    <schemata>
+                                        <schema><inputSchema>evidence</inputSchema></schema>
+                                        <schema><inputSchema>memory</inputSchema></schema>
+                                        <schema><inputSchema>runtime</inputSchema></schema>
+                                        <schema><inputSchema>security</inputSchema></schema>
+                                    </schemata>
+                                </database>
+                                <generate>
+                                    <deprecated>false</deprecated>
+                                    <records>true</records>
+                                    <pojos>false</pojos>
+                                    <daos>false</daos>
+                                    <generatedAnnotation>true</generatedAnnotation>
+                                    <generatedAnnotationDate>false</generatedAnnotationDate>
+                                    <generatedAnnotationJooqVersion>false</generatedAnnotationJooqVersion>
+                                </generate>
+                                <target>
+                                    <packageName>io.github.candyxi0.hidenest.database.generated</packageName>
+                                    <directory>${env.HDM005_JOOQ_OUTPUT}</directory>
+                                    <encoding>UTF-8</encoding>
+                                    <clean>true</clean>
+                                </target>
+                            </generator>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>

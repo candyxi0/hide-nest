@@ -46,6 +46,7 @@
                         <palantirJavaFormat/>
                         <excludes>
                             <exclude>**/generated-sources/**</exclude>
+                            <exclude>**/src/generated/java/**</exclude>
                         </excludes>
                     </java>
                 </configuration>

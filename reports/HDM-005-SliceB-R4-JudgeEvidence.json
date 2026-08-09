@@ -1,0 +1,45 @@
+﻿{
+    "producerScriptSha256":  "f685aacf2294ab56cbfd4b3936a539ebdd19a751ffd9b00a1c48eff45c6d4dac",
+    "gates":  {
+                  "modify":  {
+                                 "commandKind":  "powershell -File scripts/db.ps1 -Action GenerateCheck",
+                                 "exitCode":  23,
+                                 "logBytes":  64184,
+                                 "entryPoint":  "scripts/db.ps1",
+                                 "candidate":  "modify",
+                                 "logSha256":  "e9362d0b353c55d064dce46937d065be093ba66a0b1b9831bd25e38a8dbbec1a"
+                             },
+                  "delete":  {
+                                 "commandKind":  "powershell -File scripts/db.ps1 -Action GenerateCheck",
+                                 "exitCode":  23,
+                                 "logBytes":  63964,
+                                 "entryPoint":  "scripts/db.ps1",
+                                 "candidate":  "delete",
+                                 "logSha256":  "a02a9875d3873bed90be00365d0c62ea5067261d91615b488ae1481d260ffd9e"
+                             },
+                  "baseline":  {
+                                   "commandKind":  "powershell -File scripts/db.ps1 -Action GenerateCheck",
+                                   "exitCode":  0,
+                                   "logBytes":  63180,
+                                   "entryPoint":  "scripts/db.ps1",
+                                   "candidate":  "baseline",
+                                   "logSha256":  "ddc365f0ecfd2aa467b8d13d8774449f6d0b431054e037c66cc87809cbc635d8"
+                               },
+                  "boundary":  {
+                                   "commandKind":  "mvnw.cmd test -pl modules/architecture-tests -am -Dtest=DatabaseBoundaryTest",
+                                   "exitCode":  1,
+                                   "logBytes":  9536,
+                                   "entryPoint":  "mvnw.cmd",
+                                   "candidate":  "boundary",
+                                   "logSha256":  "da8ec19b4746df1e17261ea76179fd54fcf6c85a39e5cf543e7d3832c4238f9e"
+                               }
+              },
+    "timestamp":  "2026-08-09T15:15:46+08:00",
+    "databaseTests":  {
+                          "failed":  0,
+                          "total":  35,
+                          "passed":  35
+                      },
+    "schemaVersion":  "hdm005.slice-b.r4-judge-evidence.v1",
+    "allPass":  true
+}

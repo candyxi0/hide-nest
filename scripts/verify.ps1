@@ -74,11 +74,6 @@ function Invoke-ScriptWithMavenIsolation {
 function Invoke-DbFailClosedJudge {
     $dbScript = Join-Path $repoRoot "scripts/db.ps1"
     $cases = @(
-        @{ Action = "Validate"; Marker = "HDM005_SLICE_B_NOT_READY" },
-        @{ Action = "Migrate"; Marker = "HDM005_SLICE_B_NOT_READY" },
-        @{ Action = "Generate"; Marker = "HDM005_SLICE_B_NOT_READY" },
-        @{ Action = "GenerateCheck"; Marker = "HDM005_SLICE_B_NOT_READY" },
-        @{ Action = "Test"; Marker = "HDM005_SLICE_B_NOT_READY" },
         @{ Action = "Clean"; Marker = "HDM005_DB_ACTION_FORBIDDEN" },
         @{ Action = "Repair"; Marker = "HDM005_DB_ACTION_FORBIDDEN" },
         @{ Action = "Unknown"; Marker = "HDM005_DB_ACTION_FORBIDDEN" }
@@ -107,6 +102,14 @@ function Invoke-DbFailClosedJudge {
 Push-Location $repoRoot
 try {
     Invoke-DbFailClosedJudge
+    if ($mavenPrefix.Count -gt 0) {
+        Invoke-Checked "database-generate-check" "powershell.exe" @(
+            "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $repoRoot "scripts/db.ps1"),
+            "-Action", "GenerateCheck",
+            "-MavenSettingsPath", $MavenSettingsPath,
+            "-MavenLocalRepository", $MavenLocalRepository
+        )
+    }
     Invoke-Checked "maven-clean-verify" (Join-Path $repoRoot "mvnw.cmd") ($mavenPrefix + @("clean", "verify"))
 
     Invoke-OpenApiValidation (Join-Path $repoRoot "contracts/openapi/hide-nest-api.yaml") $true "openapi-valid"
