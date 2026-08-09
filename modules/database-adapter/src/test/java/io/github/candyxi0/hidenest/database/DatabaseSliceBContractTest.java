@@ -84,7 +84,7 @@ class DatabaseSliceBContractTest {
                 .validateMigrationNaming(true)
                 .load();
         MigrateResult result = flyway.migrate();
-        assertEquals(6, result.migrationsExecuted);
+        assertEquals(7, result.migrationsExecuted);
     }
 
     @AfterAll
@@ -105,7 +105,7 @@ class DatabaseSliceBContractTest {
         MigrateResult repeated = flyway.migrate();
         assertEquals(0, repeated.migrationsExecuted);
         assertEquals(before, catalogFingerprint());
-        assertEquals(6, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(7, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
     }
 
     @Test
@@ -2434,8 +2434,8 @@ class DatabaseSliceBContractTest {
             execute(
                     connection,
                     ("INSERT INTO memory.proposal(proposal_id,proposal_kind,target_memory_id,created_at) "
-                                    + "VALUES ('%s','CREATE','%s',clock_timestamp())")
-                            .formatted(proposalId, memoryId));
+                                    + "VALUES ('%s','CREATE',NULL,clock_timestamp())")
+                            .formatted(proposalId));
             execute(
                     connection,
                     ("INSERT INTO memory.proposal_revision(proposal_revision_id,proposal_id,revision_no,action_code,body_text,"

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "HDM-005-SLICEC-FINAL-R1",
+  "status": "HDM005_SLICE_C_READY_FOR_LOCAL_COMMIT",
+  "baselineHead": "7d174be08cbc1cf5fbc23572f8f8754e779216e8",
+  "uniqueSurefireXmls": 14,
+  "surefireTotal": "100/100/0/0/0",
+  "sliceB": "35/35",
+  "sliceC": "15/15",
+  "architectureTests": "7+6=13/13",
+  "contractsTests": "37/37",
+  "dbPs1": "PASS",
+  "mavenOfflineCleanVerify": "BUILD_SUCCESS",
+  "nodeTypecheck": "PASS",
+  "nodeLint": "PASS",
+  "nodeTest": "PASS (12 tests)",
+  "nodeBuild": "PASS",
+  "apiSmoke": "PASS (Started in 0.58s)",
+  "workerSmoke": "PASS (Started in 0.50s)",
+  "bodyLeakScan": 0,
+  "secretLeakScan": 0,
+  "v007Ruling": {
+    "createNullTargetPass": true,
+    "createWrongTargetRejected": true,
+    "reviseNullTargetRejected": true,
+    "errorCode": "HDM005_MEMORY_REVISION_PROPOSAL_TARGET_MISMATCH",
+    "sqlstate": "23514"
+  },
+  "v001ToV006Changed": false,
+  "candidateIncludesProductionCode": true,
+  "task17pPhaseNoSourceModification": true,
+  "git": {
+    "head": "7d174be",
+    "staged": 0,
+    "trackedModified": 2,
+    "untrackedNew": 39,
+    "outOfAllowlist": 0
+  },
+  "dockerResidual": { "containers": 0, "volumes": 0, "networks": 0 },
+  "javaProcessesLeaked": 0,
+  "noNetwork": true,
+  "noGitWrite": true
+}
