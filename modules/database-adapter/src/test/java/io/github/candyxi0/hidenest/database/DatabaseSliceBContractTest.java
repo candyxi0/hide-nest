@@ -84,7 +84,7 @@ class DatabaseSliceBContractTest {
                 .validateMigrationNaming(true)
                 .load();
         MigrateResult result = flyway.migrate();
-        assertEquals(8, result.migrationsExecuted);
+        assertEquals(9, result.migrationsExecuted);
     }
 
     @AfterAll
@@ -105,7 +105,7 @@ class DatabaseSliceBContractTest {
         MigrateResult repeated = flyway.migrate();
         assertEquals(0, repeated.migrationsExecuted);
         assertEquals(before, catalogFingerprint());
-        assertEquals(8, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(9, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
     }
 
     @Test
@@ -140,7 +140,7 @@ class DatabaseSliceBContractTest {
 
     @Test
     @Order(3)
-    @DisplayName("CoreDatabaseInventoryIT: four schemas and sixteen approved tables")
+    @DisplayName("CoreDatabaseInventoryIT: four schemas and thirty-one approved tables")
     void coreDatabaseInventoryIT() throws SQLException {
         assertEquals(
                 Set.of("evidence", "memory", "runtime", "security"),
@@ -169,7 +169,16 @@ class DatabaseSliceBContractTest {
                         "runtime.idempotency_receipt",
                         "runtime.outbox_event",
                         "runtime.failure_code_registry",
-                        "runtime.event_type_registry"),
+                        "runtime.event_type_registry",
+                        "runtime.capture_scope",
+                        "runtime.capture_scope_unit",
+                        "runtime.closeout_run",
+                        "runtime.checkpoint",
+                        "runtime.work_artifact",
+                        "runtime.model_run",
+                        "runtime.retrieval_trace",
+                        "runtime.context_delivery",
+                        "runtime.consumer_effect"),
                 querySet("SELECT table_schema || '.' || table_name FROM information_schema.tables "
                         + "WHERE table_schema IN ('evidence','memory','runtime','security') "
                         + "AND table_type='BASE TABLE'"));
@@ -356,7 +365,7 @@ class DatabaseSliceBContractTest {
     @DisplayName("DatabasePrivilegeIT: migrator ownership and runtime least privilege")
     void databasePrivilegeIT() throws SQLException {
         assertEquals(
-                22,
+                31,
                 scalarLong("SELECT count(*) FROM pg_catalog.pg_tables "
                         + "WHERE schemaname IN ('evidence','memory','runtime','security') "
                         + "AND tableowner='hide_nest_migrator'"));
@@ -439,7 +448,7 @@ class DatabaseSliceBContractTest {
                     connection,
                     "OPERATIONAL",
                     "closeout.received.v1",
-                    "CLOSEOUT_RUN",
+                    "RUN",
                     UUID.randomUUID(),
                     1L,
                     null,
@@ -1100,7 +1109,7 @@ class DatabaseSliceBContractTest {
                         + "aggregate_kind,aggregate_id,aggregate_revision,contract_version,purpose,policy_revision,"
                         + "manifest_hash,payload_manifest,change_event_id,state,available_at,attempt_count,"
                         + "max_attempts,last_failure_code,created_at) VALUES "
-                        + "('" + UUID.randomUUID() + "',NULL,'OPERATIONAL','closeout.received.v1','CLOSEOUT_RUN','"
+                        + "('" + UUID.randomUUID() + "',NULL,'OPERATIONAL','closeout.received.v1','RUN','"
                         + UUID.randomUUID() + "',1,'pink.event.v1','DATABASE_TEST',0,decode('" + HASH_HEX
                         + "','hex'),'" + manifestPayload(UUID.randomUUID(), 1L) + "'::jsonb,NULL,'READY',"
                         + "clock_timestamp(),0,8,NULL,clock_timestamp())");
@@ -1192,7 +1201,7 @@ class DatabaseSliceBContractTest {
                             + "manifest_hash,payload_manifest,change_event_id,state,available_at,attempt_count,"
                             + "max_attempts,last_failure_code,created_at) VALUES "
                             + "('" + UUID.randomUUID() + "','" + uniqueKey() + "','OPERATIONAL','closeout.received.v1',"
-                            + "'CLOSEOUT_RUN','" + UUID.randomUUID() + "',1,'pink.event.v1','DATABASE_TEST',0,"
+                            + "'RUN','" + UUID.randomUUID() + "',1,'pink.event.v1','DATABASE_TEST',0,"
                             + "decode('" + HASH_HEX + "','hex'),'{\"aggregateId\":\"" + aggId
                             + "\",\"aggregateRevision\":1,\"policyRevision\":0,\"purpose\":\"DATABASE_TEST\","
                             + "\"manifestHash\":\"" + HASH_HEX + "\"}'::jsonb,NULL,'READY',clock_timestamp(),0,8,NULL,"
@@ -1407,6 +1416,1127 @@ class DatabaseSliceBContractTest {
                 originalContent,
                 Files.readString(firstFile, StandardCharsets.UTF_8),
                 "after all mutations: file content must match original");
+    }
+
+    // ============================================================
+    // V009 migration structure tests
+    // ============================================================
+
+    @Test
+    @Order(42)
+    @DisplayName("V009: exactly 9 new tables in runtime schema (7 logical objects → 8 physical + consumer_effect = 9)")
+    void v009NineNewRuntimeTables() throws SQLException {
+        Set<String> tables = querySet(
+                "SELECT table_name FROM information_schema.tables"
+                + " WHERE table_schema='runtime' AND table_type='BASE TABLE'"
+                + " AND table_name IN ("
+                + "'capture_scope','capture_scope_unit','closeout_run','checkpoint',"
+                + "'work_artifact','model_run','retrieval_trace','context_delivery','consumer_effect'"
+                + ") ORDER BY table_name");
+        assertEquals(9, tables.size(), "9 runtime tables from V009 (plus outbox_event + idempotency_receipt = 11 total)");
+    }
+
+    @Test
+    @Order(43)
+    @DisplayName("V009: all new FKs are ON DELETE NO ACTION")
+    void v009ForeignKeysNoAction() throws SQLException {
+        Set<String> cascadeFks = querySet(
+                "SELECT conname FROM pg_constraint"
+                + " WHERE contype='f' AND confdeltype != 'a'"
+                + " AND conrelid IN ("
+                + "  SELECT oid FROM pg_class"
+                + "  WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname='runtime')"
+                + "  AND relname IN ("
+                + "  'capture_scope','capture_scope_unit','closeout_run','checkpoint',"
+                + "  'work_artifact','model_run','retrieval_trace','context_delivery','consumer_effect'"
+                + "  )"
+                + ")");
+        assertTrue(cascadeFks.isEmpty(), "All V009 FKs must be ON DELETE NO ACTION (confdeltype='a'), found: " + cascadeFks);
+    }
+
+    @Test
+    @Order(44)
+    @DisplayName("V009: migration history = 9, repeat migrate executes 0")
+    void v009MigrationHistoryAndRepeat() {
+        assertEquals(9, flyway.info().applied().length, "history must be 9");
+        MigrateResult repeat = flyway.migrate();
+        assertEquals(0, repeat.migrationsExecuted, "repeat migrate must execute 0");
+    }
+
+    // ============================================================
+    // V009 CaptureScope attack tests
+    // ============================================================
+
+    @Test
+    @Order(50)
+    @DisplayName("V009: CaptureScope cross-source unit rejected")
+    void v009CaptureScopeCrossSourceRejected() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceA = insertMinimalSource(policyId, "A");
+        UUID sourceB = insertMinimalSource(policyId, "B");
+        UUID unitA = insertMinimalSourceUnit(sourceA, "A");
+        UUID unitB = insertMinimalSourceUnit(sourceB, "B");
+
+        UUID scopeId = UUID.randomUUID();
+        // Use transaction: assemble scope+units, freeze, commit
+        try (Connection connection = connection()) {
+            connection.setAutoCommit(false);
+            execute(connection, "INSERT INTO runtime.capture_scope (scope_id, source_id, from_ordinal, to_ordinal, rule_version, coverage_code, manifest_hash, created_at) VALUES"
+                    + "('" + scopeId + "','" + sourceA + "',0,10,'v1','FULL',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+            // Same source — should pass
+            execute(connection, "INSERT INTO runtime.capture_scope_unit (scope_id, source_unit_id, ordinal) VALUES"
+                    + "('" + scopeId + "','" + unitA + "',0)");
+            // Cross-source — must be rejected by same-source guard (deferred)
+            execute(connection, "INSERT INTO runtime.capture_scope_unit (scope_id, source_unit_id, ordinal) VALUES"
+                    + "('" + scopeId + "','" + unitB + "',1)");
+            execute(connection, "UPDATE runtime.capture_scope SET frozen_at='2026-01-01T00:00:00Z' WHERE scope_id='" + scopeId + "'");
+            SQLException ex = assertThrows(SQLException.class, connection::commit);
+            assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"),
+                    "cross-source must be rejected with 23514, got: " + ex.getSQLState());
+        }
+    }
+
+    @Test
+    @Order(51)
+    @DisplayName("V009: CaptureScope frozen — UPDATE/DELETE rejected")
+    void v009CaptureScopeFrozenImmutable() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "FZ");
+        UUID scopeId = UUID.randomUUID();
+        execute(connection(), "INSERT INTO runtime.capture_scope (scope_id, source_id, from_ordinal, to_ordinal, rule_version, coverage_code, frozen_at, manifest_hash, created_at) VALUES"
+                + "('" + scopeId + "','" + sourceId + "',0,10,'v1','FULL','2026-01-01T00:00:00Z',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.capture_scope SET rule_version='v2' WHERE scope_id='" + scopeId + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+
+        SQLException ex2 = assertThrows(SQLException.class, () ->
+            execute(connection(), "DELETE FROM runtime.capture_scope WHERE scope_id='" + scopeId + "'"));
+        assertTrue(ex2.getMessage().contains("23514") || ex2.getSQLState().equals("23514"));
+    }
+
+    // ============================================================
+    // V009 CloseoutRun state machine tests
+    // ============================================================
+
+    @Test
+    @Order(60)
+    @DisplayName("V009: CloseoutRun all legal transitions pass")
+    void v009CloseoutRunLegalTransitions() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "CL");
+        UUID scopeId = insertMinimalCaptureScope(sourceId);
+        UUID runId = UUID.randomUUID();
+
+        // READY → RUNNING
+        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+                + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
+        execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+
+        // RUNNING → COMPLETED
+        execute(connection(), "UPDATE runtime.closeout_run SET state='COMPLETED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
+        assertEquals("COMPLETED", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
+    }
+
+    @Test
+    @Order(61)
+    @DisplayName("V009: CloseoutRun illegal transitions rejected")
+    void v009CloseoutRunIllegalTransitions() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "IL");
+        UUID scopeId = insertMinimalCaptureScope(sourceId);
+        UUID runId = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+                + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
+
+        // READY → COMPLETED (skip RUNNING) — should be rejected
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.closeout_run SET state='COMPLETED', started_at='2026-01-01T01:00:00Z', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    @Test
+    @Order(62)
+    @DisplayName("V009: CloseoutRun terminal state rollback rejected")
+    void v009CloseoutRunTerminalRollbackRejected() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "TR");
+        UUID scopeId = insertMinimalCaptureScope(sourceId);
+        UUID runId = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+                + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
+        execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+        execute(connection(), "UPDATE runtime.closeout_run SET state='COMPLETED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
+
+        // COMPLETED → RUNNING (rollback) — rejected
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', terminal_at=NULL WHERE run_id='" + runId + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    @Test
+    @Order(63)
+    @DisplayName("V009: CloseoutRun submission_id duplicate rejected")
+    void v009CloseoutRunSubmissionIdDuplicate() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "SD");
+        UUID scopeId = insertMinimalCaptureScope(sourceId);
+        UUID run1 = UUID.randomUUID();
+        UUID run2 = UUID.randomUUID();
+        UUID subId = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, submission_id, created_at) VALUES"
+                + "('" + run1 + "','" + scopeId + "','READY','" + subId + "','2026-01-01T00:00:00Z')");
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, submission_id, created_at) VALUES"
+                    + "('" + run2 + "','" + scopeId + "','READY','" + subId + "','2026-01-01T00:00:00Z')"));
+        assertTrue(ex.getMessage().contains("23505") || ex.getSQLState().equals("23505"),
+                "duplicate submission_id must be rejected, got: " + ex.getSQLState());
+    }
+
+    @Test
+    @Order(64)
+    @DisplayName("V009: CloseoutRun field consistency — READY with started_at rejected")
+    void v009CloseoutRunFieldConsistencyAttack() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "FC");
+        UUID scopeId = insertMinimalCaptureScope(sourceId);
+        UUID runId = UUID.randomUUID();
+
+        // READY with started_at should be rejected by CHECK constraint
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, started_at, created_at) VALUES"
+                    + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    // ============================================================
+    // V009 Checkpoint attack tests
+    // ============================================================
+
+    @Test
+    @Order(70)
+    @DisplayName("V009: Checkpoint duplicate sequence_no rejected")
+    void v009CheckpointDuplicateSequenceRejected() throws SQLException {
+        UUID cp1 = UUID.randomUUID();
+        UUID cp2 = UUID.randomUUID();
+        UUID runId = UUID.randomUUID();
+        String runKind = "CLOSEOUT_RUN";
+
+        execute(connection(), "INSERT INTO runtime.checkpoint (checkpoint_id, run_kind, run_id, sequence_no, manifest_hash, created_at) VALUES"
+                + "('" + cp1 + "','" + runKind + "','" + runId + "',0,decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "INSERT INTO runtime.checkpoint (checkpoint_id, run_kind, run_id, sequence_no, manifest_hash, created_at) VALUES"
+                    + "('" + cp2 + "','" + runKind + "','" + runId + "',0,decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')"));
+        assertTrue(ex.getMessage().contains("23505") || ex.getSQLState().equals("23505"),
+                "duplicate (run_kind,run_id,sequence_no) must be rejected");
+    }
+
+    @Test
+    @Order(71)
+    @DisplayName("V009: Checkpoint UPDATE/DELETE rejected")
+    void v009CheckpointUpdateDeleteRejected() throws SQLException {
+        UUID cpId = UUID.randomUUID();
+        UUID runId = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.checkpoint (checkpoint_id, run_kind, run_id, sequence_no, manifest_hash, created_at) VALUES"
+                + "('" + cpId + "','CLOSEOUT_RUN','" + runId + "',0,decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.checkpoint SET sequence_no=1 WHERE checkpoint_id='" + cpId + "'"));
+        assertTrue(ex.getMessage().contains("55000") || ex.getSQLState().equals("55000"));
+
+        SQLException ex2 = assertThrows(SQLException.class, () ->
+            execute(connection(), "DELETE FROM runtime.checkpoint WHERE checkpoint_id='" + cpId + "'"));
+        assertTrue(ex2.getMessage().contains("55000") || ex2.getSQLState().equals("55000"));
+    }
+
+    // ============================================================
+    // V009 WorkArtifact tests
+    // ============================================================
+
+    @Test
+    @Order(80)
+    @DisplayName("V009: WorkArtifact physical delete allowed (no immutability trigger)")
+    void v009WorkArtifactDeleteAllowed() throws SQLException {
+        UUID artId = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.work_artifact (artifact_id, artifact_kind, object_ref, content_hash, expires_at, created_at) VALUES"
+                + "('" + artId + "','DRAFT','oss://bucket/key',decode('" + HASH_HEX + "','hex'),'2027-01-01T00:00:00Z','2026-01-01T00:00:00Z')");
+        // Must NOT throw — WorkArtifact allows physical delete
+        execute(connection(), "DELETE FROM runtime.work_artifact WHERE artifact_id='" + artId + "'");
+        long count = scalarLong("SELECT count(*) FROM runtime.work_artifact WHERE artifact_id='" + artId + "'");
+        assertEquals(0, count);
+    }
+
+    @Test
+    @Order(81)
+    @DisplayName("V009: WorkArtifact has no body/text/content columns")
+    void v009WorkArtifactNoBodyColumns() throws SQLException {
+        Set<String> columns = querySet(
+                "SELECT column_name FROM information_schema.columns"
+                + " WHERE table_schema='runtime' AND table_name='work_artifact'"
+                + " AND column_name IN ('body','text','content','body_text','payload','prompt','answer')");
+        assertTrue(columns.isEmpty(), "WorkArtifact must not have body/text columns, found: " + columns);
+    }
+
+    // ============================================================
+    // V009 ModelRun state machine tests
+    // ============================================================
+
+    @Test
+    @Order(90)
+    @DisplayName("V009: ModelRun RUNNING→SUCCEEDED/FAILED/CANCELLED pass")
+    void v009ModelRunLegalTransitions() throws SQLException {
+        UUID mr1 = UUID.randomUUID();
+        UUID mr2 = UUID.randomUUID();
+        UUID mr3 = UUID.randomUUID();
+
+        // SUCCEEDED
+        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+                + "('" + mr1 + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+        execute(connection(), "UPDATE runtime.model_run SET state='SUCCEEDED', terminal_at='2026-01-01T01:00:00Z', output_manifest_hash=decode('" + HASH_HEX + "','hex') WHERE model_run_id='" + mr1 + "'");
+        assertEquals("SUCCEEDED", scalarString("SELECT state FROM runtime.model_run WHERE model_run_id='" + mr1 + "'"));
+
+        // FAILED
+        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+                + "('" + mr2 + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+        execute(connection(), "UPDATE runtime.model_run SET state='FAILED', terminal_at='2026-01-01T01:00:00Z', failure_code='INTERNAL_FAILURE' WHERE model_run_id='" + mr2 + "'");
+        assertEquals("FAILED", scalarString("SELECT state FROM runtime.model_run WHERE model_run_id='" + mr2 + "'"));
+
+        // CANCELLED
+        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+                + "('" + mr3 + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+        execute(connection(), "UPDATE runtime.model_run SET state='CANCELLED', terminal_at='2026-01-01T01:00:00Z' WHERE model_run_id='" + mr3 + "'");
+        assertEquals("CANCELLED", scalarString("SELECT state FROM runtime.model_run WHERE model_run_id='" + mr3 + "'"));
+    }
+
+    @Test
+    @Order(91)
+    @DisplayName("V009: ModelRun terminal rollback and wrong SUCCEEDED hash rejected")
+    void v009ModelRunTerminalAndHashAttacks() throws SQLException {
+        UUID mr = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+                + "('" + mr + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+        execute(connection(), "UPDATE runtime.model_run SET state='SUCCEEDED', terminal_at='2026-01-01T01:00:00Z', output_manifest_hash=decode('" + HASH_HEX + "','hex') WHERE model_run_id='" + mr + "'");
+
+        // Terminal rollback rejected
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.model_run SET state='RUNNING', terminal_at=NULL, output_manifest_hash=NULL WHERE model_run_id='" + mr + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    @Test
+    @Order(92)
+    @DisplayName("V009: ModelRun SUCCEEDED with failure_code rejected (field consistency)")
+    void v009ModelRunFieldConsistencyAttack() throws SQLException {
+        UUID mr = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+                + "('" + mr + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+
+        // SUCCEEDED with failure_code should be rejected
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.model_run SET state='SUCCEEDED', terminal_at='2026-01-01T01:00:00Z', output_manifest_hash=decode('" + HASH_HEX + "','hex'), failure_code='INTERNAL_FAILURE' WHERE model_run_id='" + mr + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    // ============================================================
+    // V009 RetrievalTrace tests
+    // ============================================================
+
+    @Test
+    @Order(100)
+    @DisplayName("V009: RetrievalTrace uuid[] read-write consistency")
+    void v009RetrievalTraceUuidArrayRoundTrip() throws SQLException {
+        UUID traceId = UUID.randomUUID();
+        UUID reqId = UUID.randomUUID();
+        UUID threadId = UUID.randomUUID();
+        UUID turnId = UUID.randomUUID();
+        UUID id1 = UUID.randomUUID();
+        UUID id2 = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.retrieval_trace (trace_id, request_id, thread_id, turn_id, purpose, result_category, policy_revision_set_hash, considered_ids, delivered_ids, created_at, expires_at) VALUES"
+                + "('" + traceId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL','SUCCEEDED',decode('" + HASH_HEX + "','hex'),"
+                + "ARRAY['" + id1 + "','" + id2 + "']::uuid[],ARRAY['" + id1 + "']::uuid[],'2026-01-01T00:00:00Z','2027-01-01T00:00:00Z')");
+
+        String considered = scalarString("SELECT considered_ids::text FROM runtime.retrieval_trace WHERE trace_id='" + traceId + "'");
+        assertTrue(considered.contains(id1.toString()), "considered_ids must contain inserted UUID");
+    }
+
+    @Test
+    @Order(101)
+    @DisplayName("V009: RetrievalTrace NULL element in array rejected")
+    void v009RetrievalTraceNullElementRejected() throws SQLException {
+        UUID traceId = UUID.randomUUID();
+        UUID reqId = UUID.randomUUID();
+        UUID threadId = UUID.randomUUID();
+        UUID turnId = UUID.randomUUID();
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "INSERT INTO runtime.retrieval_trace (trace_id, request_id, thread_id, turn_id, purpose, result_category, policy_revision_set_hash, considered_ids, created_at, expires_at) VALUES"
+                    + "('" + traceId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL','SUCCEEDED',decode('" + HASH_HEX + "','hex'),"
+                    + "ARRAY[NULL]::uuid[],'2026-01-01T00:00:00Z','2027-01-01T00:00:00Z')"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    @Test
+    @Order(102)
+    @DisplayName("V009: RetrievalTrace unknown result_category rejected")
+    void v009RetrievalTraceUnknownCategoryRejected() throws SQLException {
+        UUID traceId = UUID.randomUUID();
+        UUID reqId = UUID.randomUUID();
+        UUID threadId = UUID.randomUUID();
+        UUID turnId = UUID.randomUUID();
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "INSERT INTO runtime.retrieval_trace (trace_id, request_id, thread_id, turn_id, purpose, result_category, policy_revision_set_hash, created_at, expires_at) VALUES"
+                    + "('" + traceId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL','INVALID_CATEGORY',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z','2027-01-01T00:00:00Z')"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    // ============================================================
+    // V009 ContextDelivery tests
+    // ============================================================
+
+    @Test
+    @Order(110)
+    @DisplayName("V009: ContextDelivery 10-minute boundary — exactly 10 min passes")
+    void v009ContextDeliveryTenMinuteBoundary() throws SQLException {
+        UUID delId = UUID.randomUUID();
+        UUID reqId = UUID.randomUUID();
+        UUID threadId = UUID.randomUUID();
+        UUID turnId = UUID.randomUUID();
+
+        // Exactly 10 minutes — must pass
+        execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
+                + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
+                + "'2026-01-01T00:00:00Z','2026-01-01T00:10:00Z')");
+    }
+
+    @Test
+    @Order(111)
+    @DisplayName("V009: ContextDelivery over 10 minutes rejected")
+    void v009ContextDeliveryOverTenMinutesRejected() throws SQLException {
+        UUID delId = UUID.randomUUID();
+        UUID reqId = UUID.randomUUID();
+        UUID threadId = UUID.randomUUID();
+        UUID turnId = UUID.randomUUID();
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
+                    + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
+                    + "'2026-01-01T00:00:00Z','2026-01-01T00:10:01Z')"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    @Test
+    @Order(112)
+    @DisplayName("V009: ContextDelivery invalidation unpaired NULL rejected")
+    void v009ContextDeliveryUnpairedInvalidationRejected() throws SQLException {
+        UUID delId = UUID.randomUUID();
+        UUID reqId = UUID.randomUUID();
+        UUID threadId = UUID.randomUUID();
+        UUID turnId = UUID.randomUUID();
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at, invalidated_at) VALUES"
+                    + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
+                    + "'2026-01-01T00:00:00Z','2026-01-01T00:05:00Z','2026-01-01T00:01:00Z')"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    // ============================================================
+    // V009 ConsumerEffect tests
+    // ============================================================
+
+    private static UUID insertOperationalOutboxEvent() throws SQLException {
+        UUID eventId = UUID.randomUUID();
+        UUID aggId = UUID.randomUUID();
+        String manifest = manifestPayload(aggId, 1L);
+        execute(connection(), "INSERT INTO runtime.outbox_event (event_id, idempotency_key, event_category, event_type, aggregate_kind, aggregate_id, aggregate_revision, contract_version, purpose, policy_revision, manifest_hash, payload_manifest, available_at, created_at) VALUES"
+                + "('" + eventId + "','" + uniqueKey() + "','OPERATIONAL','index.sync-completed.v1','RUN','" + aggId + "',1,'pink.event.v1','DATABASE_TEST',0,decode('" + HASH_HEX + "','hex'),'" + manifest.replace("'", "''") + "'::jsonb,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')");
+        return eventId;
+    }
+
+    @Test
+    @Order(120)
+    @DisplayName("V009: ConsumerEffect first insert passes, duplicate triple rejected")
+    void v009ConsumerEffectDuplicateRejected() throws SQLException {
+        UUID eventId = insertOperationalOutboxEvent();
+        String consumerCode = "TEST_CONSUMER";
+        String effectKey = "EFFECT_1";
+
+        execute(connection(), "INSERT INTO runtime.consumer_effect (consumer_code, event_id, effect_key, recorded_at) VALUES"
+                + "('" + consumerCode + "','" + eventId + "','" + effectKey + "','2026-01-01T00:00:00Z')");
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "INSERT INTO runtime.consumer_effect (consumer_code, event_id, effect_key, recorded_at) VALUES"
+                    + "('" + consumerCode + "','" + eventId + "','" + effectKey + "','2026-01-01T00:00:01Z')"));
+        assertTrue(ex.getMessage().contains("23505") || ex.getSQLState().equals("23505"),
+                "duplicate (consumer_code, event_id, effect_key) must be rejected");
+    }
+
+    @Test
+    @Order(121)
+    @DisplayName("V009: ConsumerEffect UPDATE/DELETE rejected")
+    void v009ConsumerEffectUpdateDeleteRejected() throws SQLException {
+        UUID eventId = insertOperationalOutboxEvent();
+        String consumerCode = "TEST_CONSUMER_IM";
+        String effectKey = "EFFECT_IM";
+
+        execute(connection(), "INSERT INTO runtime.consumer_effect (consumer_code, event_id, effect_key, recorded_at) VALUES"
+                + "('" + consumerCode + "','" + eventId + "','" + effectKey + "','2026-01-01T00:00:00Z')");
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.consumer_effect SET recorded_at='2026-01-02T00:00:00Z' WHERE consumer_code='" + consumerCode + "'"));
+        assertTrue(ex.getMessage().contains("55000") || ex.getSQLState().equals("55000"));
+
+        SQLException ex2 = assertThrows(SQLException.class, () ->
+            execute(connection(), "DELETE FROM runtime.consumer_effect WHERE consumer_code='" + consumerCode + "'"));
+        assertTrue(ex2.getMessage().contains("55000") || ex2.getSQLState().equals("55000"));
+    }
+
+    // ============================================================
+    // V009 OPERATIONAL identity CHECK tests
+    // ============================================================
+
+    @Test
+    @Order(130)
+    @DisplayName("V009: OPERATIONAL RUN/EFFECT/FACT valid kinds pass")
+    void v009OperationalRunEffectFactValid() throws SQLException {
+        for (String kind : new String[]{"RUN", "EFFECT", "FACT"}) {
+            String key = uniqueKey();
+            UUID aggId = UUID.randomUUID();
+            execute(connection(), "INSERT INTO runtime.outbox_event (event_id, idempotency_key, event_category, event_type, aggregate_kind, aggregate_id, aggregate_revision, contract_version, purpose, policy_revision, manifest_hash, payload_manifest, available_at, created_at) VALUES"
+                    + "('" + UUID.randomUUID() + "','" + key + "','OPERATIONAL','index.sync-completed.v1','" + kind + "','" + aggId + "',1,'pink.event.v1','INDEX_SYNC',0,decode('" + HASH_HEX + "','hex'),"
+                    + "'{\"aggregateId\":\"" + aggId + "\",\"aggregateRevision\":1,\"policyRevision\":0,\"purpose\":\"INDEX_SYNC\",\"manifestHash\":\"" + HASH_HEX + "\"}'::jsonb,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')");
+        }
+    }
+
+    @Test
+    @Order(131)
+    @DisplayName("V009: OPERATIONAL unknown kind (CLOSEOUT_RUN, INDEX_SYNC, etc.) rejected")
+    void v009OperationalUnknownKindRejected() throws SQLException {
+        for (String badKind : new String[]{"CLOSEOUT_RUN", "INDEX_SYNC", "ROUTE_HEALTH", "DELETION_RUN"}) {
+            String key = uniqueKey();
+            UUID aggId = UUID.randomUUID();
+            String finalKey = key;
+            String finalBadKind = badKind;
+            SQLException ex = assertThrows(SQLException.class, () ->
+                execute(connection(), "INSERT INTO runtime.outbox_event (event_id, idempotency_key, event_category, event_type, aggregate_kind, aggregate_id, aggregate_revision, contract_version, purpose, policy_revision, manifest_hash, payload_manifest, available_at, created_at) VALUES"
+                        + "('" + UUID.randomUUID() + "','" + finalKey + "','OPERATIONAL','index.sync-completed.v1','" + finalBadKind + "','" + aggId + "',1,'pink.event.v1','INDEX_SYNC',0,decode('" + HASH_HEX + "','hex'),"
+                        + "'{\"aggregateId\":\"" + aggId + "\",\"aggregateRevision\":1,\"policyRevision\":0,\"purpose\":\"INDEX_SYNC\",\"manifestHash\":\"" + HASH_HEX + "\"}'::jsonb,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')"));
+            assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"),
+                    "OPERATIONAL kind '" + badKind + "' must be rejected");
+        }
+    }
+
+    @Test
+    @Order(132)
+    @DisplayName("V009: OPERATIONAL NULL aggregate_revision rejected")
+    void v009OperationalNullRevisionRejected() throws SQLException {
+        String key = uniqueKey();
+        UUID aggId = UUID.randomUUID();
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "INSERT INTO runtime.outbox_event (event_id, idempotency_key, event_category, event_type, aggregate_kind, aggregate_id, aggregate_revision, contract_version, purpose, policy_revision, manifest_hash, payload_manifest, available_at, created_at) VALUES"
+                    + "('" + UUID.randomUUID() + "','" + key + "','OPERATIONAL','index.sync-completed.v1','RUN','" + aggId + "',NULL,'pink.event.v1','INDEX_SYNC',0,decode('" + HASH_HEX + "','hex'),"
+                    + "'{\"aggregateId\":\"" + aggId + "\",\"aggregateRevision\":null,\"policyRevision\":0,\"purpose\":\"INDEX_SYNC\",\"manifestHash\":\"" + HASH_HEX + "\"}'::jsonb,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"),
+                "OPERATIONAL with NULL revision must be rejected, got SQLSTATE=" + ex.getSQLState());
+    }
+
+    @Test
+    @Order(133)
+    @DisplayName("V009: OPERATIONAL CHECK constraint exists on outbox_event (no table regression)")
+    void v009OperationalCheckConstraintExists() throws SQLException {
+        long count = scalarLong(
+                "SELECT count(*) FROM pg_constraint"
+                + " WHERE conname='outbox_event_operational_kind_check'"
+                + " AND contype='c'"
+                + " AND conrelid = (SELECT oid FROM pg_class"
+                + "  WHERE relnamespace = (SELECT oid FROM pg_namespace WHERE nspname='runtime')"
+                + "  AND relname='outbox_event')");
+        assertEquals(1, count, "outbox_event_operational_kind_check must exist");
+
+        // Verify existing outbox_event columns are intact (no regression)
+        long colCount = scalarLong(
+                "SELECT count(*) FROM information_schema.columns"
+                + " WHERE table_schema='runtime' AND table_name='outbox_event'");
+        assertTrue(colCount >= 21, "outbox_event must retain all existing columns");
+    }
+
+    // ============================================================
+    // V009 body/secret canary scan
+    // ============================================================
+
+    @Test
+    @Order(140)
+    @DisplayName("V009: No body/secret columns in new runtime tables")
+    void v009NoBodySecretColumns() throws SQLException {
+        Set<String> dangerousColumns = querySet(
+                "SELECT column_name FROM information_schema.columns"
+                + " WHERE table_schema='runtime'"
+                + " AND table_name IN ('capture_scope','capture_scope_unit','closeout_run','checkpoint',"
+                + "'work_artifact','model_run','retrieval_trace','context_delivery','consumer_effect')"
+                + " AND column_name IN ('body','text','content','body_text','payload','prompt','answer','secret','token','key','chain_of_thought','cot')");
+        assertTrue(dangerousColumns.isEmpty(), "V009 tables must not have body/secret columns, found: " + dangerousColumns);
+    }
+
+    // ============================================================
+    // R1-02: CaptureScope born-frozen tests
+    // ============================================================
+
+    @Test
+    @Order(150)
+    @DisplayName("R1-02: CaptureScope same-txn assemble→freeze→commit passes")
+    void r102CaptureScopeBornFrozenLegal() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "R102");
+        UUID unitId = insertMinimalSourceUnit(sourceId, "R102");
+        UUID scopeId = UUID.randomUUID();
+
+        try (Connection connection = connection()) {
+            connection.setAutoCommit(false);
+            try {
+                execute(connection, "INSERT INTO runtime.capture_scope (scope_id, source_id, from_ordinal, to_ordinal, rule_version, coverage_code, manifest_hash, created_at) VALUES"
+                        + "('" + scopeId + "','" + sourceId + "',0,10,'v1','FULL',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+                execute(connection, "INSERT INTO runtime.capture_scope_unit (scope_id, source_unit_id, ordinal) VALUES"
+                        + "('" + scopeId + "','" + unitId + "',0)");
+                execute(connection, "UPDATE runtime.capture_scope SET frozen_at='2026-01-01T00:00:00Z' WHERE scope_id='" + scopeId + "'");
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            }
+        }
+        // Verify committed and frozen
+        assertNotNull(scalarString("SELECT frozen_at::text FROM runtime.capture_scope WHERE scope_id='" + scopeId + "'"));
+    }
+
+    @Test
+    @Order(151)
+    @DisplayName("R1-02: CaptureScope unfrozen commit rejected")
+    void r102CaptureScopeUnfrozenCommitRejected() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "R102B");
+        UUID scopeId = UUID.randomUUID();
+
+        try (Connection connection = connection()) {
+            connection.setAutoCommit(false);
+            execute(connection, "INSERT INTO runtime.capture_scope (scope_id, source_id, from_ordinal, to_ordinal, rule_version, coverage_code, manifest_hash, created_at) VALUES"
+                    + "('" + scopeId + "','" + sourceId + "',0,10,'v1','FULL',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+            // No freeze UPDATE → commit must be rejected
+            SQLException ex = assertThrows(SQLException.class, connection::commit);
+            assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"),
+                    "unfrozen commit must be rejected, got: " + ex.getSQLState());
+        }
+    }
+
+    @Test
+    @Order(152)
+    @DisplayName("R1-02: CaptureScope frozen — append unit rejected")
+    void r102CaptureScopeFrozenAppendUnitRejected() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "R102C");
+        UUID unitId = insertMinimalSourceUnit(sourceId, "R102C");
+        UUID scopeId = UUID.randomUUID();
+
+        // Create frozen scope via transaction
+        try (Connection connection = connection()) {
+            connection.setAutoCommit(false);
+            execute(connection, "INSERT INTO runtime.capture_scope (scope_id, source_id, from_ordinal, to_ordinal, rule_version, coverage_code, manifest_hash, created_at) VALUES"
+                    + "('" + scopeId + "','" + sourceId + "',0,10,'v1','FULL',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+            execute(connection, "UPDATE runtime.capture_scope SET frozen_at='2026-01-01T00:00:00Z' WHERE scope_id='" + scopeId + "'");
+            connection.commit();
+        }
+
+        // Try to INSERT unit on frozen scope → rejected
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "INSERT INTO runtime.capture_scope_unit (scope_id, source_unit_id, ordinal) VALUES"
+                    + "('" + scopeId + "','" + unitId + "',0)"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"),
+                "append unit on frozen scope must be rejected");
+    }
+
+    @Test
+    @Order(153)
+    @DisplayName("R1-02: CaptureScope frozen — update scope rejected")
+    void r102CaptureScopeFrozenUpdateRejected() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "R102D");
+        UUID scopeId = UUID.randomUUID();
+
+        try (Connection connection = connection()) {
+            connection.setAutoCommit(false);
+            execute(connection, "INSERT INTO runtime.capture_scope (scope_id, source_id, from_ordinal, to_ordinal, rule_version, coverage_code, manifest_hash, created_at) VALUES"
+                    + "('" + scopeId + "','" + sourceId + "',0,10,'v1','FULL',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+            execute(connection, "UPDATE runtime.capture_scope SET frozen_at='2026-01-01T00:00:00Z' WHERE scope_id='" + scopeId + "'");
+            connection.commit();
+        }
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.capture_scope SET rule_version='v2' WHERE scope_id='" + scopeId + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    // ============================================================
+    // R1-03: CloseoutRun same-state mutation tests
+    // ============================================================
+
+    @Test
+    @Order(160)
+    @DisplayName("R1-03: CloseoutRun COMPLETED same-state modify terminal_at rejected")
+    void r103CloseoutRunCompletedSameStateMutate() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "R103A");
+        UUID scopeId = insertMinimalCaptureScope(sourceId);
+        UUID runId = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+                + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
+        execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+        execute(connection(), "UPDATE runtime.closeout_run SET state='COMPLETED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
+
+        // COMPLETED→COMPLETED with different terminal_at → rejected
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.closeout_run SET terminal_at='2026-01-01T03:00:00Z' WHERE run_id='" + runId + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    @Test
+    @Order(161)
+    @DisplayName("R1-03: CloseoutRun RUNNING same-state modify started_at rejected")
+    void r103CloseoutRunRunningSameStateMutate() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "R103B");
+        UUID scopeId = insertMinimalCaptureScope(sourceId);
+        UUID runId = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+                + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
+        execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+
+        // RUNNING→RUNNING with different started_at → rejected
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.closeout_run SET started_at='2026-01-01T01:30:00Z' WHERE run_id='" + runId + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    @Test
+    @Order(162)
+    @DisplayName("R1-03: CloseoutRun submission_id NULL→non-null rejected (immutable from creation)")
+    void r103CloseoutRunSubmissionIdImmutable() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "R103C");
+        UUID scopeId = insertMinimalCaptureScope(sourceId);
+        UUID runId = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+                + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
+
+        // submission_id NULL→non-null → rejected
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.closeout_run SET submission_id='" + UUID.randomUUID() + "' WHERE run_id='" + runId + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    // ============================================================
+    // R1-04: ModelRun same-state mutation tests
+    // ============================================================
+
+    @Test
+    @Order(170)
+    @DisplayName("R1-04: ModelRun SUCCEEDED same-state modify terminal_at rejected")
+    void r104ModelRunSucceededSameStateMutate() throws SQLException {
+        UUID mr = UUID.randomUUID();
+        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+                + "('" + mr + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+        execute(connection(), "UPDATE runtime.model_run SET state='SUCCEEDED', terminal_at='2026-01-01T01:00:00Z', output_manifest_hash=decode('" + HASH_HEX + "','hex') WHERE model_run_id='" + mr + "'");
+
+        // SUCCEEDED→SUCCEEDED with different terminal_at → rejected
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.model_run SET terminal_at='2026-01-01T02:00:00Z' WHERE model_run_id='" + mr + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    @Test
+    @Order(171)
+    @DisplayName("R1-04: ModelRun RUNNING same-state modify output_manifest_hash rejected")
+    void r104ModelRunRunningSameStateMutate() throws SQLException {
+        UUID mr = UUID.randomUUID();
+        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+                + "('" + mr + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+
+        // RUNNING→RUNNING setting output_manifest_hash → rejected
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.model_run SET output_manifest_hash=decode('" + HASH_HEX + "','hex') WHERE model_run_id='" + mr + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    @Test
+    @Order(172)
+    @DisplayName("R1-04: ModelRun FAILED same-state modify failure_code rejected")
+    void r104ModelRunFailedSameStateMutate() throws SQLException {
+        UUID mr = UUID.randomUUID();
+        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+                + "('" + mr + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+        execute(connection(), "UPDATE runtime.model_run SET state='FAILED', terminal_at='2026-01-01T01:00:00Z', failure_code='INTERNAL_FAILURE' WHERE model_run_id='" + mr + "'");
+
+        // FAILED→FAILED with different failure_code → rejected
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.model_run SET failure_code='DATABASE_UNAVAILABLE' WHERE model_run_id='" + mr + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    // ============================================================
+    // R1-05: ContextDelivery one-way invalidation tests
+    // ============================================================
+
+    @Test
+    @Order(180)
+    @DisplayName("R1-05: ContextDelivery first invalidation passes")
+    void r105ContextDeliveryFirstInvalidation() throws SQLException {
+        UUID delId = UUID.randomUUID();
+        UUID reqId = UUID.randomUUID();
+        UUID threadId = UUID.randomUUID();
+        UUID turnId = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
+                + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
+                + "'2026-01-01T00:00:00Z','2026-01-01T00:05:00Z')");
+
+        execute(connection(), "UPDATE runtime.context_delivery SET invalidated_at='2026-01-01T00:01:00Z', invalidation_reason='TURN_END' WHERE delivery_id='" + delId + "'");
+        assertEquals("TURN_END", scalarString("SELECT invalidation_reason FROM runtime.context_delivery WHERE delivery_id='" + delId + "'"));
+    }
+
+    @Test
+    @Order(181)
+    @DisplayName("R1-05: ContextDelivery clear invalidation (resurrect) rejected")
+    void r105ContextDeliveryResurrectRejected() throws SQLException {
+        UUID delId = UUID.randomUUID();
+        UUID reqId = UUID.randomUUID();
+        UUID threadId = UUID.randomUUID();
+        UUID turnId = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
+                + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
+                + "'2026-01-01T00:00:00Z','2026-01-01T00:05:00Z')");
+        execute(connection(), "UPDATE runtime.context_delivery SET invalidated_at='2026-01-01T00:01:00Z', invalidation_reason='TURN_END' WHERE delivery_id='" + delId + "'");
+
+        // Clear invalidation → rejected
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.context_delivery SET invalidated_at=NULL, invalidation_reason=NULL WHERE delivery_id='" + delId + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    @Test
+    @Order(182)
+    @DisplayName("R1-05: ContextDelivery modify invalidation reason rejected")
+    void r105ContextDeliveryModifyReasonRejected() throws SQLException {
+        UUID delId = UUID.randomUUID();
+        UUID reqId = UUID.randomUUID();
+        UUID threadId = UUID.randomUUID();
+        UUID turnId = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
+                + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
+                + "'2026-01-01T00:00:00Z','2026-01-01T00:05:00Z')");
+        execute(connection(), "UPDATE runtime.context_delivery SET invalidated_at='2026-01-01T00:01:00Z', invalidation_reason='TURN_END' WHERE delivery_id='" + delId + "'");
+
+        // Modify invalidation_reason → rejected
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.context_delivery SET invalidation_reason='COMPACT' WHERE delivery_id='" + delId + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    @Test
+    @Order(183)
+    @DisplayName("R1-05: ContextDelivery modify manifest_hash rejected (identity immutable)")
+    void r105ContextDeliveryModifyManifestRejected() throws SQLException {
+        UUID delId = UUID.randomUUID();
+        UUID reqId = UUID.randomUUID();
+        UUID threadId = UUID.randomUUID();
+        UUID turnId = UUID.randomUUID();
+
+        execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
+                + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
+                + "'2026-01-01T00:00:00Z','2026-01-01T00:05:00Z')");
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.context_delivery SET manifest_hash=decode('" + HASH_HEX.replace("ab", "cd") + "','hex') WHERE delivery_id='" + delId + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    // ============================================================
+    // R2-01: Missing attack tests
+    // ============================================================
+
+    @Test
+    @Order(200)
+    @DisplayName("R2-01: Frozen capture_scope_unit UPDATE rejected")
+    void r201FrozenUnitUpdateRejected() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "R201A");
+        UUID unitId = insertMinimalSourceUnit(sourceId, "R201A");
+        UUID scopeId = UUID.randomUUID();
+
+        // Create frozen scope with unit
+        try (Connection connection = connection()) {
+            connection.setAutoCommit(false);
+            execute(connection, "INSERT INTO runtime.capture_scope (scope_id, source_id, from_ordinal, to_ordinal, rule_version, coverage_code, manifest_hash, created_at) VALUES"
+                    + "('" + scopeId + "','" + sourceId + "',0,10,'v1','FULL',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+            execute(connection, "INSERT INTO runtime.capture_scope_unit (scope_id, source_unit_id, ordinal) VALUES"
+                    + "('" + scopeId + "','" + unitId + "',0)");
+            execute(connection, "UPDATE runtime.capture_scope SET frozen_at='2026-01-01T00:00:00Z' WHERE scope_id='" + scopeId + "'");
+            connection.commit();
+        }
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "UPDATE runtime.capture_scope_unit SET ordinal=1 WHERE scope_id='" + scopeId + "' AND source_unit_id='" + unitId + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    @Test
+    @Order(201)
+    @DisplayName("R2-01: Frozen capture_scope_unit DELETE rejected")
+    void r201FrozenUnitDeleteRejected() throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, "R201B");
+        UUID unitId = insertMinimalSourceUnit(sourceId, "R201B");
+        UUID scopeId = UUID.randomUUID();
+
+        try (Connection connection = connection()) {
+            connection.setAutoCommit(false);
+            execute(connection, "INSERT INTO runtime.capture_scope (scope_id, source_id, from_ordinal, to_ordinal, rule_version, coverage_code, manifest_hash, created_at) VALUES"
+                    + "('" + scopeId + "','" + sourceId + "',0,10,'v1','FULL',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+            execute(connection, "INSERT INTO runtime.capture_scope_unit (scope_id, source_unit_id, ordinal) VALUES"
+                    + "('" + scopeId + "','" + unitId + "',0)");
+            execute(connection, "UPDATE runtime.capture_scope SET frozen_at='2026-01-01T00:00:00Z' WHERE scope_id='" + scopeId + "'");
+            connection.commit();
+        }
+
+        SQLException ex = assertThrows(SQLException.class, () ->
+            execute(connection(), "DELETE FROM runtime.capture_scope_unit WHERE scope_id='" + scopeId + "' AND source_unit_id='" + unitId + "'"));
+        assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
+    }
+
+    // ============================================================
+    // R2-01: CloseoutRun 6 legal transitions (individual)
+    // ============================================================
+
+    private UUID r201SetupCloseoutRun(String suffix) throws SQLException {
+        UUID policyId = insertMinimalAccessPolicy();
+        UUID sourceId = insertMinimalSource(policyId, suffix);
+        UUID scopeId = insertMinimalCaptureScope(sourceId);
+        UUID runId = UUID.randomUUID();
+        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+                + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
+        return runId;
+    }
+
+    @Test
+    @Order(210)
+    @DisplayName("R2-01: CloseoutRun READY→RUNNING")
+    void r201CloseoutRunReadyToRunning() throws SQLException {
+        UUID runId = r201SetupCloseoutRun("R2RR");
+        execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+        assertEquals("RUNNING", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
+    }
+
+    @Test
+    @Order(211)
+    @DisplayName("R2-01: CloseoutRun READY→FAILED")
+    void r201CloseoutRunReadyToFailed() throws SQLException {
+        UUID runId = r201SetupCloseoutRun("R2RF");
+        execute(connection(), "UPDATE runtime.closeout_run SET state='FAILED', terminal_at='2026-01-01T01:00:00Z', failure_code='INTERNAL_FAILURE' WHERE run_id='" + runId + "'");
+        assertEquals("FAILED", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
+    }
+
+    @Test
+    @Order(212)
+    @DisplayName("R2-01: CloseoutRun READY→CANCELLED")
+    void r201CloseoutRunReadyToCancelled() throws SQLException {
+        UUID runId = r201SetupCloseoutRun("R2RC");
+        execute(connection(), "UPDATE runtime.closeout_run SET state='CANCELLED', terminal_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+        assertEquals("CANCELLED", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
+    }
+
+    private UUID r201SetupRunningCloseoutRun(String suffix) throws SQLException {
+        UUID runId = r201SetupCloseoutRun(suffix);
+        execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+        return runId;
+    }
+
+    @Test
+    @Order(213)
+    @DisplayName("R2-01: CloseoutRun RUNNING→COMPLETED")
+    void r201CloseoutRunRunningToCompleted() throws SQLException {
+        UUID runId = r201SetupRunningCloseoutRun("R2RRC");
+        execute(connection(), "UPDATE runtime.closeout_run SET state='COMPLETED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
+        assertEquals("COMPLETED", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
+    }
+
+    @Test
+    @Order(214)
+    @DisplayName("R2-01: CloseoutRun RUNNING→FAILED")
+    void r201CloseoutRunRunningToFailed() throws SQLException {
+        UUID runId = r201SetupRunningCloseoutRun("R2RRF");
+        execute(connection(), "UPDATE runtime.closeout_run SET state='FAILED', terminal_at='2026-01-01T02:00:00Z', failure_code='INTERNAL_FAILURE' WHERE run_id='" + runId + "'");
+        assertEquals("FAILED", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
+    }
+
+    @Test
+    @Order(215)
+    @DisplayName("R2-01: CloseoutRun RUNNING→CANCELLED")
+    void r201CloseoutRunRunningToCancelled() throws SQLException {
+        UUID runId = r201SetupRunningCloseoutRun("R2RRC2");
+        execute(connection(), "UPDATE runtime.closeout_run SET state='CANCELLED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
+        assertEquals("CANCELLED", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
+    }
+
+    // ============================================================
+    // R2-01: Isolated V008→V009 upgrade test
+    // ============================================================
+
+    @Test
+    @Order(220)
+    @DisplayName("R2-01: Isolated V008→V009 upgrade (V001-V008 first, then V009 alone)")
+    void r201IsolatedV008toV009Upgrade() {
+        var upgradeImage = new PostgreSQLContainer<>(
+                DockerImageName.parse(IMAGE).asCompatibleSubstituteFor("postgres"))
+                .withDatabaseName("hide_nest_upgrade")
+                .withUsername("hide_nest_migrator")
+                .withPassword(PASSWORD)
+                .withStartupTimeout(Duration.ofSeconds(60))
+                .withTmpFs(Map.of("/var/lib/postgresql", "rw,noexec,nosuid,size=536870912"));
+        upgradeImage.setPortBindings(List.of("127.0.0.1::5432"));
+        upgradeImage.start();
+
+        try (Connection conn = DriverManager.getConnection(
+                upgradeImage.getJdbcUrl(), upgradeImage.getUsername(), upgradeImage.getPassword());
+                Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE ROLE hide_nest_api NOLOGIN");
+            stmt.execute("CREATE ROLE hide_nest_worker NOLOGIN");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        Flyway v8Flyway = Flyway.configure()
+                .dataSource(upgradeImage.getJdbcUrl(), upgradeImage.getUsername(), upgradeImage.getPassword())
+                .defaultSchema("public")
+                .locations("classpath:db/migration")
+                .cleanDisabled(true)
+                .baselineOnMigrate(false)
+                .outOfOrder(false)
+                .target("8")
+                .load();
+        MigrateResult v8Result = v8Flyway.migrate();
+        assertEquals(8, v8Result.migrationsExecuted, "V001-V008 must execute 8 migrations");
+
+        Flyway v9Flyway = Flyway.configure()
+                .dataSource(upgradeImage.getJdbcUrl(), upgradeImage.getUsername(), upgradeImage.getPassword())
+                .defaultSchema("public")
+                .locations("classpath:db/migration")
+                .cleanDisabled(true)
+                .baselineOnMigrate(false)
+                .outOfOrder(false)
+                .load();
+        MigrateResult v9Result = v9Flyway.migrate();
+        assertEquals(1, v9Result.migrationsExecuted, "V008→V009 must execute exactly 1 migration");
+        assertEquals(9, v9Flyway.info().applied().length, "history must be 9");
+
+        // Verify all 9 V009 tables exist
+        try (Connection conn = DriverManager.getConnection(
+                upgradeImage.getJdbcUrl(), upgradeImage.getUsername(), upgradeImage.getPassword());
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(
+                        "SELECT table_name FROM information_schema.tables"
+                        + " WHERE table_schema='runtime' AND table_type='BASE TABLE'"
+                        + " AND table_name IN ('capture_scope','capture_scope_unit','closeout_run','checkpoint',"
+                        + "'work_artifact','model_run','retrieval_trace','context_delivery','consumer_effect')")) {
+            Set<String> tables = new HashSet<>();
+            while (rs.next()) tables.add(rs.getString(1));
+            assertEquals(9, tables.size(), "V008→V009 upgrade must create exactly 9 new tables");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        upgradeImage.stop();
+    }
+
+    private static byte[] hexToBytes(String hex) {
+        int len = hex.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
+                    + Character.digit(hex.charAt(i + 1), 16));
+        }
+        return data;
+    }
+
+    private static UUID insertMinimalAccessPolicy() throws SQLException {
+        UUID policyId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        UUID decisionId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        try (Connection connection = connection()) {
+            connection.setAutoCommit(false);
+            try {
+                execute(connection, "SET CONSTRAINTS ALL DEFERRED");
+                execute(connection,
+                        "INSERT INTO memory.actor_ref(actor_id,actor_kind,stable_ref,created_at) VALUES "
+                                + "('%s','SYNTHETIC','v9-min-actor-%s',clock_timestamp())"
+                                        .formatted(actorId, actorId));
+                execute(connection,
+                        "INSERT INTO memory.access_policy(policy_id,owner_kind,owner_id,current_revision_no,created_at) "
+                                + "VALUES ('%s','TEST','%s',1,clock_timestamp())"
+                                        .formatted(policyId, ownerId));
+                execute(connection,
+                        "INSERT INTO memory.decision(decision_id,decision_kind,actor_id,actor_role,"
+                                + "target_kind,target_id,target_revision_ref,authorization_ref,idempotency_key,created_at) VALUES "
+                                + "('%s','HIDE_SELECT','%s','USER','ACCESS_POLICY','%s',1,'proof','v9-pol-dec-%s',clock_timestamp())"
+                                        .formatted(decisionId, actorId, policyId, decisionId));
+                execute(connection,
+                        "INSERT INTO memory.access_policy_revision(policy_id,revision_no,companion_allowed,"
+                                + "maintenance_allowed,export_allowed,external_provider_allowed,isolated,"
+                                + "created_by_decision_id,created_at) VALUES "
+                                + "('%s',1,true,true,false,false,false,'%s',clock_timestamp())"
+                                        .formatted(policyId, decisionId));
+                insertGovernedOutbox(connection, "ACCESS_POLICY", policyId, 1L, "memory.policy-changed.v1", decisionId);
+                connection.commit();
+                return policyId;
+            } catch (SQLException exception) {
+                connection.rollback();
+                throw exception;
+            }
+        }
+    }
+
+    private static UUID insertMinimalSource(UUID policyId, String suffix) throws SQLException {
+        UUID sourceId = UUID.randomUUID();
+        execute(connection(), "INSERT INTO evidence.source (source_id, source_kind, platform, external_ref, observed_accessible, compressed_observed, policy_id, created_at, ingested_at) VALUES"
+                + "('" + sourceId + "','CODEX','PLATFORM_" + suffix + "','REF_" + suffix + "',true,false,'" + policyId + "','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')");
+        return sourceId;
+    }
+
+    private static UUID insertMinimalSourceUnit(UUID sourceId, String suffix) throws SQLException {
+        UUID unitId = UUID.randomUUID();
+        execute(connection(), "INSERT INTO evidence.source_unit (source_unit_id, source_id, external_unit_ref, source_version, ordinal, created_at) VALUES"
+                + "('" + unitId + "','" + sourceId + "','UNIT_" + suffix + "','v1',0,'2026-01-01T00:00:00Z')");
+        return unitId;
+    }
+
+    private static UUID insertMinimalCaptureScope(UUID sourceId) throws SQLException {
+        UUID scopeId = UUID.randomUUID();
+        execute(connection(), "INSERT INTO runtime.capture_scope (scope_id, source_id, from_ordinal, to_ordinal, rule_version, coverage_code, frozen_at, manifest_hash, created_at) VALUES"
+                + "('" + scopeId + "','" + sourceId + "',0,10,'v1','FULL','2026-01-01T00:00:00Z',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
+        return scopeId;
     }
 
     private static Map<String, String> treeManifest(Path root) throws Exception {
@@ -2986,7 +4116,7 @@ class DatabaseSliceBContractTest {
                         + "aggregate_id,aggregate_revision,contract_version,purpose,policy_revision,manifest_hash,"
                         + "payload_manifest,change_event_id,state,available_at,attempt_count,max_attempts,"
                         + "last_failure_code,created_at) VALUES "
-                        + "('%s','%s','OPERATIONAL','closeout.received.v1','CLOSEOUT_RUN','%s',%s,'pink.event.v1',"
+                        + "('%s','%s','OPERATIONAL','closeout.received.v1','RUN','%s',%s,'pink.event.v1',"
                         + "'DATABASE_TEST',0,decode('%s','hex'),'" + manifest.replace("'", "''")
                         + "'::jsonb,NULL,'READY',clock_timestamp(),0,8,NULL,clock_timestamp())")
                 .formatted(UUID.randomUUID(), idempotencyKey, aggId, sqlLong(revision), HASH_HEX);
@@ -2998,7 +4128,7 @@ class DatabaseSliceBContractTest {
                         + "aggregate_id,aggregate_revision,contract_version,purpose,policy_revision,manifest_hash,"
                         + "payload_manifest,change_event_id,state,available_at,attempt_count,max_attempts,"
                         + "last_failure_code,created_at) VALUES "
-                        + "('%s','%s','OPERATIONAL','closeout.received.v1','CLOSEOUT_RUN','%s',%s,'pink.event.v1',"
+                        + "('%s','%s','OPERATIONAL','closeout.received.v1','RUN','%s',%s,'pink.event.v1',"
                         + "'DATABASE_TEST',0,decode('%s','hex'),'" + manifestJson.replace("'", "''")
                         + "'::jsonb,NULL,'READY',clock_timestamp(),0,8,NULL,clock_timestamp())")
                 .formatted(UUID.randomUUID(), idempotencyKey, aggId, sqlLong(revision), HASH_HEX);

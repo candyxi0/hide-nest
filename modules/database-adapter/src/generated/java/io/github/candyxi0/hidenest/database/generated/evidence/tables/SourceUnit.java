@@ -11,6 +11,8 @@ import io.github.candyxi0.hidenest.database.generated.evidence.tables.SourceAnch
 import io.github.candyxi0.hidenest.database.generated.evidence.tables.SourcePayload.SourcePayloadPath;
 import io.github.candyxi0.hidenest.database.generated.evidence.tables.records.SourceUnitRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ActorRef.ActorRefPath;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScope.CaptureScopePath;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScopeUnit.CaptureScopeUnitPath;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -247,6 +249,27 @@ public class SourceUnit extends TableImpl<SourceUnitRecord> {
             _sourcePayload = new SourcePayloadPath(this, null, Keys.SOURCE_PAYLOAD__SOURCE_PAYLOAD_UNIT_FK.getInverseKey());
 
         return _sourcePayload;
+    }
+
+    private transient CaptureScopeUnitPath _captureScopeUnit;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>runtime.capture_scope_unit</code> table
+     */
+    public CaptureScopeUnitPath captureScopeUnit() {
+        if (_captureScopeUnit == null)
+            _captureScopeUnit = new CaptureScopeUnitPath(this, null, io.github.candyxi0.hidenest.database.generated.runtime.Keys.CAPTURE_SCOPE_UNIT__CAPTURE_SCOPE_UNIT_SOURCE_UNIT_FK.getInverseKey());
+
+        return _captureScopeUnit;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>runtime.capture_scope</code> table
+     */
+    public CaptureScopePath captureScope() {
+        return captureScopeUnit().captureScope();
     }
 
     @Override

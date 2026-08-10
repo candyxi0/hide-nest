@@ -6,6 +6,8 @@ package io.github.candyxi0.hidenest.database.generated.runtime.tables;
 
 import io.github.candyxi0.hidenest.database.generated.runtime.Keys;
 import io.github.candyxi0.hidenest.database.generated.runtime.Runtime;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CloseoutRun.CloseoutRunPath;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ModelRun.ModelRunPath;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.OutboxEvent.OutboxEventPath;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.FailureCodeRegistryRecord;
 
@@ -152,6 +154,32 @@ public class FailureCodeRegistry extends TableImpl<FailureCodeRegistryRecord> {
     @Override
     public UniqueKey<FailureCodeRegistryRecord> getPrimaryKey() {
         return Keys.FAILURE_CODE_REGISTRY_PKEY;
+    }
+
+    private transient CloseoutRunPath _closeoutRun;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>runtime.closeout_run</code> table
+     */
+    public CloseoutRunPath closeoutRun() {
+        if (_closeoutRun == null)
+            _closeoutRun = new CloseoutRunPath(this, null, Keys.CLOSEOUT_RUN__CLOSEOUT_RUN_FAILURE_CODE_FK.getInverseKey());
+
+        return _closeoutRun;
+    }
+
+    private transient ModelRunPath _modelRun;
+
+    /**
+     * Get the implicit to-many join path to the <code>runtime.model_run</code>
+     * table
+     */
+    public ModelRunPath modelRun() {
+        if (_modelRun == null)
+            _modelRun = new ModelRunPath(this, null, Keys.MODEL_RUN__MODEL_RUN_FAILURE_CODE_FK.getInverseKey());
+
+        return _modelRun;
     }
 
     private transient OutboxEventPath _outboxEvent;

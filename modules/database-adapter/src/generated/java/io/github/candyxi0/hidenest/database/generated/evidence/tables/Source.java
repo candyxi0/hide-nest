@@ -10,6 +10,7 @@ import io.github.candyxi0.hidenest.database.generated.evidence.tables.SourceAnch
 import io.github.candyxi0.hidenest.database.generated.evidence.tables.SourceUnit.SourceUnitPath;
 import io.github.candyxi0.hidenest.database.generated.evidence.tables.records.SourceRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicy.AccessPolicyPath;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScope.CaptureScopePath;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -240,6 +241,19 @@ public class Source extends TableImpl<SourceRecord> {
             _sourceUnit = new SourceUnitPath(this, null, Keys.SOURCE_UNIT__SOURCE_UNIT_SOURCE_FK.getInverseKey());
 
         return _sourceUnit;
+    }
+
+    private transient CaptureScopePath _captureScope;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>runtime.capture_scope</code> table
+     */
+    public CaptureScopePath captureScope() {
+        if (_captureScope == null)
+            _captureScope = new CaptureScopePath(this, null, io.github.candyxi0.hidenest.database.generated.runtime.Keys.CAPTURE_SCOPE__CAPTURE_SCOPE_SOURCE_FK.getInverseKey());
+
+        return _captureScope;
     }
 
     @Override

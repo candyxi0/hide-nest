@@ -4,7 +4,16 @@
 package io.github.candyxi0.hidenest.database.generated.runtime;
 
 
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScope;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScopeUnit;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.Checkpoint;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CloseoutRun;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ConsumerEffect;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ContextDelivery;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ModelRun;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.OutboxEvent;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.RetrievalTrace;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.WorkArtifact;
 
 import javax.annotation.processing.Generated;
 
@@ -30,9 +39,21 @@ public class Indexes {
     // INDEX definitions
     // -------------------------------------------------------------------------
 
+    public static final Index CAPTURE_SCOPE_SOURCE_LOOKUP = Internal.createIndex(DSL.name("capture_scope_source_lookup"), CaptureScope.CAPTURE_SCOPE, new OrderField[] { CaptureScope.CAPTURE_SCOPE.SOURCE_ID }, false);
+    public static final Index CAPTURE_SCOPE_UNIT_UNIT_LOOKUP = Internal.createIndex(DSL.name("capture_scope_unit_unit_lookup"), CaptureScopeUnit.CAPTURE_SCOPE_UNIT, new OrderField[] { CaptureScopeUnit.CAPTURE_SCOPE_UNIT.SOURCE_UNIT_ID }, false);
+    public static final Index CHECKPOINT_RUN_LOOKUP = Internal.createIndex(DSL.name("checkpoint_run_lookup"), Checkpoint.CHECKPOINT, new OrderField[] { Checkpoint.CHECKPOINT.RUN_KIND, Checkpoint.CHECKPOINT.RUN_ID, Checkpoint.CHECKPOINT.SEQUENCE_NO.desc() }, false);
+    public static final Index CLOSEOUT_RUN_RETRY_LOOKUP = Internal.createIndex(DSL.name("closeout_run_retry_lookup"), CloseoutRun.CLOSEOUT_RUN, new OrderField[] { CloseoutRun.CLOSEOUT_RUN.RETRY_OF }, false);
+    public static final Index CLOSEOUT_RUN_SCOPE_LOOKUP = Internal.createIndex(DSL.name("closeout_run_scope_lookup"), CloseoutRun.CLOSEOUT_RUN, new OrderField[] { CloseoutRun.CLOSEOUT_RUN.SCOPE_ID }, false);
+    public static final Index CONSUMER_EFFECT_EVENT_LOOKUP = Internal.createIndex(DSL.name("consumer_effect_event_lookup"), ConsumerEffect.CONSUMER_EFFECT, new OrderField[] { ConsumerEffect.CONSUMER_EFFECT.EVENT_ID }, false);
+    public static final Index CONTEXT_DELIVERY_REQUEST_LOOKUP = Internal.createIndex(DSL.name("context_delivery_request_lookup"), ContextDelivery.CONTEXT_DELIVERY, new OrderField[] { ContextDelivery.CONTEXT_DELIVERY.REQUEST_ID, ContextDelivery.CONTEXT_DELIVERY.THREAD_ID, ContextDelivery.CONTEXT_DELIVERY.TURN_ID }, false);
+    public static final Index MODEL_RUN_RETRY_LOOKUP = Internal.createIndex(DSL.name("model_run_retry_lookup"), ModelRun.MODEL_RUN, new OrderField[] { ModelRun.MODEL_RUN.RETRY_OF }, false);
     public static final Index OUTBOX_EVENT_AGGREGATE_LOOKUP = Internal.createIndex(DSL.name("outbox_event_aggregate_lookup"), OutboxEvent.OUTBOX_EVENT, new OrderField[] { OutboxEvent.OUTBOX_EVENT.AGGREGATE_KIND, OutboxEvent.OUTBOX_EVENT.AGGREGATE_ID, OutboxEvent.OUTBOX_EVENT.AGGREGATE_REVISION }, false);
     public static final Index OUTBOX_EVENT_CHANGE_UNIQUE = Internal.createIndex(DSL.name("outbox_event_change_unique"), OutboxEvent.OUTBOX_EVENT, new OrderField[] { OutboxEvent.OUTBOX_EVENT.CHANGE_EVENT_ID }, true);
     public static final Index OUTBOX_EVENT_IDEMPOTENCY_LOOKUP = Internal.createIndex(DSL.name("outbox_event_idempotency_lookup"), OutboxEvent.OUTBOX_EVENT, new OrderField[] { OutboxEvent.OUTBOX_EVENT.IDEMPOTENCY_KEY }, false);
     public static final Index OUTBOX_EVENT_LEASE_LOOKUP = Internal.createIndex(DSL.name("outbox_event_lease_lookup"), OutboxEvent.OUTBOX_EVENT, new OrderField[] { OutboxEvent.OUTBOX_EVENT.LEASE_UNTIL, OutboxEvent.OUTBOX_EVENT.SEQUENCE_NO }, false);
     public static final Index OUTBOX_EVENT_READY_LOOKUP = Internal.createIndex(DSL.name("outbox_event_ready_lookup"), OutboxEvent.OUTBOX_EVENT, new OrderField[] { OutboxEvent.OUTBOX_EVENT.AVAILABLE_AT, OutboxEvent.OUTBOX_EVENT.SEQUENCE_NO }, false);
+    public static final Index RETRIEVAL_TRACE_EXPIRES_LOOKUP = Internal.createIndex(DSL.name("retrieval_trace_expires_lookup"), RetrievalTrace.RETRIEVAL_TRACE, new OrderField[] { RetrievalTrace.RETRIEVAL_TRACE.EXPIRES_AT }, false);
+    public static final Index RETRIEVAL_TRACE_REQUEST_LOOKUP = Internal.createIndex(DSL.name("retrieval_trace_request_lookup"), RetrievalTrace.RETRIEVAL_TRACE, new OrderField[] { RetrievalTrace.RETRIEVAL_TRACE.REQUEST_ID, RetrievalTrace.RETRIEVAL_TRACE.THREAD_ID, RetrievalTrace.RETRIEVAL_TRACE.TURN_ID }, false);
+    public static final Index WORK_ARTIFACT_EXPIRES_LOOKUP = Internal.createIndex(DSL.name("work_artifact_expires_lookup"), WorkArtifact.WORK_ARTIFACT, new OrderField[] { WorkArtifact.WORK_ARTIFACT.EXPIRES_AT }, false);
+    public static final Index WORK_ARTIFACT_RUN_LOOKUP = Internal.createIndex(DSL.name("work_artifact_run_lookup"), WorkArtifact.WORK_ARTIFACT, new OrderField[] { WorkArtifact.WORK_ARTIFACT.RUN_ID }, false);
 }

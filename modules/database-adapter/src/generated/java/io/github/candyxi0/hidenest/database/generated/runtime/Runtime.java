@@ -5,10 +5,19 @@ package io.github.candyxi0.hidenest.database.generated.runtime;
 
 
 import io.github.candyxi0.hidenest.database.generated.DefaultCatalog;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScope;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScopeUnit;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.Checkpoint;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CloseoutRun;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ConsumerEffect;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ContextDelivery;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.EventTypeRegistry;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.FailureCodeRegistry;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.IdempotencyReceipt;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ModelRun;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.OutboxEvent;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.RetrievalTrace;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.WorkArtifact;
 
 import java.util.Arrays;
 import java.util.List;
@@ -41,6 +50,36 @@ public class Runtime extends SchemaImpl {
     public static final Runtime RUNTIME = new Runtime();
 
     /**
+     * The table <code>runtime.capture_scope</code>.
+     */
+    public final CaptureScope CAPTURE_SCOPE = CaptureScope.CAPTURE_SCOPE;
+
+    /**
+     * The table <code>runtime.capture_scope_unit</code>.
+     */
+    public final CaptureScopeUnit CAPTURE_SCOPE_UNIT = CaptureScopeUnit.CAPTURE_SCOPE_UNIT;
+
+    /**
+     * The table <code>runtime.checkpoint</code>.
+     */
+    public final Checkpoint CHECKPOINT = Checkpoint.CHECKPOINT;
+
+    /**
+     * The table <code>runtime.closeout_run</code>.
+     */
+    public final CloseoutRun CLOSEOUT_RUN = CloseoutRun.CLOSEOUT_RUN;
+
+    /**
+     * The table <code>runtime.consumer_effect</code>.
+     */
+    public final ConsumerEffect CONSUMER_EFFECT = ConsumerEffect.CONSUMER_EFFECT;
+
+    /**
+     * The table <code>runtime.context_delivery</code>.
+     */
+    public final ContextDelivery CONTEXT_DELIVERY = ContextDelivery.CONTEXT_DELIVERY;
+
+    /**
      * The table <code>runtime.event_type_registry</code>.
      */
     public final EventTypeRegistry EVENT_TYPE_REGISTRY = EventTypeRegistry.EVENT_TYPE_REGISTRY;
@@ -56,9 +95,24 @@ public class Runtime extends SchemaImpl {
     public final IdempotencyReceipt IDEMPOTENCY_RECEIPT = IdempotencyReceipt.IDEMPOTENCY_RECEIPT;
 
     /**
+     * The table <code>runtime.model_run</code>.
+     */
+    public final ModelRun MODEL_RUN = ModelRun.MODEL_RUN;
+
+    /**
      * The table <code>runtime.outbox_event</code>.
      */
     public final OutboxEvent OUTBOX_EVENT = OutboxEvent.OUTBOX_EVENT;
+
+    /**
+     * The table <code>runtime.retrieval_trace</code>.
+     */
+    public final RetrievalTrace RETRIEVAL_TRACE = RetrievalTrace.RETRIEVAL_TRACE;
+
+    /**
+     * The table <code>runtime.work_artifact</code>.
+     */
+    public final WorkArtifact WORK_ARTIFACT = WorkArtifact.WORK_ARTIFACT;
 
     /**
      * No further instances allowed
@@ -76,10 +130,19 @@ public class Runtime extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            CaptureScope.CAPTURE_SCOPE,
+            CaptureScopeUnit.CAPTURE_SCOPE_UNIT,
+            Checkpoint.CHECKPOINT,
+            CloseoutRun.CLOSEOUT_RUN,
+            ConsumerEffect.CONSUMER_EFFECT,
+            ContextDelivery.CONTEXT_DELIVERY,
             EventTypeRegistry.EVENT_TYPE_REGISTRY,
             FailureCodeRegistry.FAILURE_CODE_REGISTRY,
             IdempotencyReceipt.IDEMPOTENCY_RECEIPT,
-            OutboxEvent.OUTBOX_EVENT
+            ModelRun.MODEL_RUN,
+            OutboxEvent.OUTBOX_EVENT,
+            RetrievalTrace.RETRIEVAL_TRACE,
+            WorkArtifact.WORK_ARTIFACT
         );
     }
 }

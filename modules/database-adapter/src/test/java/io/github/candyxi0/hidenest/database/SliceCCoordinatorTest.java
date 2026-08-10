@@ -49,7 +49,7 @@ class SliceCCoordinatorTest {
         Flyway fw = Flyway.configure().dataSource(pg.getJdbcUrl(), U, PW).defaultSchema("public")
                 .locations("classpath:db/migration").cleanDisabled(true).baselineOnMigrate(false)
                 .outOfOrder(false).validateMigrationNaming(true).load();
-        assertEquals(8, fw.migrate().migrationsExecuted);
+        assertEquals(9, fw.migrate().migrationsExecuted);
         var rds = new org.springframework.jdbc.datasource.DriverManagerDataSource(pg.getJdbcUrl(), U, PW);
         DataSource pds = new TransactionAwareDataSourceProxy(rds);
         var tx = new TransactionTemplate(new DataSourceTransactionManager(rds));

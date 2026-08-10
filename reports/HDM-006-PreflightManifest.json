@@ -699,12 +699,12 @@
       "ROUTED_LATER": 3
     },
     "logicalObjectCount": 22,
-    "inScopePhysicalTableCount": 16,
+    "inScopePhysicalTableCount": 14,
     "inScopePhysicalTableBreakdown": {
       "evidence": 5,
       "memory": 1,
-      "runtime": 10,
-      "runtimeNote": "CaptureScope = 2 physical tables (capture_scope + capture_scope_unit); 8 logical objects → 10 physical tables"
+      "runtime": 8,
+      "runtimeNote": "CaptureScope = 2 physical tables (capture_scope + capture_scope_unit); 7 logical objects → 8 physical tables (plus consumer_effect tracked in outboxGateInventory)"
     }
   },
   "outboxGateInventory": [
@@ -856,7 +856,7 @@
     {
       "id": "HDM006-SB",
       "name": "B_RUNTIME_SCHEMA",
-      "goal": "创建 HDM-006 范围内 runtime 普通表 (8 逻辑对象/10 物理表) + consumer_effect 表 + OPERATIONAL aggregate_kind CHECK，重新生成 jOOQ",
+      "goal": "创建 HDM-006 范围内 runtime 普通表 (7 逻辑对象/8 物理表) + consumer_effect 表 + OPERATIONAL aggregate_kind CHECK，重新生成 jOOQ",
       "allowlistPaths": [
         "modules/database-adapter/src/main/resources/db/migration/V009__runtime_tables_operational_identity.sql",
         "modules/database-adapter/src/generated/** (jOOQ 重新生成)",

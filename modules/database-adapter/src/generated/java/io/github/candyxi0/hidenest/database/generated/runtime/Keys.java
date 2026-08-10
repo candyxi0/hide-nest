@@ -4,16 +4,38 @@
 package io.github.candyxi0.hidenest.database.generated.runtime;
 
 
+import io.github.candyxi0.hidenest.database.generated.evidence.tables.Source;
+import io.github.candyxi0.hidenest.database.generated.evidence.tables.SourceUnit;
+import io.github.candyxi0.hidenest.database.generated.evidence.tables.records.SourceRecord;
+import io.github.candyxi0.hidenest.database.generated.evidence.tables.records.SourceUnitRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.ChangeEventRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScope;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScopeUnit;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.Checkpoint;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CloseoutRun;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ConsumerEffect;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ContextDelivery;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.EventTypeRegistry;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.FailureCodeRegistry;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.IdempotencyReceipt;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ModelRun;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.OutboxEvent;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.RetrievalTrace;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.WorkArtifact;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.CaptureScopeRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.CaptureScopeUnitRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.CheckpointRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.CloseoutRunRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.ConsumerEffectRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.ContextDeliveryRecord;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.EventTypeRegistryRecord;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.FailureCodeRegistryRecord;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.IdempotencyReceiptRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.ModelRunRecord;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.OutboxEventRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.RetrievalTraceRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.WorkArtifactRecord;
 
 import javax.annotation.processing.Generated;
 
@@ -42,18 +64,40 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
+    public static final UniqueKey<CaptureScopeRecord> CAPTURE_SCOPE_PKEY = Internal.createUniqueKey(CaptureScope.CAPTURE_SCOPE, DSL.name("capture_scope_pkey"), new TableField[] { CaptureScope.CAPTURE_SCOPE.SCOPE_ID }, true);
+    public static final UniqueKey<CaptureScopeUnitRecord> CAPTURE_SCOPE_UNIT_PKEY = Internal.createUniqueKey(CaptureScopeUnit.CAPTURE_SCOPE_UNIT, DSL.name("capture_scope_unit_pkey"), new TableField[] { CaptureScopeUnit.CAPTURE_SCOPE_UNIT.SCOPE_ID, CaptureScopeUnit.CAPTURE_SCOPE_UNIT.ORDINAL }, true);
+    public static final UniqueKey<CaptureScopeUnitRecord> CAPTURE_SCOPE_UNIT_SCOPE_UNIT_UNIQUE = Internal.createUniqueKey(CaptureScopeUnit.CAPTURE_SCOPE_UNIT, DSL.name("capture_scope_unit_scope_unit_unique"), new TableField[] { CaptureScopeUnit.CAPTURE_SCOPE_UNIT.SCOPE_ID, CaptureScopeUnit.CAPTURE_SCOPE_UNIT.SOURCE_UNIT_ID }, true);
+    public static final UniqueKey<CheckpointRecord> CHECKPOINT_PKEY = Internal.createUniqueKey(Checkpoint.CHECKPOINT, DSL.name("checkpoint_pkey"), new TableField[] { Checkpoint.CHECKPOINT.CHECKPOINT_ID }, true);
+    public static final UniqueKey<CheckpointRecord> CHECKPOINT_RUN_KIND_RUN_ID_SEQUENCE_UNIQUE = Internal.createUniqueKey(Checkpoint.CHECKPOINT, DSL.name("checkpoint_run_kind_run_id_sequence_unique"), new TableField[] { Checkpoint.CHECKPOINT.RUN_KIND, Checkpoint.CHECKPOINT.RUN_ID, Checkpoint.CHECKPOINT.SEQUENCE_NO }, true);
+    public static final UniqueKey<CloseoutRunRecord> CLOSEOUT_RUN_PKEY = Internal.createUniqueKey(CloseoutRun.CLOSEOUT_RUN, DSL.name("closeout_run_pkey"), new TableField[] { CloseoutRun.CLOSEOUT_RUN.RUN_ID }, true);
+    public static final UniqueKey<CloseoutRunRecord> CLOSEOUT_RUN_SUBMISSION_ID_KEY = Internal.createUniqueKey(CloseoutRun.CLOSEOUT_RUN, DSL.name("closeout_run_submission_id_key"), new TableField[] { CloseoutRun.CLOSEOUT_RUN.SUBMISSION_ID }, true);
+    public static final UniqueKey<ConsumerEffectRecord> CONSUMER_EFFECT_PK = Internal.createUniqueKey(ConsumerEffect.CONSUMER_EFFECT, DSL.name("consumer_effect_pk"), new TableField[] { ConsumerEffect.CONSUMER_EFFECT.CONSUMER_CODE, ConsumerEffect.CONSUMER_EFFECT.EVENT_ID, ConsumerEffect.CONSUMER_EFFECT.EFFECT_KEY }, true);
+    public static final UniqueKey<ContextDeliveryRecord> CONTEXT_DELIVERY_PKEY = Internal.createUniqueKey(ContextDelivery.CONTEXT_DELIVERY, DSL.name("context_delivery_pkey"), new TableField[] { ContextDelivery.CONTEXT_DELIVERY.DELIVERY_ID }, true);
     public static final UniqueKey<EventTypeRegistryRecord> EVENT_TYPE_REGISTRY_PKEY = Internal.createUniqueKey(EventTypeRegistry.EVENT_TYPE_REGISTRY, DSL.name("event_type_registry_pkey"), new TableField[] { EventTypeRegistry.EVENT_TYPE_REGISTRY.EVENT_TYPE }, true);
     public static final UniqueKey<FailureCodeRegistryRecord> FAILURE_CODE_REGISTRY_PKEY = Internal.createUniqueKey(FailureCodeRegistry.FAILURE_CODE_REGISTRY, DSL.name("failure_code_registry_pkey"), new TableField[] { FailureCodeRegistry.FAILURE_CODE_REGISTRY.FAILURE_CODE }, true);
     public static final UniqueKey<IdempotencyReceiptRecord> IDEMPOTENCY_RECEIPT_PKEY = Internal.createUniqueKey(IdempotencyReceipt.IDEMPOTENCY_RECEIPT, DSL.name("idempotency_receipt_pkey"), new TableField[] { IdempotencyReceipt.IDEMPOTENCY_RECEIPT.IDEMPOTENCY_KEY }, true);
+    public static final UniqueKey<ModelRunRecord> MODEL_RUN_PKEY = Internal.createUniqueKey(ModelRun.MODEL_RUN, DSL.name("model_run_pkey"), new TableField[] { ModelRun.MODEL_RUN.MODEL_RUN_ID }, true);
     public static final UniqueKey<OutboxEventRecord> OUTBOX_EVENT_IDEMPOTENCY_UNIQUE = Internal.createUniqueKey(OutboxEvent.OUTBOX_EVENT, DSL.name("outbox_event_idempotency_unique"), new TableField[] { OutboxEvent.OUTBOX_EVENT.IDEMPOTENCY_KEY }, true);
     public static final UniqueKey<OutboxEventRecord> OUTBOX_EVENT_PKEY = Internal.createUniqueKey(OutboxEvent.OUTBOX_EVENT, DSL.name("outbox_event_pkey"), new TableField[] { OutboxEvent.OUTBOX_EVENT.EVENT_ID }, true);
     public static final UniqueKey<OutboxEventRecord> OUTBOX_EVENT_SEQUENCE_NO_KEY = Internal.createUniqueKey(OutboxEvent.OUTBOX_EVENT, DSL.name("outbox_event_sequence_no_key"), new TableField[] { OutboxEvent.OUTBOX_EVENT.SEQUENCE_NO }, true);
+    public static final UniqueKey<RetrievalTraceRecord> RETRIEVAL_TRACE_PKEY = Internal.createUniqueKey(RetrievalTrace.RETRIEVAL_TRACE, DSL.name("retrieval_trace_pkey"), new TableField[] { RetrievalTrace.RETRIEVAL_TRACE.TRACE_ID }, true);
+    public static final UniqueKey<WorkArtifactRecord> WORK_ARTIFACT_PKEY = Internal.createUniqueKey(WorkArtifact.WORK_ARTIFACT, DSL.name("work_artifact_pkey"), new TableField[] { WorkArtifact.WORK_ARTIFACT.ARTIFACT_ID }, true);
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions
     // -------------------------------------------------------------------------
 
+    public static final ForeignKey<CaptureScopeRecord, SourceRecord> CAPTURE_SCOPE__CAPTURE_SCOPE_SOURCE_FK = Internal.createForeignKey(CaptureScope.CAPTURE_SCOPE, DSL.name("capture_scope_source_fk"), new TableField[] { CaptureScope.CAPTURE_SCOPE.SOURCE_ID }, io.github.candyxi0.hidenest.database.generated.evidence.Keys.SOURCE_PKEY, new TableField[] { Source.SOURCE.SOURCE_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<CaptureScopeUnitRecord, CaptureScopeRecord> CAPTURE_SCOPE_UNIT__CAPTURE_SCOPE_UNIT_SCOPE_FK = Internal.createForeignKey(CaptureScopeUnit.CAPTURE_SCOPE_UNIT, DSL.name("capture_scope_unit_scope_fk"), new TableField[] { CaptureScopeUnit.CAPTURE_SCOPE_UNIT.SCOPE_ID }, Keys.CAPTURE_SCOPE_PKEY, new TableField[] { CaptureScope.CAPTURE_SCOPE.SCOPE_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<CaptureScopeUnitRecord, SourceUnitRecord> CAPTURE_SCOPE_UNIT__CAPTURE_SCOPE_UNIT_SOURCE_UNIT_FK = Internal.createForeignKey(CaptureScopeUnit.CAPTURE_SCOPE_UNIT, DSL.name("capture_scope_unit_source_unit_fk"), new TableField[] { CaptureScopeUnit.CAPTURE_SCOPE_UNIT.SOURCE_UNIT_ID }, io.github.candyxi0.hidenest.database.generated.evidence.Keys.SOURCE_UNIT_PKEY, new TableField[] { SourceUnit.SOURCE_UNIT.SOURCE_UNIT_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<CloseoutRunRecord, FailureCodeRegistryRecord> CLOSEOUT_RUN__CLOSEOUT_RUN_FAILURE_CODE_FK = Internal.createForeignKey(CloseoutRun.CLOSEOUT_RUN, DSL.name("closeout_run_failure_code_fk"), new TableField[] { CloseoutRun.CLOSEOUT_RUN.FAILURE_CODE }, Keys.FAILURE_CODE_REGISTRY_PKEY, new TableField[] { FailureCodeRegistry.FAILURE_CODE_REGISTRY.FAILURE_CODE }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<CloseoutRunRecord, CloseoutRunRecord> CLOSEOUT_RUN__CLOSEOUT_RUN_RETRY_OF_FK = Internal.createForeignKey(CloseoutRun.CLOSEOUT_RUN, DSL.name("closeout_run_retry_of_fk"), new TableField[] { CloseoutRun.CLOSEOUT_RUN.RETRY_OF }, Keys.CLOSEOUT_RUN_PKEY, new TableField[] { CloseoutRun.CLOSEOUT_RUN.RUN_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<CloseoutRunRecord, CaptureScopeRecord> CLOSEOUT_RUN__CLOSEOUT_RUN_SCOPE_FK = Internal.createForeignKey(CloseoutRun.CLOSEOUT_RUN, DSL.name("closeout_run_scope_fk"), new TableField[] { CloseoutRun.CLOSEOUT_RUN.SCOPE_ID }, Keys.CAPTURE_SCOPE_PKEY, new TableField[] { CaptureScope.CAPTURE_SCOPE.SCOPE_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<ConsumerEffectRecord, OutboxEventRecord> CONSUMER_EFFECT__CONSUMER_EFFECT_EVENT_FK = Internal.createForeignKey(ConsumerEffect.CONSUMER_EFFECT, DSL.name("consumer_effect_event_fk"), new TableField[] { ConsumerEffect.CONSUMER_EFFECT.EVENT_ID }, Keys.OUTBOX_EVENT_PKEY, new TableField[] { OutboxEvent.OUTBOX_EVENT.EVENT_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<ModelRunRecord, FailureCodeRegistryRecord> MODEL_RUN__MODEL_RUN_FAILURE_CODE_FK = Internal.createForeignKey(ModelRun.MODEL_RUN, DSL.name("model_run_failure_code_fk"), new TableField[] { ModelRun.MODEL_RUN.FAILURE_CODE }, Keys.FAILURE_CODE_REGISTRY_PKEY, new TableField[] { FailureCodeRegistry.FAILURE_CODE_REGISTRY.FAILURE_CODE }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<ModelRunRecord, ModelRunRecord> MODEL_RUN__MODEL_RUN_RETRY_OF_FK = Internal.createForeignKey(ModelRun.MODEL_RUN, DSL.name("model_run_retry_of_fk"), new TableField[] { ModelRun.MODEL_RUN.RETRY_OF }, Keys.MODEL_RUN_PKEY, new TableField[] { ModelRun.MODEL_RUN.MODEL_RUN_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<OutboxEventRecord, ChangeEventRecord> OUTBOX_EVENT__OUTBOX_CHANGE_EVENT_FK = Internal.createForeignKey(OutboxEvent.OUTBOX_EVENT, DSL.name("outbox_change_event_fk"), new TableField[] { OutboxEvent.OUTBOX_EVENT.CHANGE_EVENT_ID }, io.github.candyxi0.hidenest.database.generated.memory.Keys.CHANGE_EVENT_PKEY, new TableField[] { ChangeEvent.CHANGE_EVENT.CHANGE_EVENT_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<OutboxEventRecord, EventTypeRegistryRecord> OUTBOX_EVENT__OUTBOX_EVENT_TYPE_FK = Internal.createForeignKey(OutboxEvent.OUTBOX_EVENT, DSL.name("outbox_event_type_fk"), new TableField[] { OutboxEvent.OUTBOX_EVENT.EVENT_TYPE }, Keys.EVENT_TYPE_REGISTRY_PKEY, new TableField[] { EventTypeRegistry.EVENT_TYPE_REGISTRY.EVENT_TYPE }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<OutboxEventRecord, FailureCodeRegistryRecord> OUTBOX_EVENT__OUTBOX_FAILURE_CODE_FK = Internal.createForeignKey(OutboxEvent.OUTBOX_EVENT, DSL.name("outbox_failure_code_fk"), new TableField[] { OutboxEvent.OUTBOX_EVENT.LAST_FAILURE_CODE }, Keys.FAILURE_CODE_REGISTRY_PKEY, new TableField[] { FailureCodeRegistry.FAILURE_CODE_REGISTRY.FAILURE_CODE }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<WorkArtifactRecord, CloseoutRunRecord> WORK_ARTIFACT__WORK_ARTIFACT_RUN_FK = Internal.createForeignKey(WorkArtifact.WORK_ARTIFACT, DSL.name("work_artifact_run_fk"), new TableField[] { WorkArtifact.WORK_ARTIFACT.RUN_ID }, Keys.CLOSEOUT_RUN_PKEY, new TableField[] { CloseoutRun.CLOSEOUT_RUN.RUN_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
 }

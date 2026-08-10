@@ -1,0 +1,326 @@
+﻿{
+    "schemaVersion":  "HDM-006-SB-EVIDENCE-R4",
+    "status":  "HDM006_SLICE_B_R4_READY_FOR_LOCAL_COMMIT",
+    "runner":  {
+                   "path":  "scripts/hdm006-sb-evidence-judge.ps1",
+                   "sha256":  "D4AA02A4399A3F79B04739A58FD8F8563448B1235213D03C9BA22FBDCD03E939",
+                   "endTime":  "2026-08-10T09:52:13.3793071Z",
+                   "startTime":  "2026-08-10T09:51:03.0579218Z"
+               },
+    "baseline":  {
+                     "shortHead":  "c7dea7e",
+                     "branch":  "main",
+                     "head":  "c7dea7ee6c743deee9aa7c4ef900d4d45bb25066"
+                 },
+    "environment":  {
+                        "javaHome":  "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.4-hotspot",
+                        "mavenVersion":  "Apache Maven 3.9.16 (2bdd9fddda4b155ebf8000e807eb73fd829a51d5); Maven home: C:\\Users\\tangx\\.m2\\wrapper\\dists\\apache-maven-3.9.16\\0daed3be3ebd1c706f0e69e8b07c6b73f5cc4ea3dfce72a8d0ec2e849ca2ddb0; Java version: 25.0.4, vendor: Eclipse Adoptium, runtime: C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.4-hotspot",
+                        "javaVersion":  "openjdk 25.0.4 2026-07-21 LTS"
+                    },
+    "migration":  {
+                      "newTableCount":  9,
+                      "v009CreateTableCount":  9,
+                      "v001v008Sha256":  {
+                                             "V004":  "D5E72EA4701E83E58E8B204F82483BEB4D5CA5BDEB924F60446ECD0EA8DD721F",
+                                             "V001":  "17E8533C206288B6C21F0261B323041EB5A3607949843BAE8E5399E78A2C4FCD",
+                                             "V006":  "FAC190A80229EE0BF24A2BF80D43F5A35DA81871258CB9FB0F82750F7E09A6F3",
+                                             "V003":  "A516A411262C0BCA8826715B0C4EF41A6A6515275C921D6DD186121039C390CB",
+                                             "V008":  "CD4FD16AD58A708F01E879DBBB4176A41C4F10ECB7743A241396D2FC76AA2CE0",
+                                             "V005":  "9273AADC87E2480E447AFD9C40721878CE9F0D9282F31ECD6095771E5DD3A737",
+                                             "V009":  "7CF5F9DFDFC36F265D1F5201F220E3605487E7150095DE2B980D863A71FA2C64",
+                                             "V002":  "4FBDC588A73D62741FD3CB567EB0E6AF0920C2A7CCB39CE84EFC188EDD8D1CD9",
+                                             "V007":  "F358E5E0FD3E64530BAC8BF61AB473F0CFA1C5E3AF2A3518B0FFB3CA006840CB"
+                                         },
+                      "v009Sha256":  "7CF5F9DFDFC36F265D1F5201F220E3605487E7150095DE2B980D863A71FA2C64",
+                      "tables":  [
+                                     "capture_scope",
+                                     "capture_scope_unit",
+                                     "closeout_run",
+                                     "checkpoint",
+                                     "work_artifact",
+                                     "model_run",
+                                     "retrieval_trace",
+                                     "context_delivery",
+                                     "consumer_effect"
+                                 ],
+                      "v001v008MatchBaseline":  true,
+                      "historyCount":  9
+                  },
+    "tests":  {
+                  "errors":  0,
+                  "passed":  95,
+                  "v009MethodNames":  [
+                                          "v009NineNewRuntimeTables",
+                                          "v009ForeignKeysNoAction",
+                                          "v009MigrationHistoryAndRepeat",
+                                          "v009CaptureScopeCrossSourceRejected",
+                                          "v009CaptureScopeFrozenImmutable",
+                                          "v009CloseoutRunLegalTransitions",
+                                          "v009CloseoutRunIllegalTransitions",
+                                          "v009CloseoutRunTerminalRollbackRejected",
+                                          "v009CloseoutRunSubmissionIdDuplicate",
+                                          "v009CloseoutRunFieldConsistencyAttack",
+                                          "v009CheckpointDuplicateSequenceRejected",
+                                          "v009CheckpointUpdateDeleteRejected",
+                                          "v009WorkArtifactDeleteAllowed",
+                                          "v009WorkArtifactNoBodyColumns",
+                                          "v009ModelRunLegalTransitions",
+                                          "v009ModelRunTerminalAndHashAttacks",
+                                          "v009ModelRunFieldConsistencyAttack",
+                                          "v009RetrievalTraceUuidArrayRoundTrip",
+                                          "v009RetrievalTraceNullElementRejected",
+                                          "v009RetrievalTraceUnknownCategoryRejected",
+                                          "v009ContextDeliveryTenMinuteBoundary",
+                                          "v009ContextDeliveryOverTenMinutesRejected",
+                                          "v009ContextDeliveryUnpairedInvalidationRejected",
+                                          "v009ConsumerEffectDuplicateRejected",
+                                          "v009ConsumerEffectUpdateDeleteRejected",
+                                          "v009OperationalRunEffectFactValid",
+                                          "v009OperationalUnknownKindRejected",
+                                          "v009OperationalNullRevisionRejected",
+                                          "v009OperationalCheckConstraintExists",
+                                          "v009NoBodySecretColumns"
+                                      ],
+                  "xmlFile":  "modules/database-adapter/target/surefire-reports/TEST-io.github.candyxi0.hidenest.database.DatabaseSliceBContractTest.xml",
+                  "xmlExists":  true,
+                  "r1MethodCount":  14,
+                  "v009MethodCount":  30,
+                  "r1MethodNames":  [
+                                        "r102CaptureScopeBornFrozenLegal",
+                                        "r102CaptureScopeUnfrozenCommitRejected",
+                                        "r102CaptureScopeFrozenAppendUnitRejected",
+                                        "r102CaptureScopeFrozenUpdateRejected",
+                                        "r103CloseoutRunCompletedSameStateMutate",
+                                        "r103CloseoutRunRunningSameStateMutate",
+                                        "r103CloseoutRunSubmissionIdImmutable",
+                                        "r104ModelRunSucceededSameStateMutate",
+                                        "r104ModelRunRunningSameStateMutate",
+                                        "r104ModelRunFailedSameStateMutate",
+                                        "r105ContextDeliveryFirstInvalidation",
+                                        "r105ContextDeliveryResurrectRejected",
+                                        "r105ContextDeliveryModifyReasonRejected",
+                                        "r105ContextDeliveryModifyManifestRejected"
+                                    ],
+                  "skipped":  0,
+                  "r2MethodCount":  9,
+                  "xmlSha256":  "5C8BA10792EF81F6BD8A247F7685E203C70ABBED657546BBBE032A9E781CC915",
+                  "xmlPotentiallyStale":  false,
+                  "total":  95,
+                  "r2MethodNames":  [
+                                        "r201FrozenUnitUpdateRejected",
+                                        "r201FrozenUnitDeleteRejected",
+                                        "r201CloseoutRunReadyToRunning",
+                                        "r201CloseoutRunReadyToFailed",
+                                        "r201CloseoutRunReadyToCancelled",
+                                        "r201CloseoutRunRunningToCompleted",
+                                        "r201CloseoutRunRunningToFailed",
+                                        "r201CloseoutRunRunningToCancelled",
+                                        "r201IsolatedV008toV009Upgrade"
+                                    ],
+                  "failed":  0
+              },
+    "jooq":  {
+                 "totalFiles":  81
+             },
+    "node":  {
+                 "testExitCode":  0,
+                 "lintExitCode":  0,
+                 "buildExitCode":  0,
+                 "typecheckExitCode":  0
+             },
+    "apiWorkerSmoke":  {
+                           "apiStarted":  true,
+                           "workerTermination":  "self-exited-",
+                           "apiTermination":  "self-exited-",
+                           "workerStarted":  true
+                       },
+    "gitIndex":  {
+                     "beforeSha256":  "7D6141A92C896C6EE8070CE5CC12189611F1B4A930F38F44DD079FBF3BECDDFE",
+                     "afterSha256":  "7D6141A92C896C6EE8070CE5CC12189611F1B4A930F38F44DD079FBF3BECDDFE",
+                     "unchanged":  true,
+                     "headUnchanged":  true
+                 },
+    "workspace":  {
+                      "trackedModified":  [
+                                              "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/evidence/tables/Source.java",
+                                              "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/evidence/tables/SourceUnit.java",
+                                              "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/Indexes.java",
+                                              "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/Keys.java",
+                                              "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/Runtime.java",
+                                              "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/Tables.java",
+                                              "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/FailureCodeRegistry.java",
+                                              "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/OutboxEvent.java",
+                                              "modules/database-adapter/src/test/java/io/github/candyxi0/hidenest/database/DatabaseSliceBContractTest.java",
+                                              "modules/database-adapter/src/test/java/io/github/candyxi0/hidenest/database/SliceCCoordinatorTest.java",
+                                              "reports/HDM-006-PreflightManifest.json",
+                                              "reports/HDM-006-棰勬鎶ュ憡.md"
+                                          ],
+                      "stagedCount":  0,
+                      "outOfBoundsCount":  0,
+                      "outOfBounds":  [
+
+                                      ],
+                      "trackedCount":  12,
+                      "staged":  [
+
+                                 ],
+                      "untrackedCount":  22,
+                      "untracked":  [
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/CaptureScope.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/CaptureScopeUnit.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/Checkpoint.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/CloseoutRun.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/ConsumerEffect.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/ContextDelivery.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/ModelRun.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/RetrievalTrace.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/WorkArtifact.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/records/CaptureScopeRecord.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/records/CaptureScopeUnitRecord.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/records/CheckpointRecord.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/records/CloseoutRunRecord.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/records/ConsumerEffectRecord.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/records/ContextDeliveryRecord.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/records/ModelRunRecord.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/records/RetrievalTraceRecord.java",
+                                        "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/runtime/tables/records/WorkArtifactRecord.java",
+                                        "modules/database-adapter/src/main/resources/db/migration/V009__runtime_tables_operational_identity.sql",
+                                        "reports/HDM-006-SB-Evidence.json",
+                                        "reports/HDM-006-SB-鎵ц鎶ュ憡.md",
+                                        "scripts/hdm006-sb-evidence-judge.ps1"
+                                    ]
+                  },
+    "docker":  {
+                   "newNetworks":  [
+
+                                   ],
+                   "newContainers":  [
+
+                                     ],
+                   "afterContainers":  [
+                                           "adoring_clarke"
+                                       ],
+                   "beforeContainers":  [
+                                            "adoring_clarke"
+                                        ],
+                   "newVolumes":  [
+
+                                  ]
+               },
+    "bodySecretScan":  {
+                           "patterns":  [
+                                            "body",
+                                            "body_text",
+                                            "text",
+                                            "content",
+                                            "payload",
+                                            "prompt",
+                                            "answer",
+                                            "secret",
+                                            "token",
+                                            "password",
+                                            "credential",
+                                            "chain_of_thought",
+                                            "cot",
+                                            "api_key",
+                                            "access_key"
+                                        ],
+                           "found":  0,
+                           "excludeSuffix":  "_(hash|key|id|at|code|kind|ref|set|version|time|mode|type|status)",
+                           "details":  [
+
+                                       ]
+                       },
+    "commands":  {
+                     "maven-verify":  {
+                                          "exitCode":  0,
+                                          "logSha256":  "75a462d543baf8e32ee435454b4e9ba21ce0e71ea84d1cc541261f9bbd667534",
+                                          "durationMs":  41790
+                                      },
+                     "node-typecheck":  {
+                                            "exitCode":  0,
+                                            "logSha256":  "fef7b3d4bd2c45c0ec5dffddd847170402590f5f9f67caa67fafd3f6433aaeff",
+                                            "durationMs":  3689
+                                        },
+                     "node-lint":  {
+                                       "exitCode":  0,
+                                       "logSha256":  "cff27cc22ee23b644c30fb3f6f07cd85e93136323928e4cb39710c7d40249f51",
+                                       "durationMs":  6942
+                                   },
+                     "node-test":  {
+                                       "exitCode":  0,
+                                       "logSha256":  "6750e0846f7775c85183411135e94adcde58ceb9a842ada37d9ea4a1cfb2fb4d",
+                                       "durationMs":  3132
+                                   },
+                     "node-build":  {
+                                        "exitCode":  0,
+                                        "logSha256":  "6af68f4cce37393f27b200495510c8ef96376d57849e1006b4340b01e0a37eb5",
+                                        "durationMs":  4601
+                                    },
+                     "api-smoke":  {
+                                       "exitCode":  null,
+                                       "command":  "mvnw.cmd -f apps/api/pom.xml spring-boot:run -o -DskipTests",
+                                       "termination":  "self-exited-",
+                                       "marker":  "hide-nest-api started",
+                                       "durationMs":  4074,
+                                       "markerHit":  true,
+                                       "logSha256":  "6ba169d68d80788dcf197eed5cb6503f0eddae5c03a1b912879ab434418e781b"
+                                   },
+                     "worker-smoke":  {
+                                          "exitCode":  null,
+                                          "command":  "mvnw.cmd -f apps/worker/pom.xml spring-boot:run -o -DskipTests",
+                                          "termination":  "self-exited-",
+                                          "marker":  "hide-nest-worker started",
+                                          "durationMs":  4072,
+                                          "markerHit":  true,
+                                          "logSha256":  "2b33b2c949c445ef4e3f16630c70d6215aeca1a096c7061d5c749d8f72191628"
+                                      }
+                 },
+    "logs":  {
+                 "maven-verify":  "[INFO] Scanning for projects...\r\n[INFO] ------------------------------------------------------------------------\r\n[INFO] Reactor Build Order:\r\n[INFO] \r\n[INFO] hide-nest-parent                                                   [pom]\r\n[INFO] hide-nest-evidence                                                 [jar]\r\n[INFO] hide-nest-memory                                                   [jar]\r\n[INFO] hide-nest-runtime                                                  [jar]\r\n[INFO] hide-nest-security                                                 [jar]\r\n[INFO] hide-nest-application                                              [jar]\r\n[INFO] hide-nest-database-adapter                                         [jar]\r\n[INFO] hide-nest-contracts                                                [jar]\r\n[INFO] hide-nest-api                                                      [jar]\r\n[INFO] hide-nest-worker                                                   [jar]\r\n[INFO] hide-nest-architecture-tests                                       [jar]\r\n[INFO] \r\n[INFO] ------------\u003c io.github.candyxi0.hidenest:hide-nest-parent \u003e------------\r\n[INFO] Building hide-nest-parent 0.0.1-SNAPSHOT                          [1/11]\r\n[INFO]   from pom.xml\r\n[INFO] --------------------------------[ pom ]---------------------------------\r\n[INFO] \r\n[INFO] --- clean:3.5.0:clean (default-clean) @ hide-nest-parent ---\r\n[INFO] \r\n[INFO] -----------\u003c io.github.candyxi0.hidenest:hide-nest-evidence \u003e-----------\r\n[INFO] Building hide-nest-evidence 0.0.1-SNAPSHOT                        [2/11]\r\n[INFO]   from modules\\evidence\\pom.xml\r\n[INFO] --------------------------------[ jar ]---------------------------------\r\n[INFO] \r\n[INFO] --- clean:3.5.0:clean (default-clean) @ hide-nest-evidence ---\r\n[INFO] Deleting D:\\myproject\\hide-nest\\modules\\evidence\\target\r\n[INFO] \r\n[INFO] --- resources:3.5.0:resources (default-resources) @ hide-nest-evidence ---\r\n[INFO] skip non existing resourceDirectory D:\\myproject\\hide-nest\\modules\\ev...",
+                 "node-typecheck":  "\r\n\u003e typecheck\r\n\u003e npm run typecheck --workspaces --if-present\r\n\r\n\r\n\u003e @hide-nest/codex-adapter@0.0.1 typecheck\r\n\u003e tsc --noEmit\r\n\r\n\r\n\u003e @hide-nest/nest-console@0.0.1 typecheck\r\n\u003e tsc -b\r\n\r\n\r\n\u003e @hide-nest/api-client-ts@0.0.1 typecheck\r\n\u003e tsc --noEmit\r\n\r\n\r\n\u003e @hide-nest/ui-contract-fixtures@0.0.1 typecheck\r\n\u003e tsc --noEmit\r\n\r\n0\r\n",
+                 "node-lint":  "\r\n\u003e lint\r\n\u003e npm run lint --workspaces --if-present\r\n\r\n\r\n\u003e @hide-nest/codex-adapter@0.0.1 lint\r\n\u003e eslint src/\r\n\r\n\r\nD:\\myproject\\hide-nest\\apps\\codex-adapter\\src\\generated\\events\\index.ts\r\n  2:1  warning  Unused eslint-disable directive (no problems were reported)\r\n\r\nD:\\myproject\\hide-nest\\apps\\codex-adapter\\src\\generated\\events\\models\\index.ts\r\n  2:1  warning  Unused eslint-disable directive (no problems were reported)\r\n\r\n鉁?2 problems (0 errors, 2 warnings)\r\n  0 errors and 2 warnings potentially fixable with the `--fix` option.\r\n\r\n\r\n\u003e @hide-nest/nest-console@0.0.1 lint\r\n\u003e eslint src/\r\n\r\n\r\n\u003e @hide-nest/api-client-ts@0.0.1 lint\r\n\u003e eslint src/\r\n\r\n\r\n\u003e @hide-nest/ui-contract-fixtures@0.0.1 lint\r\n\u003e eslint src/\r\n\r\n0\r\n",
+                 "node-test":  "\r\n\u003e test\r\n\u003e npm run test --workspaces --if-present\r\n\r\n\r\n\u003e @hide-nest/codex-adapter@0.0.1 test\r\n\u003e vitest run\r\n\r\n\r\n RUN  v4.1.10 D:/myproject/hide-nest/apps/codex-adapter\r\n\r\n\r\n Test Files  2 passed (2)\r\n      Tests  2 passed (2)\r\n   Start at  17:51:57\r\n   Duration  187ms (transform 69ms, setup 0ms, import 105ms, tests 4ms, environment 0ms)\r\n\r\n\r\n\u003e @hide-nest/nest-console@0.0.1 test\r\n\u003e vitest run\r\n\r\n\r\n RUN  v4.1.10 D:/myproject/hide-nest/apps/nest-console\r\n\r\n\r\n Test Files  1 passed (1)\r\n      Tests  1 passed (1)\r\n   Start at  17:51:58\r\n   Duration  996ms (transform 34ms, setup 99ms, import 113ms, tests 25ms, environment 619ms)\r\n\r\n\r\n\u003e @hide-nest/ui-contract-fixtures@0.0.1 test\r\n\u003e vitest run\r\n\r\n\r\n RUN  v4.1.10 D:/myproject/hide-nest/packages/ui-contract-fixtures\r\n\r\n\r\n Test Files  2 passed (2)\r\n      Tests  10 passed (10)\r\n   Start at  17:51:59\r\n   Duration  239ms (transform 146ms, setup 0ms, import 211ms, tests 6ms, environment 0ms)\r\n\r\n0\r\n",
+                 "node-build":  "\r\n\u003e build\r\n\u003e npm run build --workspaces --if-present\r\n\r\n\r\n\u003e @hide-nest/codex-adapter@0.0.1 build\r\n\u003e npm run clean:dist \u0026\u0026 tsc\r\n\r\n\r\n\u003e @hide-nest/codex-adapter@0.0.1 clean:dist\r\n\u003e node --input-type=module -e \"import { rmSync } from \u0027node:fs\u0027; import { relative, resolve } from \u0027node:path\u0027; const workspace = resolve(process.cwd()); const dist = resolve(workspace, \u0027dist\u0027); if (relative(workspace, dist) !== \u0027dist\u0027) throw new Error(\u0027Refusing to remove a path outside this workspace\u0027); rmSync(dist, { recursive: true, force: true });\"\r\n\r\n\r\n\u003e @hide-nest/nest-console@0.0.1 build\r\n\u003e tsc -b \u0026\u0026 vite build\r\n\r\n\u001b[36mvite v8.2.1 \u001b[32mbuilding client environment for production...\u001b[36m\u001b[39m\r\n\u001b[2K\r\ntransforming...鉁?120 modules transformed.\r\nrendering chunks...\r\ncomputing gzip size...\r\ndist/index.html                  0.32 kB 鈹?gzip:  0.23 kB\r\ndist/assets/index-DW2eZGqw.js  251.35 kB 鈹?gzip: 79.57 kB\r\n\r\n\u001b[32m鉁?built in 103ms\u001b[39m\r\n\r\n\u003e @hide-nest/api-client-ts@0.0.1 build\r\n\u003e tsc\r\n\r\n\r\n\u003e @hide-nest/ui-contract-fixtures@0.0.1 build\r\n\u003e tsc\r\n\r\n0\r\n",
+                 "api-smoke":  "=== COMMAND ===\nmvnw.cmd -f apps/api/pom.xml spring-boot:run -o -DskipTests\n=== STDOUT ===\n[INFO] Scanning for projects...\r\n[INFO] \r\n[INFO] -------------\u003c io.github.candyxi0.hidenest:hide-nest-api \u003e--------------\r\n[INFO] Building hide-nest-api 0.0.1-SNAPSHOT\r\n[INFO]   from pom.xml\r\n[INFO] --------------------------------[ jar ]---------------------------------\r\n[INFO] \r\n[INFO] \u003e\u003e\u003e spring-boot:4.1.0:run (default-cli) \u003e test-compile @ hide-nest-api \u003e\u003e\u003e\r\n[INFO] \r\n[INFO] --- resources:3.5.0:resources (default-resources) @ hide-nest-api ---\r\n[INFO] skip non existing resourceDirectory D:\\myproject\\hide-nest\\apps\\api\\src\\main\\resources\r\n[INFO] skip non existing resourceDirectory D:\\myproject\\hide-nest\\apps\\api\\src\\main\\resources\r\n[INFO] \r\n[INFO] --- compiler:3.15.0:compile (default-compile) @ hide-nest-api ---\r\n[INFO] Nothing to compile - all classes are up to date.\r\n[INFO] \r\n[INFO] --- resources:3.5.0:testResources (default-testResources) @ hide-nest-api ---\r\n[INFO] skip non existing resourceDirectory D:\\myproject\\hide-nest\\apps\\api\\src\\test\\resources\r\n[INFO] \r\n[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ hide-nest-api ---\r\n[INFO] No sources to compile\r\n[INFO] \r\n[INFO] \u003c\u003c\u003c spring-boot:4.1.0:run (default-cli) \u003c test-compile @ hide-nest-api \u003c\u003c\u003c\r\n[INFO] \r\n[INFO] \r\n[INFO] --- spring-boot:4.1.0:run (default-cli) @ hide-nest-api ---\r\n[INFO] Attaching agents: []\r\n2026-08-10T17:52:07.640+08:00  INFO 9892 --- [hide-nest-api] [           main] i.g.c.h.api.HideNestApiApplication       : Starting HideNestApiApplication using Java 25.0.4 with PID 9892 (D:\\myproject\\hide-nest\\apps\\api\\target\\classes started by tangx in D:\\myproject\\hide-nest\\apps\\api)\r\n2026-08-10T17:52:07.642+08:00  INFO 9892 --- [hide-nest-api] [           main] i.g.c.h.api.HideNestApiApplication       : No active profile set, falling back to 1 default profile: \"default\"\r\n2026-08-10T17:52:07.914+08:00  INFO 9892 --- [hide-nest-api] [           main] i.g.c.h.api.HideNestApiApplication       : Started ...",
+                 "worker-smoke":  "=== COMMAND ===\nmvnw.cmd -f apps/worker/pom.xml spring-boot:run -o -DskipTests\n=== STDOUT ===\n[INFO] Scanning for projects...\r\n[INFO] \r\n[INFO] ------------\u003c io.github.candyxi0.hidenest:hide-nest-worker \u003e------------\r\n[INFO] Building hide-nest-worker 0.0.1-SNAPSHOT\r\n[INFO]   from pom.xml\r\n[INFO] --------------------------------[ jar ]---------------------------------\r\n[INFO] \r\n[INFO] \u003e\u003e\u003e spring-boot:4.1.0:run (default-cli) \u003e test-compile @ hide-nest-worker \u003e\u003e\u003e\r\n[INFO] \r\n[INFO] --- resources:3.5.0:resources (default-resources) @ hide-nest-worker ---\r\n[INFO] skip non existing resourceDirectory D:\\myproject\\hide-nest\\apps\\worker\\src\\main\\resources\r\n[INFO] skip non existing resourceDirectory D:\\myproject\\hide-nest\\apps\\worker\\src\\main\\resources\r\n[INFO] \r\n[INFO] --- compiler:3.15.0:compile (default-compile) @ hide-nest-worker ---\r\n[INFO] Nothing to compile - all classes are up to date.\r\n[INFO] \r\n[INFO] --- resources:3.5.0:testResources (default-testResources) @ hide-nest-worker ---\r\n[INFO] skip non existing resourceDirectory D:\\myproject\\hide-nest\\apps\\worker\\src\\test\\resources\r\n[INFO] \r\n[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ hide-nest-worker ---\r\n[INFO] No sources to compile\r\n[INFO] \r\n[INFO] \u003c\u003c\u003c spring-boot:4.1.0:run (default-cli) \u003c test-compile @ hide-nest-worker \u003c\u003c\u003c\r\n[INFO] \r\n[INFO] \r\n[INFO] --- spring-boot:4.1.0:run (default-cli) @ hide-nest-worker ---\r\n[INFO] Attaching agents: []\r\n2026-08-10T17:52:11.810+08:00  INFO 20120 --- [hide-nest-worker] [           main] i.g.c.h.w.HideNestWorkerApplication      : Starting HideNestWorkerApplication using Java 25.0.4 with PID 20120 (D:\\myproject\\hide-nest\\apps\\worker\\target\\classes started by tangx in D:\\myproject\\hide-nest\\apps\\worker)\r\n2026-08-10T17:52:11.815+08:00  INFO 20120 --- [hide-nest-worker] [           main] i.g.c.h.w.HideNestWorkerApplication      : No active profile set, falling back to 1 default profile: \"default\"\r\n2026-08-10T17:52:12.114+08:00  INFO 20120 --- [hide-nest-worker] [          ..."
+             },
+    "criteria":  {
+                     "stagedEq0":  true,
+                     "apiSmokePass":  true,
+                     "r1MethodsPresent":  true,
+                     "r201RunningToCompleted":  true,
+                     "countsSelfConsistent":  true,
+                     "r201V008toV009Upgrade":  true,
+                     "nodeLintPass":  true,
+                     "evidenceJsonParseable":  true,
+                     "r2MethodsPresent":  true,
+                     "v009MethodsPresent":  true,
+                     "r201ReadyToCancelled":  true,
+                     "runnerHashSelfConsistent":  true,
+                     "r201ReadyToFailed":  true,
+                     "migrationHashesV001V008Match":  true,
+                     "newTableCountEq9":  true,
+                     "testTotalGt0":  true,
+                     "dockerClean":  true,
+                     "workerSmokePass":  true,
+                     "r201FrozenUnitDelete":  true,
+                     "nodeTypecheckPass":  true,
+                     "v009MigrationExists":  true,
+                     "xmlExists":  true,
+                     "gitIndexUnchanged":  true,
+                     "r201FrozenUnitUpdate":  true,
+                     "nodeBuildPass":  true,
+                     "r201RunningToCancelled":  true,
+                     "outOfBoundsEq0":  true,
+                     "r201ReadyToRunning":  true,
+                     "r201RunningToFailed":  true,
+                     "mavenVerifyPass":  true,
+                     "v009TableCountSelfConsistent":  true,
+                     "testPassedAll":  true,
+                     "nodeTestPass":  true
+                 },
+    "failedCriteria":  [
+
+                       ]
+}

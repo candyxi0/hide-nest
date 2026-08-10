@@ -8,6 +8,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent.
 import io.github.candyxi0.hidenest.database.generated.runtime.Indexes;
 import io.github.candyxi0.hidenest.database.generated.runtime.Keys;
 import io.github.candyxi0.hidenest.database.generated.runtime.Runtime;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ConsumerEffect.ConsumerEffectPath;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.EventTypeRegistry.EventTypeRegistryPath;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.FailureCodeRegistry.FailureCodeRegistryPath;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.OutboxEventRecord;
@@ -325,6 +326,19 @@ public class OutboxEvent extends TableImpl<OutboxEventRecord> {
         return _failureCodeRegistry;
     }
 
+    private transient ConsumerEffectPath _consumerEffect;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>runtime.consumer_effect</code> table
+     */
+    public ConsumerEffectPath consumerEffect() {
+        if (_consumerEffect == null)
+            _consumerEffect = new ConsumerEffectPath(this, null, Keys.CONSUMER_EFFECT__CONSUMER_EFFECT_EVENT_FK.getInverseKey());
+
+        return _consumerEffect;
+    }
+
     @Override
     public List<Check<OutboxEventRecord>> getChecks() {
         return Arrays.asList(
@@ -336,6 +350,7 @@ public class OutboxEvent extends TableImpl<OutboxEventRecord> {
             Internal.createCheck(this, DSL.name("outbox_event_lease_check"), "((((state = 'LEASED'::text) AND (lease_owner IS NOT NULL) AND (lease_until IS NOT NULL) AND (completed_at IS NULL)) OR ((state <> 'LEASED'::text) AND (lease_owner IS NULL) AND (lease_until IS NULL))))", true),
             Internal.createCheck(this, DSL.name("outbox_event_manifest_hash_check"), "((octet_length(manifest_hash) = 32))", true),
             Internal.createCheck(this, DSL.name("outbox_event_manifest_shape_check"), "(valid_outbox_manifest(payload_manifest, aggregate_id, aggregate_revision, policy_revision, purpose, manifest_hash))", true),
+            Internal.createCheck(this, DSL.name("outbox_event_operational_kind_check"), "(((event_category <> 'OPERATIONAL'::text) OR (aggregate_kind = ANY (ARRAY['RUN'::text, 'EFFECT'::text, 'FACT'::text]))))", true),
             Internal.createCheck(this, DSL.name("outbox_event_payload_object_check"), "((jsonb_typeof(payload_manifest) = 'object'::text))", true),
             Internal.createCheck(this, DSL.name("outbox_event_policy_revision_check"), "((policy_revision >= 0))", true),
             Internal.createCheck(this, DSL.name("outbox_event_purpose_check"), "(((char_length(purpose) >= 1) AND (char_length(purpose) <= 64)))", true),

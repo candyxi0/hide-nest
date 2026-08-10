@@ -4,10 +4,19 @@
 package io.github.candyxi0.hidenest.database.generated.runtime;
 
 
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScope;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScopeUnit;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.Checkpoint;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CloseoutRun;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ConsumerEffect;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ContextDelivery;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.EventTypeRegistry;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.FailureCodeRegistry;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.IdempotencyReceipt;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ModelRun;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.OutboxEvent;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.RetrievalTrace;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.WorkArtifact;
 
 import javax.annotation.processing.Generated;
 
@@ -25,6 +34,36 @@ import javax.annotation.processing.Generated;
 public class Tables {
 
     /**
+     * The table <code>runtime.capture_scope</code>.
+     */
+    public static final CaptureScope CAPTURE_SCOPE = CaptureScope.CAPTURE_SCOPE;
+
+    /**
+     * The table <code>runtime.capture_scope_unit</code>.
+     */
+    public static final CaptureScopeUnit CAPTURE_SCOPE_UNIT = CaptureScopeUnit.CAPTURE_SCOPE_UNIT;
+
+    /**
+     * The table <code>runtime.checkpoint</code>.
+     */
+    public static final Checkpoint CHECKPOINT = Checkpoint.CHECKPOINT;
+
+    /**
+     * The table <code>runtime.closeout_run</code>.
+     */
+    public static final CloseoutRun CLOSEOUT_RUN = CloseoutRun.CLOSEOUT_RUN;
+
+    /**
+     * The table <code>runtime.consumer_effect</code>.
+     */
+    public static final ConsumerEffect CONSUMER_EFFECT = ConsumerEffect.CONSUMER_EFFECT;
+
+    /**
+     * The table <code>runtime.context_delivery</code>.
+     */
+    public static final ContextDelivery CONTEXT_DELIVERY = ContextDelivery.CONTEXT_DELIVERY;
+
+    /**
      * The table <code>runtime.event_type_registry</code>.
      */
     public static final EventTypeRegistry EVENT_TYPE_REGISTRY = EventTypeRegistry.EVENT_TYPE_REGISTRY;
@@ -40,7 +79,22 @@ public class Tables {
     public static final IdempotencyReceipt IDEMPOTENCY_RECEIPT = IdempotencyReceipt.IDEMPOTENCY_RECEIPT;
 
     /**
+     * The table <code>runtime.model_run</code>.
+     */
+    public static final ModelRun MODEL_RUN = ModelRun.MODEL_RUN;
+
+    /**
      * The table <code>runtime.outbox_event</code>.
      */
     public static final OutboxEvent OUTBOX_EVENT = OutboxEvent.OUTBOX_EVENT;
+
+    /**
+     * The table <code>runtime.retrieval_trace</code>.
+     */
+    public static final RetrievalTrace RETRIEVAL_TRACE = RetrievalTrace.RETRIEVAL_TRACE;
+
+    /**
+     * The table <code>runtime.work_artifact</code>.
+     */
+    public static final WorkArtifact WORK_ARTIFACT = WorkArtifact.WORK_ARTIFACT;
 }
