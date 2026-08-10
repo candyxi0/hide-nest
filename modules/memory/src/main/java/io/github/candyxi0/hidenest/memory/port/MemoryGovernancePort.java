@@ -24,6 +24,9 @@ public interface MemoryGovernancePort {
     /** Insert relations. Non-empty when schema has no relation table must fail-closed. */
     void insertMemoryRelations(List<MemoryRelation> relations);
 
+    /** Find relations originating from a given revision. */
+    List<MemoryRelation> findMemoryRelationsByFromRevisionId(UUID fromRevisionId);
+
     AccessPolicy lockAccessPolicyForWrite(UUID policyId);
 
     void insertAccessPolicy(AccessPolicy policy);
@@ -43,4 +46,13 @@ public interface MemoryGovernancePort {
 
     /** Lock and read current MemoryRevision. */
     MemoryRevision lockMemoryRevisionForWrite(UUID memoryId);
+
+    /** Insert an actor ref. */
+    void insertActorRef(ActorRef actorRef);
+
+    /** Find actor ref by primary key. */
+    ActorRef findActorRefById(UUID actorId);
+
+    /** Find actor ref by kind and stable ref. */
+    ActorRef findActorRefByKindAndStableRef(String actorKind, String stableRef);
 }

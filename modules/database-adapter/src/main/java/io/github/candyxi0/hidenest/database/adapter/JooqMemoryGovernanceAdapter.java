@@ -30,13 +30,12 @@ public class JooqMemoryGovernanceAdapter implements MemoryGovernancePort {
                 .fetch();
         List<Decision> decisions = new ArrayList<>();
         for (var r : records) {
-            // Verify semantic binding: correct review session, proposal revision, target
             if (!reviewSessionId.equals(r.getReviewSessionId())
                     || !proposalRevisionId.equals(r.getProposalRevisionId())
                     || !"USER_CONFIRM".equals(r.getDecisionKind())
                     || !targetKind.equals(r.getTargetKind())
                     || !targetId.equals(r.getTargetId())) {
-                continue; // exclude mismatched decisions
+                continue;
             }
             if (targetRevisionRef != null
                     && !targetRevisionRef.equals(r.getTargetRevisionRef())) {
@@ -139,10 +138,36 @@ public class JooqMemoryGovernanceAdapter implements MemoryGovernancePort {
 
     @Override
     public void insertMemoryRelations(List<MemoryRelation> relations) {
-        if (relations != null && !relations.isEmpty()) {
-            // memory_relation table deferred to HDM-017. Fail closed.
-            throw new RuntimeException("CANONICAL_COMMIT_FAILED: memory_relation table not available");
+        if (relations == null || relations.isEmpty()) {
+            return;
         }
+        var insert = dsl.insertInto(MEMORY_RELATION)
+                .columns(MEMORY_RELATION.RELATION_ID, MEMORY_RELATION.FROM_REVISION_ID,
+                        MEMORY_RELATION.RELATION_TYPE, MEMORY_RELATION.TO_REVISION_ID,
+                        MEMORY_RELATION.TO_ANCHOR_ID, MEMORY_RELATION.PERSPECTIVE_ACTOR_ID,
+                        MEMORY_RELATION.CREATED_BY_DECISION_ID, MEMORY_RELATION.CREATED_AT);
+        for (var rel : relations) {
+            insert = insert.values(rel.relationId(), rel.fromRevisionId(),
+                    rel.relationType(), rel.toRevisionId(), rel.toAnchorId(),
+                    rel.perspectiveActorId(), rel.createdByDecisionId(), rel.createdAt());
+        }
+        insert.execute();
+    }
+
+    @Override
+    public List<MemoryRelation> findMemoryRelationsByFromRevisionId(UUID fromRevisionId) {
+        var records = dsl.selectFrom(MEMORY_RELATION)
+                .where(MEMORY_RELATION.FROM_REVISION_ID.eq(fromRevisionId))
+                .orderBy(MEMORY_RELATION.CREATED_AT.asc(), MEMORY_RELATION.RELATION_ID.asc())
+                .fetch();
+        List<MemoryRelation> result = new ArrayList<>();
+        for (var r : records) {
+            result.add(new MemoryRelation(
+                    r.getRelationId(), r.getFromRevisionId(), r.getRelationType(),
+                    r.getToRevisionId(), r.getToAnchorId(), r.getPerspectiveActorId(),
+                    r.getCreatedByDecisionId(), r.getCreatedAt()));
+        }
+        return result;
     }
 
     @Override
@@ -216,5 +241,39 @@ public class JooqMemoryGovernanceAdapter implements MemoryGovernancePort {
                         event.detailManifest() != null
                                 ? JSONB.valueOf(event.detailManifest()) : null)
                 .execute();
+    }
+
+    @Override
+    public void insertActorRef(ActorRef actorRef) {
+        dsl.insertInto(ACTOR_REF)
+                .set(ACTOR_REF.ACTOR_ID, actorRef.actorId())
+                .set(ACTOR_REF.ACTOR_KIND, actorRef.actorKind())
+                .set(ACTOR_REF.STABLE_REF, actorRef.stableRef())
+                .set(ACTOR_REF.DISPLAY_LABEL, actorRef.displayLabel())
+                .set(ACTOR_REF.CREATED_AT, actorRef.createdAt())
+                .execute();
+    }
+
+    @Override
+    public ActorRef findActorRefById(UUID actorId) {
+        var r = dsl.selectFrom(ACTOR_REF)
+                .where(ACTOR_REF.ACTOR_ID.eq(actorId))
+                .fetchOne();
+        if (r == null) return null;
+        return new ActorRef(
+                r.getActorId(), r.getActorKind(), r.getStableRef(),
+                r.getDisplayLabel(), r.getCreatedAt());
+    }
+
+    @Override
+    public ActorRef findActorRefByKindAndStableRef(String actorKind, String stableRef) {
+        var r = dsl.selectFrom(ACTOR_REF)
+                .where(ACTOR_REF.ACTOR_KIND.eq(actorKind))
+                .and(ACTOR_REF.STABLE_REF.eq(stableRef))
+                .fetchOne();
+        if (r == null) return null;
+        return new ActorRef(
+                r.getActorId(), r.getActorKind(), r.getStableRef(),
+                r.getDisplayLabel(), r.getCreatedAt());
     }
 }

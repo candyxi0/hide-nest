@@ -1,0 +1,143 @@
+{
+  "status": "HDM006_SLICE_C_READY_FOR_LOCAL_COMMIT",
+  "timestamp": "2026-08-10T22:05:20.454374",
+  "environment": {
+    "java": "25.0.4-hotspot (Temurin)",
+    "maven": "3.9.16",
+    "mavenPath": "C:/Users/tangx/.m2/wrapper/dists/apache-maven-3.9.16/0daed3be3ebd1c706f0e69e8b07c6b73f5cc4ea3dfce72a8d0ec2e849ca2ddb0/bin/mvn.cmd"
+  },
+  "totalTests": {
+    "tests": 199,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "testsByClass": {
+    "io.github.candyxi0.hidenest.arch.ArchitectureTest": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.arch.DatabaseBoundaryTest": {
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.arch.PortBoundaryTest": {
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.contracts.CompatibilityFixtureTest": {
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.contracts.DeterminismTest": {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.contracts.EnumCompletenessTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.contracts.EventSchemaTest": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.contracts.FixtureValidationTest": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.contracts.LeakageCanaryTest": {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.contracts.LocalExcludeTest": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.contracts.OpenApiValidationTest": {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.contracts.OperationMatrixTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.contracts.SchemaStructureTest": {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.database.DatabaseSliceBContractTest": {
+      "tests": 95,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.database.DatabaseSliceC2AEvidenceMemoryAdapterTest": {
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.database.DatabaseSliceC2BRuntimeAdapterTest": {
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "io.github.candyxi0.hidenest.database.SliceCCoordinatorTest": {
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "buildResult": "BUILD SUCCESS",
+  "checkResults": {
+    "c2aDatabaseTests": "14/14",
+    "c2bDatabaseTests": "14/14",
+    "sliceB": "95/95",
+    "sliceC": "15/15",
+    "architectureTests": "24/24",
+    "contracts": 9,
+    "v001_v009_match": true,
+    "generatedMatch": true,
+    "defaultUoeResidual": 0,
+    "bodySecretLeak": 0,
+    "workArtifactCleanup": "ROUTED_TO_HDM006_SLICE_D_V010_DECISION",
+    "gitDiffCheck": "PASS_CRLF_WARNINGS_ONLY"
+  },
+  "workspace": {
+    "trackedModified": 6,
+    "untracked": 27,
+    "staged": 0,
+    "outOfBounds": 0
+  },
+  "gitIndexUnchanged": true,
+  "networkUsed": false,
+  "gitWriteOps": 0
+}
