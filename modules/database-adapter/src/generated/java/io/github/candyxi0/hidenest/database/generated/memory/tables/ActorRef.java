@@ -4,10 +4,12 @@
 package io.github.candyxi0.hidenest.database.generated.memory.tables;
 
 
+import io.github.candyxi0.hidenest.database.generated.evidence.tables.SourceUnit.SourceUnitPath;
 import io.github.candyxi0.hidenest.database.generated.memory.Keys;
 import io.github.candyxi0.hidenest.database.generated.memory.Memory;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent.ChangeEventPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision.DecisionPath;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation.MemoryRelationPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevision.MemoryRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ProposalRevision.ProposalRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.ActorRefRecord;
@@ -178,6 +180,19 @@ public class ActorRef extends TableImpl<ActorRefRecord> {
         return Arrays.asList(Keys.ACTOR_REF_ACTOR_KIND_STABLE_REF_KEY);
     }
 
+    private transient SourceUnitPath _sourceUnit;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>evidence.source_unit</code> table
+     */
+    public SourceUnitPath sourceUnit() {
+        if (_sourceUnit == null)
+            _sourceUnit = new SourceUnitPath(this, null, io.github.candyxi0.hidenest.database.generated.evidence.Keys.SOURCE_UNIT__SOURCE_UNIT_ACTOR_FK.getInverseKey());
+
+        return _sourceUnit;
+    }
+
     private transient ChangeEventPath _changeEvent;
 
     /**
@@ -202,6 +217,19 @@ public class ActorRef extends TableImpl<ActorRefRecord> {
             _decision = new DecisionPath(this, null, Keys.DECISION__DECISION_ACTOR_FK.getInverseKey());
 
         return _decision;
+    }
+
+    private transient MemoryRelationPath _memoryRelation;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>memory.memory_relation</code> table
+     */
+    public MemoryRelationPath memoryRelation() {
+        if (_memoryRelation == null)
+            _memoryRelation = new MemoryRelationPath(this, null, Keys.MEMORY_RELATION__MEMORY_RELATION_ACTOR_FK.getInverseKey());
+
+        return _memoryRelation;
     }
 
     private transient MemoryRevisionPath _memoryRevision;

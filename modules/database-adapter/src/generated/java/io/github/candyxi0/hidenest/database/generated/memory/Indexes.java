@@ -8,6 +8,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicy
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRecord;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevision;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Proposal;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ProposalRevision;
@@ -45,6 +46,10 @@ public class Indexes {
     public static final Index DECISION_TARGET_LOOKUP = Internal.createIndex(DSL.name("decision_target_lookup"), Decision.DECISION, new OrderField[] { Decision.DECISION.TARGET_KIND, Decision.DECISION.TARGET_ID, Decision.DECISION.TARGET_REVISION_REF }, false);
     public static final Index MEMORY_RECORD_POLICY_LOOKUP = Internal.createIndex(DSL.name("memory_record_policy_lookup"), MemoryRecord.MEMORY_RECORD, new OrderField[] { MemoryRecord.MEMORY_RECORD.POLICY_ID, MemoryRecord.MEMORY_RECORD.CURRENT_POLICY_REVISION_NO }, false);
     public static final Index MEMORY_RECORD_STATE_LOOKUP = Internal.createIndex(DSL.name("memory_record_state_lookup"), MemoryRecord.MEMORY_RECORD, new OrderField[] { MemoryRecord.MEMORY_RECORD.STATE, MemoryRecord.MEMORY_RECORD.MEMORY_ID }, false);
+    public static final Index MEMORY_RELATION_DECISION_LOOKUP = Internal.createIndex(DSL.name("memory_relation_decision_lookup"), MemoryRelation.MEMORY_RELATION, new OrderField[] { MemoryRelation.MEMORY_RELATION.CREATED_BY_DECISION_ID }, false);
+    public static final Index MEMORY_RELATION_FROM_REVISION_LOOKUP = Internal.createIndex(DSL.name("memory_relation_from_revision_lookup"), MemoryRelation.MEMORY_RELATION, new OrderField[] { MemoryRelation.MEMORY_RELATION.FROM_REVISION_ID }, false);
+    public static final Index MEMORY_RELATION_TO_ANCHOR_LOOKUP = Internal.createIndex(DSL.name("memory_relation_to_anchor_lookup"), MemoryRelation.MEMORY_RELATION, new OrderField[] { MemoryRelation.MEMORY_RELATION.TO_ANCHOR_ID }, false);
+    public static final Index MEMORY_RELATION_TO_REVISION_LOOKUP = Internal.createIndex(DSL.name("memory_relation_to_revision_lookup"), MemoryRelation.MEMORY_RELATION, new OrderField[] { MemoryRelation.MEMORY_RELATION.TO_REVISION_ID }, false);
     public static final Index MEMORY_REVISION_CREATED_LOOKUP = Internal.createIndex(DSL.name("memory_revision_created_lookup"), MemoryRevision.MEMORY_REVISION, new OrderField[] { MemoryRevision.MEMORY_REVISION.MEMORY_ID, MemoryRevision.MEMORY_REVISION.REVISION_NO.desc() }, false);
     public static final Index PROPOSAL_REVISION_PROPOSAL_LOOKUP = Internal.createIndex(DSL.name("proposal_revision_proposal_lookup"), ProposalRevision.PROPOSAL_REVISION, new OrderField[] { ProposalRevision.PROPOSAL_REVISION.PROPOSAL_ID, ProposalRevision.PROPOSAL_REVISION.REVISION_NO }, false);
     public static final Index PROPOSAL_TARGET_MEMORY_LOOKUP = Internal.createIndex(DSL.name("proposal_target_memory_lookup"), Proposal.PROPOSAL, new OrderField[] { Proposal.PROPOSAL.TARGET_MEMORY_ID }, false);

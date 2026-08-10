@@ -84,7 +84,7 @@ class DatabaseSliceBContractTest {
                 .validateMigrationNaming(true)
                 .load();
         MigrateResult result = flyway.migrate();
-        assertEquals(7, result.migrationsExecuted);
+        assertEquals(8, result.migrationsExecuted);
     }
 
     @AfterAll
@@ -105,7 +105,7 @@ class DatabaseSliceBContractTest {
         MigrateResult repeated = flyway.migrate();
         assertEquals(0, repeated.migrationsExecuted);
         assertEquals(before, catalogFingerprint());
-        assertEquals(7, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(8, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
     }
 
     @Test
@@ -148,6 +148,12 @@ class DatabaseSliceBContractTest {
                         + "WHERE schema_name IN ('evidence','memory','runtime','security')"));
         assertEquals(
                 Set.of(
+                        "evidence.source",
+                        "evidence.source_unit",
+                        "evidence.source_payload",
+                        "evidence.source_anchor",
+                        "evidence.source_anchor_unit",
+                        "memory.memory_relation",
                         "memory.actor_ref",
                         "memory.memory_record",
                         "memory.memory_revision",
@@ -350,19 +356,26 @@ class DatabaseSliceBContractTest {
     @DisplayName("DatabasePrivilegeIT: migrator ownership and runtime least privilege")
     void databasePrivilegeIT() throws SQLException {
         assertEquals(
-                16,
+                22,
                 scalarLong("SELECT count(*) FROM pg_catalog.pg_tables "
                         + "WHERE schemaname IN ('evidence','memory','runtime','security') "
                         + "AND tableowner='hide_nest_migrator'"));
         assertEquals(
                 0,
                 scalarLong("SELECT count(*) FROM information_schema.role_table_grants "
-                        + "WHERE table_schema IN ('memory','runtime') AND grantee='PUBLIC'"));
+                        + "WHERE table_schema IN ('evidence','memory','runtime') AND grantee='PUBLIC'"));
         assertTrue(scalarBoolean("SELECT has_table_privilege('hide_nest_api','memory.actor_ref','INSERT')"));
         assertFalse(scalarBoolean("SELECT has_table_privilege('hide_nest_api','memory.actor_ref','UPDATE')"));
         assertTrue(scalarBoolean(
                 "SELECT has_column_privilege('hide_nest_worker','runtime.outbox_event','state','UPDATE')"));
         assertFalse(scalarBoolean("SELECT has_table_privilege('hide_nest_worker','memory.decision','INSERT')"));
+        assertTrue(scalarBoolean("SELECT has_table_privilege('hide_nest_api','evidence.source','INSERT')"));
+        assertTrue(scalarBoolean("SELECT has_table_privilege('hide_nest_api','evidence.source','SELECT')"));
+        assertFalse(scalarBoolean("SELECT has_table_privilege('hide_nest_api','evidence.source','UPDATE')"));
+        assertTrue(scalarBoolean("SELECT has_table_privilege('hide_nest_worker','evidence.source','SELECT')"));
+        assertFalse(scalarBoolean("SELECT has_table_privilege('hide_nest_worker','evidence.source','INSERT')"));
+        assertTrue(scalarBoolean("SELECT has_table_privilege('hide_nest_api','memory.memory_relation','INSERT')"));
+        assertFalse(scalarBoolean("SELECT has_table_privilege('hide_nest_worker','memory.memory_relation','INSERT')"));
     }
 
     @Test
@@ -3123,6 +3136,444 @@ class DatabaseSliceBContractTest {
                 Files.delete(path);
             }
         }
+    }
+
+    // ============================================================
+    // HDM-006 Slice A R1: evidence schema + memory_relation contract tests
+    // ============================================================
+
+    @Test
+    @Order(35)
+    @DisplayName("SliceAEvidenceTableInventoryIT: 6 tables, columns, PK, unique, CHECK, collation, trigger")
+    void sliceAEvidenceTableInventoryIT() throws SQLException {
+        assertEquals(
+                Set.of(
+                        "evidence.source",
+                        "evidence.source_unit",
+                        "evidence.source_payload",
+                        "evidence.source_anchor",
+                        "evidence.source_anchor_unit",
+                        "memory.memory_relation"),
+                querySet("SELECT table_schema || '.' || table_name FROM information_schema.tables "
+                        + "WHERE (table_schema='evidence' AND table_name IN "
+                        + "('source','source_unit','source_payload','source_anchor','source_anchor_unit')) "
+                        + "OR (table_schema='memory' AND table_name='memory_relation') "
+                        + "ORDER BY table_schema, table_name"));
+
+        assertEquals(
+                Set.of("source_id", "source_kind", "platform", "external_ref", "observed_accessible",
+                        "compressed_observed", "policy_id", "created_at", "ingested_at"),
+                columnSet("evidence", "source"));
+        assertEquals(
+                Set.of("source_unit_id", "source_id", "external_unit_ref", "source_version", "ordinal",
+                        "actor_id", "occurred_at", "created_at"),
+                columnSet("evidence", "source_unit"));
+        assertEquals(
+                Set.of("payload_id", "source_unit_id", "payload_kind", "store_adapter", "object_ref",
+                        "object_version_ref", "content_type", "size_bytes", "content_hash", "policy_id",
+                        "current_policy_revision_no", "retention_class", "expires_at", "created_at"),
+                columnSet("evidence", "source_payload"));
+        assertEquals(
+                Set.of("anchor_id", "source_id", "anchor_kind", "created_at"),
+                columnSet("evidence", "source_anchor"));
+        assertEquals(
+                Set.of("anchor_id", "source_unit_id", "from_offset", "to_offset", "ordinal"),
+                columnSet("evidence", "source_anchor_unit"));
+        assertEquals(
+                Set.of("relation_id", "from_revision_id", "relation_type", "to_revision_id", "to_anchor_id",
+                        "perspective_actor_id", "created_by_decision_id", "created_at"),
+                columnSet("memory", "memory_relation"));
+
+        // R1-01: same-source trigger exists
+        assertEquals(
+                Set.of("enforce_anchor_unit_same_source"),
+                querySet("SELECT routine_name FROM information_schema.routines "
+                        + "WHERE routine_schema='evidence' AND routine_type='FUNCTION'"));
+        assertEquals(
+                Set.of("source_anchor_unit_same_source_guard"),
+                querySet("SELECT trigger_name FROM information_schema.triggers "
+                        + "WHERE event_object_schema='evidence' AND event_object_table='source_anchor_unit'"));
+
+        // Collation
+        assertEquals("C", scalarString(
+                "SELECT collation_name FROM information_schema.columns "
+                        + "WHERE table_schema='evidence' AND table_name='source' AND column_name='source_kind'"));
+
+        // Unique constraints
+        assertEquals(1L, scalarLong(
+                "SELECT count(*) FROM information_schema.table_constraints "
+                        + "WHERE table_schema='evidence' AND table_name='source' AND constraint_type='UNIQUE'"));
+        assertEquals(1L, scalarLong(
+                "SELECT count(*) FROM information_schema.table_constraints "
+                        + "WHERE table_schema='evidence' AND table_name='source_unit' AND constraint_type='UNIQUE'"));
+
+        // R1-03 code format CHECKs on 5 columns (regex ^[A-Z][A-Z0-9_]{0,63}$)
+        assertTrue(
+                scalarLong("SELECT count(*) FROM information_schema.check_constraints "
+                        + "WHERE constraint_schema='evidence' AND constraint_name LIKE '%_kind_format'") >= 1L);
+        assertTrue(
+                scalarLong("SELECT count(*) FROM information_schema.check_constraints "
+                        + "WHERE constraint_schema='evidence' AND constraint_name LIKE '%_format'") >= 5L);
+
+        // R1-02 memory_relation target CHECK (single combined constraint)
+        assertTrue(
+                scalarLong("SELECT count(*) FROM information_schema.check_constraints "
+                        + "WHERE constraint_schema='memory' AND constraint_name = 'memory_relation_target_check'") >= 1L);
+
+        // No text column without COLLATE "C" on new tables
+        for (String table : List.of("evidence.source", "evidence.source_unit", "evidence.source_payload",
+                "evidence.source_anchor", "evidence.source_anchor_unit", "memory.memory_relation")) {
+            String[] parts = table.split("\\.");
+            assertEquals(0L,
+                    scalarLong("SELECT count(*) FROM information_schema.columns "
+                            + "WHERE table_schema='%s' AND table_name='%s' AND data_type IN ('text','character varying') "
+                            + "AND (collation_name IS NULL OR collation_name <> 'C')"
+                                    .formatted(parts[0], parts[1])));
+        }
+    }
+
+    @Test
+    @Order(36)
+    @DisplayName("SliceAForeignKeyDeletePolicyIT: all 13 evidence + memory_relation FKs are explicit NO ACTION")
+    void sliceAForeignKeyDeletePolicyIT() throws SQLException {
+        long evidenceFkCount = scalarLong(
+                "SELECT count(*) FROM information_schema.referential_constraints "
+                        + "WHERE constraint_schema='evidence'");
+        assertEquals(8L, evidenceFkCount);
+        long memoryRelationFkCount = scalarLong(
+                "SELECT count(*) FROM information_schema.referential_constraints "
+                        + "WHERE constraint_schema='memory' AND constraint_name LIKE 'memory_relation%'");
+        assertEquals(5L, memoryRelationFkCount);
+        assertEquals(evidenceFkCount + memoryRelationFkCount,
+                scalarLong("SELECT count(*) FROM information_schema.referential_constraints "
+                        + "WHERE constraint_schema IN ('evidence','memory') "
+                        + "AND constraint_name IN ("
+                        + "SELECT constraint_name FROM information_schema.referential_constraints "
+                        + "WHERE constraint_schema='evidence' "
+                        + "OR (constraint_schema='memory' AND constraint_name LIKE 'memory_relation%')) "
+                        + "AND delete_rule='NO ACTION'"));
+        assertEquals(
+                Set.of("source_policy_fk", "source_unit_source_fk", "source_unit_actor_fk",
+                        "source_payload_unit_fk", "source_payload_policy_revision_fk",
+                        "source_anchor_source_fk", "source_anchor_unit_anchor_fk", "source_anchor_unit_unit_fk"),
+                querySet("SELECT constraint_name FROM information_schema.referential_constraints "
+                        + "WHERE constraint_schema='evidence' ORDER BY constraint_name"));
+    }
+
+    @Test
+    @Order(37)
+    @DisplayName("SliceAR1AnchorSameSourceIT: same-source passes, cross-source rejected by trigger")
+    void sliceAR1AnchorSameSourceIT() throws SQLException {
+        // Two separate Sources
+        UUID srcA = UUID.randomUUID();
+        UUID srcB = UUID.randomUUID();
+        try (Connection connection = connection();
+                Statement statement = connection.createStatement()) {
+            statement.execute(
+                    ("INSERT INTO evidence.source(source_id,source_kind,platform,external_ref,"
+                            + "observed_accessible,compressed_observed,policy_id,created_at,ingested_at) "
+                            + "SELECT '%s','CODEX','TEST','SAME-SRC-REF-A',true,false,policy_id,"
+                            + "clock_timestamp(),clock_timestamp() FROM memory.access_policy LIMIT 1")
+                                    .formatted(srcA));
+            statement.execute(
+                    ("INSERT INTO evidence.source(source_id,source_kind,platform,external_ref,"
+                            + "observed_accessible,compressed_observed,policy_id,created_at,ingested_at) "
+                            + "SELECT '%s','CODEX','TEST','SAME-SRC-REF-B',true,false,policy_id,"
+                            + "clock_timestamp(),clock_timestamp() FROM memory.access_policy LIMIT 1")
+                                    .formatted(srcB));
+        }
+        // SourceUnits: unitA belongs to srcA, unitB belongs to srcB
+        UUID unitA = UUID.randomUUID();
+        UUID unitB = UUID.randomUUID();
+        // Anchors: anchorA belongs to srcA, anchorB belongs to srcB
+        UUID anchorA = UUID.randomUUID();
+        UUID anchorB = UUID.randomUUID();
+        try (Connection connection = connection();
+                Statement statement = connection.createStatement()) {
+            statement.execute(
+                    ("INSERT INTO evidence.source_unit(source_unit_id,source_id,external_unit_ref,"
+                            + "source_version,ordinal,created_at) VALUES ('%s','%s','UA','v1',1,clock_timestamp())")
+                                    .formatted(unitA, srcA));
+            statement.execute(
+                    ("INSERT INTO evidence.source_unit(source_unit_id,source_id,external_unit_ref,"
+                            + "source_version,ordinal,created_at) VALUES ('%s','%s','UB','v1',1,clock_timestamp())")
+                                    .formatted(unitB, srcB));
+            statement.execute(
+                    ("INSERT INTO evidence.source_anchor(anchor_id,source_id,anchor_kind,created_at) "
+                            + "VALUES ('%s','%s','MESSAGE',clock_timestamp())").formatted(anchorA, srcA));
+            statement.execute(
+                    ("INSERT INTO evidence.source_anchor(anchor_id,source_id,anchor_kind,created_at) "
+                            + "VALUES ('%s','%s','MESSAGE',clock_timestamp())").formatted(anchorB, srcB));
+        }
+
+        // Positive: anchorA(srcA) + unitA(srcA) → same source, passes
+        try (Connection connection = connection()) {
+            connection.setAutoCommit(false);
+            execute(connection,
+                    ("INSERT INTO evidence.source_anchor_unit(anchor_id,source_unit_id,from_offset,to_offset,ordinal) "
+                            + "VALUES ('%s','%s',NULL,NULL,1)").formatted(anchorA, unitA));
+            connection.commit();
+        }
+
+        // Negative: anchorA(srcA) + unitB(srcB) → cross-source, rejected
+        assertCommitSqlState("23514", connection -> {
+            execute(connection,
+                    ("INSERT INTO evidence.source_anchor_unit(anchor_id,source_unit_id,from_offset,to_offset,ordinal) "
+                            + "VALUES ('%s','%s',NULL,NULL,2)").formatted(anchorA, unitB));
+        });
+
+        // Negative: anchorB(srcB) + unitA(srcA) → cross-source, rejected
+        assertCommitSqlState("23514", connection -> {
+            execute(connection,
+                    ("INSERT INTO evidence.source_anchor_unit(anchor_id,source_unit_id,from_offset,to_offset,ordinal) "
+                            + "VALUES ('%s','%s',NULL,NULL,2)").formatted(anchorB, unitA));
+        });
+    }
+
+    @Test
+    @Order(38)
+    @DisplayName("SliceAOffsetConstraintIT: source_anchor_unit offset negative cases rejected")
+    void sliceAOffsetConstraintIT() throws SQLException {
+        UUID sourceId = UUID.randomUUID();
+        UUID anchorId = UUID.randomUUID();
+        UUID sourceUnitId = UUID.randomUUID();
+        try (Connection connection = connection();
+                Statement statement = connection.createStatement()) {
+            statement.execute(
+                    ("INSERT INTO evidence.source(source_id,source_kind,platform,external_ref,"
+                            + "observed_accessible,compressed_observed,policy_id,created_at,ingested_at) "
+                            + "SELECT '%s','CODEX','TEST','OFFSET-REF',true,false,policy_id,"
+                            + "clock_timestamp(),clock_timestamp() FROM memory.access_policy LIMIT 1")
+                                    .formatted(sourceId));
+            statement.execute(
+                    ("INSERT INTO evidence.source_unit(source_unit_id,source_id,external_unit_ref,"
+                            + "source_version,ordinal,created_at) VALUES ('%s','%s','UNIT-1','v1',1,clock_timestamp())")
+                                    .formatted(sourceUnitId, sourceId));
+            statement.execute(
+                    ("INSERT INTO evidence.source_anchor(anchor_id,source_id,anchor_kind,created_at) "
+                            + "VALUES ('%s','%s','MESSAGE',clock_timestamp())").formatted(anchorId, sourceId));
+        }
+
+        // Negative: only from_offset set
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source_anchor_unit(anchor_id,source_unit_id,from_offset,to_offset,ordinal) "
+                        + "VALUES ('%s','%s',0,NULL,1)").formatted(anchorId, sourceUnitId));
+        // Negative: only to_offset set
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source_anchor_unit(anchor_id,source_unit_id,from_offset,to_offset,ordinal) "
+                        + "VALUES ('%s','%s',NULL,10,1)").formatted(anchorId, sourceUnitId));
+        // Negative: from_offset < 0
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source_anchor_unit(anchor_id,source_unit_id,from_offset,to_offset,ordinal) "
+                        + "VALUES ('%s','%s',-1,10,1)").formatted(anchorId, sourceUnitId));
+        // Negative: to_offset < from_offset
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source_anchor_unit(anchor_id,source_unit_id,from_offset,to_offset,ordinal) "
+                        + "VALUES ('%s','%s',10,5,1)").formatted(anchorId, sourceUnitId));
+
+        // Positive: valid offsets
+        try (Connection connection = connection()) {
+            connection.setAutoCommit(false);
+            execute(connection,
+                    ("INSERT INTO evidence.source_anchor_unit(anchor_id,source_unit_id,from_offset,to_offset,ordinal) "
+                            + "VALUES ('%s','%s',0,10,1)").formatted(anchorId, sourceUnitId));
+            execute(connection,
+                    ("INSERT INTO evidence.source_anchor_unit(anchor_id,source_unit_id,from_offset,to_offset,ordinal) "
+                            + "VALUES ('%s','%s',5,5,2)").formatted(anchorId, sourceUnitId));
+            connection.commit();
+        }
+    }
+
+    @Test
+    @Order(39)
+    @DisplayName("SliceAR1MemoryRelationTargetIT: full target closure — 6 negative + 2 positive")
+    void sliceAR1MemoryRelationTargetIT() throws SQLException {
+        MemoryFixture mem = insertMemory("rel-target");
+        UUID anchorId = UUID.randomUUID();
+        UUID sourceId = UUID.randomUUID();
+
+        try (Connection connection = connection();
+                Statement statement = connection.createStatement()) {
+            statement.execute(
+                    ("INSERT INTO evidence.source(source_id,source_kind,platform,external_ref,"
+                            + "observed_accessible,compressed_observed,policy_id,created_at,ingested_at) "
+                            + "SELECT '%s','CODEX','TEST','REL-REF',true,false,policy_id,"
+                            + "clock_timestamp(),clock_timestamp() FROM memory.access_policy LIMIT 1")
+                                    .formatted(sourceId));
+            statement.execute(
+                    ("INSERT INTO evidence.source_anchor(anchor_id,source_id,anchor_kind,created_at) "
+                            + "VALUES ('%s','%s','MESSAGE',clock_timestamp())").formatted(anchorId, sourceId));
+        }
+        MemoryFixture mem2 = insertMemory("rel-target2");
+        DecisionFixture dec2 = prepareCanonicalDecision(mem2, 2L);
+        publishCanonicalRevision(mem2, dec2, "target-revision");
+
+        // Positive 1: EVIDENCED_BY → anchor
+        try (Connection connection = connection()) {
+            connection.setAutoCommit(false);
+            execute(connection,
+                    ("INSERT INTO memory.memory_relation(relation_id,from_revision_id,relation_type,"
+                            + "to_revision_id,to_anchor_id,perspective_actor_id,created_by_decision_id,created_at) "
+                            + "VALUES ('%s','%s','EVIDENCED_BY',NULL,'%s',NULL,'%s',clock_timestamp())")
+                                    .formatted(UUID.randomUUID(), mem.revisionId(), anchorId, mem.decisionId()));
+            connection.commit();
+        }
+
+        // Positive 2: INTERPRETS → revision
+        try (Connection connection = connection()) {
+            connection.setAutoCommit(false);
+            execute(connection,
+                    ("INSERT INTO memory.memory_relation(relation_id,from_revision_id,relation_type,"
+                            + "to_revision_id,to_anchor_id,perspective_actor_id,created_by_decision_id,created_at) "
+                            + "VALUES ('%s','%s','INTERPRETS','%s',NULL,NULL,'%s',clock_timestamp())")
+                                    .formatted(UUID.randomUUID(), mem.revisionId(), dec2.newRevisionId(), mem.decisionId()));
+            connection.commit();
+        }
+
+        // Negative 1: both NULL
+        assertStatementSqlState("23514",
+                ("INSERT INTO memory.memory_relation(relation_id,from_revision_id,relation_type,"
+                        + "to_revision_id,to_anchor_id,perspective_actor_id,created_by_decision_id,created_at) "
+                        + "VALUES ('%s','%s','SUPPORTS',NULL,NULL,NULL,'%s',clock_timestamp())")
+                                .formatted(UUID.randomUUID(), mem.revisionId(), mem.decisionId()));
+
+        // Negative 2: both NOT NULL
+        assertStatementSqlState("23514",
+                ("INSERT INTO memory.memory_relation(relation_id,from_revision_id,relation_type,"
+                        + "to_revision_id,to_anchor_id,perspective_actor_id,created_by_decision_id,created_at) "
+                        + "VALUES ('%s','%s','SUPPORTS','%s','%s',NULL,'%s',clock_timestamp())")
+                                .formatted(UUID.randomUUID(), mem.revisionId(), dec2.newRevisionId(), anchorId, mem.decisionId()));
+
+        // Negative 3: EVIDENCED_BY → revision (must be anchor)
+        assertStatementSqlState("23514",
+                ("INSERT INTO memory.memory_relation(relation_id,from_revision_id,relation_type,"
+                        + "to_revision_id,to_anchor_id,perspective_actor_id,created_by_decision_id,created_at) "
+                        + "VALUES ('%s','%s','EVIDENCED_BY','%s',NULL,NULL,'%s',clock_timestamp())")
+                                .formatted(UUID.randomUUID(), mem.revisionId(), dec2.newRevisionId(), mem.decisionId()));
+
+        // Negative 4: SUPPORTS → anchor (must be revision)
+        assertStatementSqlState("23514",
+                ("INSERT INTO memory.memory_relation(relation_id,from_revision_id,relation_type,"
+                        + "to_revision_id,to_anchor_id,perspective_actor_id,created_by_decision_id,created_at) "
+                        + "VALUES ('%s','%s','SUPPORTS',NULL,'%s',NULL,'%s',clock_timestamp())")
+                                .formatted(UUID.randomUUID(), mem.revisionId(), anchorId, mem.decisionId()));
+
+        // Negative 5: invalid relation_type
+        assertStatementSqlState("23514",
+                ("INSERT INTO memory.memory_relation(relation_id,from_revision_id,relation_type,"
+                        + "to_revision_id,to_anchor_id,perspective_actor_id,created_by_decision_id,created_at) "
+                        + "VALUES ('%s','%s','INVALID_TYPE','%s',NULL,NULL,'%s',clock_timestamp())")
+                                .formatted(UUID.randomUUID(), mem.revisionId(), dec2.newRevisionId(), mem.decisionId()));
+
+        // Negative 6: REFINES → anchor (must be revision)
+        assertStatementSqlState("23514",
+                ("INSERT INTO memory.memory_relation(relation_id,from_revision_id,relation_type,"
+                        + "to_revision_id,to_anchor_id,perspective_actor_id,created_by_decision_id,created_at) "
+                        + "VALUES ('%s','%s','REFINES',NULL,'%s',NULL,'%s',clock_timestamp())")
+                                .formatted(UUID.randomUUID(), mem.revisionId(), anchorId, mem.decisionId()));
+    }
+
+    @Test
+    @Order(40)
+    @DisplayName("SliceAR1CodeFormatIT: 5 code columns reject lowercase/space/hyphen/digits-only/non-ASCII; accept valid")
+    void sliceAR1CodeFormatIT() throws SQLException {
+        UUID policyId;
+        try (Connection connection = connection();
+                Statement statement = connection.createStatement()) {
+            ResultSet rs = statement.executeQuery("SELECT policy_id FROM memory.access_policy LIMIT 1");
+            rs.next();
+            policyId = (UUID) rs.getObject(1);
+        }
+
+        // --- source_kind attacks (all 23514) ---
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source(source_id,source_kind,platform,external_ref,"
+                        + "observed_accessible,compressed_observed,policy_id,created_at,ingested_at) VALUES "
+                        + "('%s','codex','TEST','SK-1',true,false,'%s',clock_timestamp(),clock_timestamp())")
+                                .formatted(UUID.randomUUID(), policyId)); // lowercase
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source(source_id,source_kind,platform,external_ref,"
+                        + "observed_accessible,compressed_observed,policy_id,created_at,ingested_at) VALUES "
+                        + "('%s',' CODEX','TEST','SK-2',true,false,'%s',clock_timestamp(),clock_timestamp())")
+                                .formatted(UUID.randomUUID(), policyId)); // leading space
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source(source_id,source_kind,platform,external_ref,"
+                        + "observed_accessible,compressed_observed,policy_id,created_at,ingested_at) VALUES "
+                        + "('%s','CODE X','TEST','SK-3',true,false,'%s',clock_timestamp(),clock_timestamp())")
+                                .formatted(UUID.randomUUID(), policyId)); // internal space
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source(source_id,source_kind,platform,external_ref,"
+                        + "observed_accessible,compressed_observed,policy_id,created_at,ingested_at) VALUES "
+                        + "('%s','CODE-X','TEST','SK-4',true,false,'%s',clock_timestamp(),clock_timestamp())")
+                                .formatted(UUID.randomUUID(), policyId)); // hyphen
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source(source_id,source_kind,platform,external_ref,"
+                        + "observed_accessible,compressed_observed,policy_id,created_at,ingested_at) VALUES "
+                        + "('%s','12345','TEST','SK-5',true,false,'%s',clock_timestamp(),clock_timestamp())")
+                                .formatted(UUID.randomUUID(), policyId)); // pure digits
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source(source_id,source_kind,platform,external_ref,"
+                        + "observed_accessible,compressed_observed,policy_id,created_at,ingested_at) VALUES "
+                        + "('%s','CODÉX','TEST','SK-6',true,false,'%s',clock_timestamp(),clock_timestamp())")
+                                .formatted(UUID.randomUUID(), policyId)); // non-ASCII
+
+        // --- source_payload.store_adapter attacks ---
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source_payload(payload_id,source_unit_id,payload_kind,store_adapter,"
+                        + "object_ref,content_type,size_bytes,content_hash,policy_id,current_policy_revision_no,"
+                        + "retention_class,created_at) VALUES "
+                        + "('%s','%s','TEXT','local_file','R1','t',0,decode(repeat('00',32),'hex'),'%s',1,'PERSISTENT',clock_timestamp())")
+                                .formatted(UUID.randomUUID(), UUID.randomUUID(), policyId));
+
+        // --- Positive: valid codes accepted ---
+        UUID srcId = UUID.randomUUID();
+        try (Connection connection = connection();
+                Statement statement = connection.createStatement()) {
+            statement.execute(
+                    ("INSERT INTO evidence.source(source_id,source_kind,platform,external_ref,"
+                            + "observed_accessible,compressed_observed,policy_id,created_at,ingested_at) VALUES "
+                            + "('%s','CODEX','TEST','VALID-REF',true,false,'%s',clock_timestamp(),clock_timestamp())")
+                                    .formatted(srcId, policyId));
+            statement.execute(
+                    ("INSERT INTO evidence.source_anchor(anchor_id,source_id,anchor_kind,created_at) "
+                            + "VALUES ('%s','%s','MESSAGE',clock_timestamp())").formatted(UUID.randomUUID(), srcId));
+        }
+
+        // --- anchor_kind attacks ---
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source_anchor(anchor_id,source_id,anchor_kind,created_at) VALUES "
+                        + "('%s','%s','message',clock_timestamp())").formatted(UUID.randomUUID(), srcId)); // lowercase
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source_anchor(anchor_id,source_id,anchor_kind,created_at) VALUES "
+                        + "('%s','%s','MESS AGE',clock_timestamp())").formatted(UUID.randomUUID(), srcId)); // space
+        assertStatementSqlState("23514",
+                ("INSERT INTO evidence.source_anchor(anchor_id,source_id,anchor_kind,created_at) VALUES "
+                        + "('%s','%s','999',clock_timestamp())").formatted(UUID.randomUUID(), srcId)); // pure digits
+    }
+
+    @Test
+    @Order(41)
+    @DisplayName("SliceAEvidencePrivilegeIT: API INSERT/SELECT, Worker SELECT-only, PUBLIC revoked on evidence functions")
+    void sliceAEvidencePrivilegeIT() throws SQLException {
+        assertTrue(scalarBoolean("SELECT has_table_privilege('hide_nest_api','evidence.source','INSERT')"));
+        assertTrue(scalarBoolean("SELECT has_table_privilege('hide_nest_api','evidence.source','SELECT')"));
+        assertFalse(scalarBoolean("SELECT has_table_privilege('hide_nest_api','evidence.source','UPDATE')"));
+        assertFalse(scalarBoolean("SELECT has_table_privilege('hide_nest_api','evidence.source','DELETE')"));
+        assertTrue(scalarBoolean("SELECT has_table_privilege('hide_nest_worker','evidence.source','SELECT')"));
+        assertFalse(scalarBoolean("SELECT has_table_privilege('hide_nest_worker','evidence.source','INSERT')"));
+        assertFalse(scalarBoolean("SELECT has_table_privilege('hide_nest_worker','evidence.source','UPDATE')"));
+        assertTrue(scalarBoolean("SELECT has_table_privilege('hide_nest_api','memory.memory_relation','INSERT')"));
+        assertFalse(scalarBoolean("SELECT has_table_privilege('hide_nest_worker','memory.memory_relation','INSERT')"));
+        assertEquals(0L, scalarLong("SELECT count(*) FROM information_schema.role_table_grants "
+                + "WHERE table_schema='evidence' AND grantee='PUBLIC'"));
+        // R1-01: PUBLIC has no EXECUTE on evidence functions
+        assertEquals(0L, scalarLong("SELECT count(*) FROM information_schema.role_routine_grants "
+                + "WHERE routine_schema='evidence' AND grantee='PUBLIC'"));
+    }
+
+    private static Set<String> columnSet(String schema, String table) throws SQLException {
+        return querySet("SELECT column_name FROM information_schema.columns "
+                + "WHERE table_schema='%s' AND table_name='%s'".formatted(schema, table));
     }
 
     private record MemoryFixture(UUID memoryId, UUID revisionId, UUID policyId, UUID decisionId, UUID actorId) {}

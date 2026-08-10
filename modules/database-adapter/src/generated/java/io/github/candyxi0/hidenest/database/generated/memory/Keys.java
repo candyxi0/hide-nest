@@ -4,6 +4,8 @@
 package io.github.candyxi0.hidenest.database.generated.memory;
 
 
+import io.github.candyxi0.hidenest.database.generated.evidence.tables.SourceAnchor;
+import io.github.candyxi0.hidenest.database.generated.evidence.tables.records.SourceAnchorRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicy;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicyGrant;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicyRevision;
@@ -11,6 +13,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.tables.ActorRef;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRecord;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevision;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Proposal;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ProposalRevision;
@@ -23,6 +26,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.tables.records.Acto
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.ChangeEventRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.DecisionRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.MemoryRecordRecord;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.records.MemoryRelationRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.MemoryRevisionRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.ProposalRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.ProposalRevisionRecord;
@@ -70,6 +74,7 @@ public class Keys {
     public static final UniqueKey<DecisionRecord> DECISION_PKEY = Internal.createUniqueKey(Decision.DECISION, DSL.name("decision_pkey"), new TableField[] { Decision.DECISION.DECISION_ID }, true);
     public static final UniqueKey<MemoryRecordRecord> MEMORY_RECORD_CURRENT_REVISION_ID_KEY = Internal.createUniqueKey(MemoryRecord.MEMORY_RECORD, DSL.name("memory_record_current_revision_id_key"), new TableField[] { MemoryRecord.MEMORY_RECORD.CURRENT_REVISION_ID }, true);
     public static final UniqueKey<MemoryRecordRecord> MEMORY_RECORD_PKEY = Internal.createUniqueKey(MemoryRecord.MEMORY_RECORD, DSL.name("memory_record_pkey"), new TableField[] { MemoryRecord.MEMORY_RECORD.MEMORY_ID }, true);
+    public static final UniqueKey<MemoryRelationRecord> MEMORY_RELATION_PKEY = Internal.createUniqueKey(MemoryRelation.MEMORY_RELATION, DSL.name("memory_relation_pkey"), new TableField[] { MemoryRelation.MEMORY_RELATION.RELATION_ID }, true);
     public static final UniqueKey<MemoryRevisionRecord> MEMORY_REVISION_CREATED_BY_DECISION_ID_KEY = Internal.createUniqueKey(MemoryRevision.MEMORY_REVISION, DSL.name("memory_revision_created_by_decision_id_key"), new TableField[] { MemoryRevision.MEMORY_REVISION.CREATED_BY_DECISION_ID }, true);
     public static final UniqueKey<MemoryRevisionRecord> MEMORY_REVISION_NUMBER_UNIQUE = Internal.createUniqueKey(MemoryRevision.MEMORY_REVISION, DSL.name("memory_revision_number_unique"), new TableField[] { MemoryRevision.MEMORY_REVISION.MEMORY_ID, MemoryRevision.MEMORY_REVISION.REVISION_NO }, true);
     public static final UniqueKey<MemoryRevisionRecord> MEMORY_REVISION_OWNER_IDENTITY_UNIQUE = Internal.createUniqueKey(MemoryRevision.MEMORY_REVISION, DSL.name("memory_revision_owner_identity_unique"), new TableField[] { MemoryRevision.MEMORY_REVISION.MEMORY_ID, MemoryRevision.MEMORY_REVISION.MEMORY_REVISION_ID }, true);
@@ -98,6 +103,11 @@ public class Keys {
     public static final ForeignKey<DecisionRecord, ReviewSessionRecord> DECISION__DECISION_REVIEW_SESSION_FK = Internal.createForeignKey(Decision.DECISION, DSL.name("decision_review_session_fk"), new TableField[] { Decision.DECISION.REVIEW_SESSION_ID }, Keys.REVIEW_SESSION_PKEY, new TableField[] { ReviewSession.REVIEW_SESSION.REVIEW_SESSION_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<MemoryRecordRecord, AccessPolicyRevisionRecord> MEMORY_RECORD__MEMORY_RECORD_CURRENT_POLICY_FK = Internal.createForeignKey(MemoryRecord.MEMORY_RECORD, DSL.name("memory_record_current_policy_fk"), new TableField[] { MemoryRecord.MEMORY_RECORD.POLICY_ID, MemoryRecord.MEMORY_RECORD.CURRENT_POLICY_REVISION_NO }, Keys.ACCESS_POLICY_REVISION_PKEY, new TableField[] { AccessPolicyRevision.ACCESS_POLICY_REVISION.POLICY_ID, AccessPolicyRevision.ACCESS_POLICY_REVISION.REVISION_NO }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<MemoryRecordRecord, MemoryRevisionRecord> MEMORY_RECORD__MEMORY_RECORD_CURRENT_REVISION_FK = Internal.createForeignKey(MemoryRecord.MEMORY_RECORD, DSL.name("memory_record_current_revision_fk"), new TableField[] { MemoryRecord.MEMORY_RECORD.MEMORY_ID, MemoryRecord.MEMORY_RECORD.CURRENT_REVISION_ID }, Keys.MEMORY_REVISION_OWNER_IDENTITY_UNIQUE, new TableField[] { MemoryRevision.MEMORY_REVISION.MEMORY_ID, MemoryRevision.MEMORY_REVISION.MEMORY_REVISION_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<MemoryRelationRecord, ActorRefRecord> MEMORY_RELATION__MEMORY_RELATION_ACTOR_FK = Internal.createForeignKey(MemoryRelation.MEMORY_RELATION, DSL.name("memory_relation_actor_fk"), new TableField[] { MemoryRelation.MEMORY_RELATION.PERSPECTIVE_ACTOR_ID }, Keys.ACTOR_REF_PKEY, new TableField[] { ActorRef.ACTOR_REF.ACTOR_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<MemoryRelationRecord, DecisionRecord> MEMORY_RELATION__MEMORY_RELATION_DECISION_FK = Internal.createForeignKey(MemoryRelation.MEMORY_RELATION, DSL.name("memory_relation_decision_fk"), new TableField[] { MemoryRelation.MEMORY_RELATION.CREATED_BY_DECISION_ID }, Keys.DECISION_PKEY, new TableField[] { Decision.DECISION.DECISION_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<MemoryRelationRecord, MemoryRevisionRecord> MEMORY_RELATION__MEMORY_RELATION_FROM_REVISION_FK = Internal.createForeignKey(MemoryRelation.MEMORY_RELATION, DSL.name("memory_relation_from_revision_fk"), new TableField[] { MemoryRelation.MEMORY_RELATION.FROM_REVISION_ID }, Keys.MEMORY_REVISION_PKEY, new TableField[] { MemoryRevision.MEMORY_REVISION.MEMORY_REVISION_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<MemoryRelationRecord, SourceAnchorRecord> MEMORY_RELATION__MEMORY_RELATION_TO_ANCHOR_FK = Internal.createForeignKey(MemoryRelation.MEMORY_RELATION, DSL.name("memory_relation_to_anchor_fk"), new TableField[] { MemoryRelation.MEMORY_RELATION.TO_ANCHOR_ID }, io.github.candyxi0.hidenest.database.generated.evidence.Keys.SOURCE_ANCHOR_PKEY, new TableField[] { SourceAnchor.SOURCE_ANCHOR.ANCHOR_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<MemoryRelationRecord, MemoryRevisionRecord> MEMORY_RELATION__MEMORY_RELATION_TO_REVISION_FK = Internal.createForeignKey(MemoryRelation.MEMORY_RELATION, DSL.name("memory_relation_to_revision_fk"), new TableField[] { MemoryRelation.MEMORY_RELATION.TO_REVISION_ID }, Keys.MEMORY_REVISION_PKEY, new TableField[] { MemoryRevision.MEMORY_REVISION.MEMORY_REVISION_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<MemoryRevisionRecord, ActorRefRecord> MEMORY_REVISION__MEMORY_REVISION_ACTOR_FK = Internal.createForeignKey(MemoryRevision.MEMORY_REVISION, DSL.name("memory_revision_actor_fk"), new TableField[] { MemoryRevision.MEMORY_REVISION.PERSPECTIVE_ACTOR_ID }, Keys.ACTOR_REF_PKEY, new TableField[] { ActorRef.ACTOR_REF.ACTOR_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<MemoryRevisionRecord, DecisionRecord> MEMORY_REVISION__MEMORY_REVISION_DECISION_FK = Internal.createForeignKey(MemoryRevision.MEMORY_REVISION, DSL.name("memory_revision_decision_fk"), new TableField[] { MemoryRevision.MEMORY_REVISION.CREATED_BY_DECISION_ID }, Keys.DECISION_PKEY, new TableField[] { Decision.DECISION.DECISION_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<MemoryRevisionRecord, MemoryRecordRecord> MEMORY_REVISION__MEMORY_REVISION_MEMORY_FK = Internal.createForeignKey(MemoryRevision.MEMORY_REVISION, DSL.name("memory_revision_memory_fk"), new TableField[] { MemoryRevision.MEMORY_REVISION.MEMORY_ID }, Keys.MEMORY_RECORD_PKEY, new TableField[] { MemoryRecord.MEMORY_RECORD.MEMORY_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);

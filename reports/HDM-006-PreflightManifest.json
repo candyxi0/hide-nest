@@ -1,0 +1,1010 @@
+{
+  "schemaVersion": "HDM-006-PREFLIGHT-R1",
+  "status": "HDM006_PREFLIGHT_R1_READY_FOR_IMPLEMENTATION_ORDER",
+  "implementationAuthorized": false,
+  "baselineHead": "eec36bba7b48c98f3f28cf405a3a87cea99e68b0",
+  "baselineBranch": "main",
+  "workspaceState": {
+    "trackedModified": 0,
+    "staged": 0,
+    "untrackedNew": 2,
+    "branch": "main",
+    "headMatchesBaseline": true
+  },
+  "authoritativeInputs": [
+    {
+      "path": "C:\\Users\\tangx\\Documents\\hide-talk\\hide记忆系统_正式开发任务_v0.1\\HDM-006-持久化jOOQ与outbox扩展-实施.md",
+      "sha256": "45c195d2006bb1b8e7041ad4c3d768435cb69fc8d8370ae974297a2a91fb49c2",
+      "role": "HDM-006 implementation task specification"
+    },
+    {
+      "path": "C:\\Users\\tangx\\Documents\\hide-talk\\260731-hide协作文件夹\\DevelopmentBaselineManifest-HDM-001-v0.1.json",
+      "sha256": "2aff24c9281eb6846c0d5f3e9e52f22921e6c83501583b18f2e0a292f16073d5",
+      "role": "HDM-001 development baseline manifest"
+    },
+    {
+      "path": "C:\\Users\\tangx\\Documents\\hide-talk\\hide记忆系统_正式开发详细契约_v0.1.md",
+      "sha256": "55428bdb58c375889d53ad66cbd70478d8c7d675268002d4f9b00b4fff9fb580",
+      "role": "sections 2.1–2.5: PostgreSQL normative schema"
+    },
+    {
+      "path": "C:\\Users\\tangx\\Documents\\hide-talk\\hide记忆系统_技术架构决定记录_ADR_v0.1.md",
+      "sha256": "9439f24a47eff1e405bca8e0789c060de4e4aadeb7dbf1b348475f99c348ced6",
+      "role": "TADR-004 Flyway+jOOQ, TADR-006 local outbox + PostgreSQL outbox"
+    },
+    {
+      "path": "D:\\myproject\\hide-nest\\reports\\HDM-005-CandidateManifest.json",
+      "sha256": "852e3ceb5dddc10469b2a76e5daa66268b14da77ec0258fa682afac023aa4257",
+      "role": "HDM-005 dependency/layout/database design gates and outbox policy"
+    },
+    {
+      "path": "D:\\myproject\\hide-nest\\reports\\HDM-005-SliceB-MigrationManifest.json",
+      "sha256": "6af7c1ec985c03ea2b18ddffc50dc350c3868e0725e71c7c4541f76029f77f9b",
+      "role": "HDM-005 Slice B migration evidence: 6 migrations, 16 tables, 4 schemas"
+    },
+    {
+      "path": "D:\\myproject\\hide-nest\\reports\\HDM-005-SliceB-JooqManifest.json",
+      "sha256": "cbe7119b16a05b33200c6dd1628f5c4ca80ba537886405416d2c37b7b7c849af",
+      "role": "HDM-005 Slice B jOOQ generation evidence: 47 files, jOOQ 3.21.5"
+    },
+    {
+      "path": "D:\\myproject\\hide-nest\\reports\\HDM-005-SliceC-Evidence.json",
+      "sha256": "22ba58e7923e7f8279353d281adc830ad225e422545d73e0591902dfd94cb1d0",
+      "role": "HDM-005 Slice C domain/port/adapter/coordinator evidence"
+    },
+    {
+      "path": "D:\\myproject\\hide-nest\\reports\\HDM-005-SliceD-Evidence.json",
+      "sha256": "d205b0b94db003258a825e7d14043b133b854dd0b35e4fe1017bc15e02a88efe",
+      "role": "HDM-005 Slice D routed gaps, OPERATIONAL identity gap routing to HDM-006"
+    }
+  ],
+  "migrationFiles": [
+    {"version": "V001", "file": "modules/database-adapter/src/main/resources/db/migration/V001__extensions_and_schemas.sql", "sha256": "17e8533c206288b6c21f0261b323041eb5a3607949843bae8e5399e78a2c4fcd", "content": "PostgreSQL 18 + pgvector 0.8.2 check, CREATE SCHEMA evidence/memory/runtime/security, REVOKE PUBLIC"},
+    {"version": "V002", "file": "modules/database-adapter/src/main/resources/db/migration/V002__roles_code_tables_and_roots.sql", "sha256": "4fbdc588a73d62741fd3cb567eb0e6af0920c2a7ccb39ce84efc188edd8d1cd9", "content": "Role check, failure_code_registry (50 codes), event_type_registry (12 types), actor_ref, proposal, review_session, access_policy, idempotency_receipt"},
+    {"version": "V003", "file": "modules/database-adapter/src/main/resources/db/migration/V003__core_tables.sql", "sha256": "a516a411262c0bca8826715b0c4ef41a6a6515275c921d6dd186121039c390cb", "content": "proposal_revision, review_member, decision, access_policy_revision, access_policy_grant, memory_record, memory_revision, change_event, outbox_event"},
+    {"version": "V004", "file": "modules/database-adapter/src/main/resources/db/migration/V004__foreign_keys_and_deferred_constraints.sql", "sha256": "d5e72ea4701e83e58e8b204f82483beb4d5ca5bdeb924f60446ecd0ea8dd721f", "content": "All FKs with ON DELETE NO ACTION, deferred circular FKs, outbox FK to change_event/event_type/failure_code"},
+    {"version": "V005", "file": "modules/database-adapter/src/main/resources/db/migration/V005__transaction_gates_and_outbox.sql", "sha256": "9273aadc87e2480e447afd9c40721878ce9f0d9282f31ecd6095771e5dd3a737", "content": "Immutable triggers, state transition guards, governed outbox enforcement, valid_outbox_manifest function, enforce_outbox_change_event_match trigger"},
+    {"version": "V006", "file": "modules/database-adapter/src/main/resources/db/migration/V006__indexes_and_privileges.sql", "sha256": "fac190a80229ee0bf24a2bf80d43f5a35da81871258cb9fb0f82750f7e09a6f3", "content": "Indexes, REVOKE/GRANT privileges: hide_nest_api INSERT/UPDATE, hide_nest_worker SELECT/UPDATE outbox"},
+    {"version": "V007", "file": "modules/database-adapter/src/main/resources/db/migration/V007__create_proposal_target_binding.sql", "sha256": "f358e5e0fd3e64530bac8bf61ab473f0cfa1c5e3af2a3518b0ffb3ca006840cb", "content": "CREATE OR REPLACE enforce_memory_revision_governance: V007 proposal target binding"}
+  ],
+  "ordinaryPersistenceInventory": [
+    {
+      "canonicalObjectName": "Source",
+      "owningSchema": "evidence",
+      "contractSection": "2.1",
+      "contractTable": "evidence.source",
+      "implementationClassification": "ABSENT",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": false,
+      "primaryKey": "source_id uuid (contract)",
+      "foreignKeys": ["policy_id → memory.access_policy (contract)"],
+      "uniqueConstraints": ["(platform, external_ref) (contract)"],
+      "stateColumn": null,
+      "domainRecordPath": null,
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "Flyway migration creating evidence.source table",
+        "Source domain record in modules/evidence",
+        "Evidence port method for Source CRUD",
+        "JooqEvidenceAdapter Source methods",
+        "jOOQ generated table class"
+      ],
+      "needsNewMigration": true,
+      "needsJooqRegeneration": true,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "N/A — no implementation exists"
+    },
+    {
+      "canonicalObjectName": "SourceUnit",
+      "owningSchema": "evidence",
+      "contractSection": "2.1",
+      "contractTable": "evidence.source_unit",
+      "implementationClassification": "ABSENT",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": false,
+      "primaryKey": "source_unit_id uuid (contract)",
+      "foreignKeys": ["source_id → evidence.source (contract)", "actor_id → memory.actor_ref (contract)"],
+      "uniqueConstraints": ["(source_id, external_unit_ref, source_version) (contract)"],
+      "stateColumn": null,
+      "domainRecordPath": null,
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "Flyway migration creating evidence.source_unit table",
+        "SourceUnit domain record in modules/evidence",
+        "Evidence port method for SourceUnit CRUD",
+        "JooqEvidenceAdapter SourceUnit methods"
+      ],
+      "needsNewMigration": true,
+      "needsJooqRegeneration": true,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "N/A"
+    },
+    {
+      "canonicalObjectName": "SourcePayload",
+      "owningSchema": "evidence",
+      "contractSection": "2.1",
+      "contractTable": "evidence.source_payload",
+      "implementationClassification": "ABSENT",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": false,
+      "primaryKey": "payload_id uuid (contract)",
+      "foreignKeys": ["source_unit_id → evidence.source_unit (contract)", "policy_id → memory.access_policy (contract)"],
+      "uniqueConstraints": [],
+      "stateColumn": null,
+      "domainRecordPath": null,
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "Flyway migration creating evidence.source_payload table (metadata only; PayloadStore adapter → HDM-019/020)",
+        "SourcePayload domain record",
+        "Evidence port method for SourcePayload CRUD",
+        "JooqEvidenceAdapter SourcePayload methods"
+      ],
+      "needsNewMigration": true,
+      "needsJooqRegeneration": true,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "N/A — SourcePayload metadata persistence only; real Local/OSS PayloadStore deferred to HDM-019/020"
+    },
+    {
+      "canonicalObjectName": "SourceAnchor",
+      "owningSchema": "evidence",
+      "contractSection": "2.1",
+      "contractTable": "evidence.source_anchor",
+      "implementationClassification": "PARTIAL",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": false,
+      "primaryKey": "anchor_id uuid (contract)",
+      "foreignKeys": ["source_id → evidence.source (contract)"],
+      "uniqueConstraints": [],
+      "stateColumn": null,
+      "domainRecordPath": "modules/evidence/src/main/java/io/github/candyxi0/hidenest/evidence/domain/AnchorRef.java",
+      "domainRecordEvidence": "AnchorRef record exists but minimal: (anchorId, sourceId, anchorKind) — lacks created_at, anchor_kind column. PARTIAL.",
+      "portInterfacePath": "modules/evidence/src/main/java/io/github/candyxi0/hidenest/evidence/port/EvidenceReferencePort.java",
+      "portMethodCoverage": ["verifyAnchorsExist(Set<UUID>) — only verification, no CRUD"],
+      "adapterImplementationPath": "modules/database-adapter/src/main/java/io/github/candyxi0/hidenest/database/adapter/JooqEvidenceReferenceAdapter.java",
+      "adapterEvidence": "Fail-closed stub: throws RuntimeException 'evidence schema not available (deferred to HDM-006)'",
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "Flyway migration creating evidence.source_anchor + source_anchor_unit tables",
+        "Full SourceAnchor domain record (matching contract columns: anchor_id, source_id, anchor_kind, created_at)",
+        "EvidenceReferencePort CRUD methods (insert, findById, findBySourceId)",
+        "JooqEvidenceReferenceAdapter real implementation",
+        "jOOQ generated table classes"
+      ],
+      "needsNewMigration": true,
+      "needsJooqRegeneration": true,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "CURRENT: fail-closed stub (safe). FUTURE: ensure anchor queries do not leak source payload bodies"
+    },
+    {
+      "canonicalObjectName": "SourceAnchorUnit",
+      "owningSchema": "evidence",
+      "contractSection": "2.1",
+      "contractTable": "evidence.source_anchor_unit",
+      "implementationClassification": "ABSENT",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": false,
+      "primaryKey": "(anchor_id, ordinal) (contract)",
+      "foreignKeys": ["anchor_id → evidence.source_anchor (contract)", "source_unit_id → evidence.source_unit (contract)"],
+      "uniqueConstraints": [],
+      "stateColumn": null,
+      "domainRecordPath": null,
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "Flyway migration creating evidence.source_anchor_unit table",
+        "SourceAnchorUnit domain record",
+        "Port and adapter methods"
+      ],
+      "needsNewMigration": true,
+      "needsJooqRegeneration": true,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "N/A"
+    },
+    {
+      "canonicalObjectName": "ActorRef",
+      "owningSchema": "memory",
+      "contractSection": "2.2",
+      "contractTable": "memory.actor_ref",
+      "implementationClassification": "PARTIAL",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": true,
+      "primaryKey": "actor_id uuid (V002)",
+      "foreignKeys": [],
+      "uniqueConstraints": ["(actor_kind, stable_ref)"],
+      "stateColumn": null,
+      "domainRecordPath": null,
+      "domainRecordEvidence": "MISSING — no ActorRef.java record in modules/memory/domain/. Table exists in V002, jOOQ generated ActorRef table class exists. PARTIAL.",
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": "modules/database-adapter/src/generated/java/io/github/candyxi0/hidenest/database/generated/memory/tables/ActorRef.java",
+      "missingItems": [
+        "ActorRef domain record in modules/memory/domain",
+        "MemoryGovernancePort method for actor CRUD (insertActorRef, findActorRef)",
+        "JooqMemoryGovernanceAdapter actor methods"
+      ],
+      "needsNewMigration": false,
+      "needsJooqRegeneration": false,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "Table exists with GRANT SELECT to API/Worker. ActorRef contains no body text — leakage risk low."
+    },
+    {
+      "canonicalObjectName": "CloseoutRun",
+      "owningSchema": "runtime",
+      "contractSection": "2.4",
+      "contractTable": "runtime.closeout_run",
+      "implementationClassification": "ABSENT",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": false,
+      "primaryKey": "run_id uuid (contract)",
+      "foreignKeys": ["scope_id → runtime.capture_scope (contract)", "retry_of → runtime.closeout_run (contract)"],
+      "uniqueConstraints": [],
+      "stateColumn": "state: READY | RUNNING | COMPLETED | FAILED | CANCELLED (contract)",
+      "domainRecordPath": null,
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "Flyway migration creating runtime.closeout_run table",
+        "CloseoutRun domain record in modules/runtime/domain",
+        "RuntimeTransactionPort method for run lifecycle (insertRun, updateRunState, findRunById)",
+        "JooqRuntimeTransactionAdapter run methods",
+        "jOOQ generated table class"
+      ],
+      "needsNewMigration": true,
+      "needsJooqRegeneration": true,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "N/A — per contract, run state query must not leak failure details beyond failure_code"
+    },
+    {
+      "canonicalObjectName": "Checkpoint",
+      "owningSchema": "runtime",
+      "contractSection": "2.4",
+      "contractTable": "runtime.checkpoint",
+      "implementationClassification": "ABSENT",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": false,
+      "primaryKey": "checkpoint_id uuid (contract)",
+      "foreignKeys": ["run_id → runtime.closeout_run (contract)"],
+      "uniqueConstraints": [],
+      "stateColumn": null,
+      "domainRecordPath": null,
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "Flyway migration creating runtime.checkpoint table",
+        "Checkpoint domain record",
+        "Port and adapter methods for checkpoint persistence and recovery selection"
+      ],
+      "needsNewMigration": true,
+      "needsJooqRegeneration": true,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "N/A — object_ref must be internal PayloadStore reference, not public URL"
+    },
+    {
+      "canonicalObjectName": "RetrievalTrace",
+      "owningSchema": "runtime",
+      "contractSection": "2.4",
+      "contractTable": "runtime.retrieval_trace",
+      "implementationClassification": "ABSENT",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": false,
+      "primaryKey": "trace_id uuid (contract)",
+      "foreignKeys": [],
+      "uniqueConstraints": [],
+      "stateColumn": null,
+      "domainRecordPath": null,
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "Flyway migration creating runtime.retrieval_trace table",
+        "RetrievalTrace domain record",
+        "Port and adapter methods",
+        "uuid[] array binding for considered_ids/delivered_ids — verify jOOQ binding"
+      ],
+      "needsNewMigration": true,
+      "needsJooqRegeneration": true,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "Per contract: arrays store only canonical IDs, no body text. Must verify adapter does not join to memory_revision.body_text"
+    },
+    {
+      "canonicalObjectName": "CaptureScope",
+      "owningSchema": "runtime",
+      "contractSection": "2.4",
+      "contractTable": "runtime.capture_scope (logical: 2 physical tables — capture_scope + capture_scope_unit)",
+      "implementationClassification": "ABSENT",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": false,
+      "primaryKey": "scope_id uuid (contract)",
+      "foreignKeys": ["source_id → evidence.source (contract)"],
+      "uniqueConstraints": [],
+      "stateColumn": null,
+      "domainRecordPath": null,
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "physicalTableCount": 2,
+      "physicalTables": ["runtime.capture_scope", "runtime.capture_scope_unit"],
+      "missingItems": [
+        "Flyway migration creating runtime.capture_scope + runtime.capture_scope_unit tables",
+        "CaptureScope domain record",
+        "Port and adapter methods"
+      ],
+      "needsNewMigration": true,
+      "needsJooqRegeneration": true,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "N/A"
+    },
+    {
+      "canonicalObjectName": "DeletionRun",
+      "owningSchema": "runtime",
+      "contractSection": "2.4",
+      "contractTable": "runtime.deletion_run",
+      "implementationClassification": "ABSENT",
+      "hdm006Scope": "ROUTED_LATER",
+      "routeOwner": "HDM-017/018 (via HDM-016 analysis)",
+      "currentTableExists": false,
+      "primaryKey": "run_id uuid (contract)",
+      "foreignKeys": ["closure_id → memory.deletion_closure (contract)", "retry_of → runtime.deletion_run (contract)"],
+      "uniqueConstraints": [],
+      "stateColumn": "state: RUNNING | COMPLETED | FAILED (contract)",
+      "domainRecordPath": null,
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "ROUTED_LATER — HDM-006 must NOT create this table or implement its adapter",
+        "DeletionRun domain record → HDM-017/018"
+      ],
+      "needsNewMigration": false,
+      "needsJooqRegeneration": false,
+      "needsNewRepositoryAdapter": false,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "ROUTED_LATER — out of HDM-006 scope"
+    },
+    {
+      "canonicalObjectName": "WorkArtifact",
+      "owningSchema": "runtime",
+      "contractSection": "2.4",
+      "contractTable": "runtime.work_artifact",
+      "implementationClassification": "ABSENT",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": false,
+      "primaryKey": "artifact_id uuid (contract)",
+      "foreignKeys": ["run_id → runtime.closeout_run (contract, nullable)"],
+      "uniqueConstraints": [],
+      "stateColumn": null,
+      "domainRecordPath": null,
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "Flyway migration creating runtime.work_artifact table",
+        "WorkArtifact domain record",
+        "Port and adapter methods"
+      ],
+      "needsNewMigration": true,
+      "needsJooqRegeneration": true,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "N/A — object_ref is internal; expires_at triggers physical deletion"
+    },
+    {
+      "canonicalObjectName": "ModelRun",
+      "owningSchema": "runtime",
+      "contractSection": "2.4",
+      "contractTable": "runtime.model_run",
+      "implementationClassification": "ABSENT",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": false,
+      "primaryKey": "model_run_id uuid (contract)",
+      "foreignKeys": ["retry_of → runtime.model_run (contract, self-referential)"],
+      "uniqueConstraints": [],
+      "stateColumn": "state: RUNNING | SUCCEEDED | FAILED | CANCELLED (contract)",
+      "domainRecordPath": null,
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "Flyway migration creating runtime.model_run table",
+        "ModelRun domain record",
+        "Port and adapter methods"
+      ],
+      "needsNewMigration": true,
+      "needsJooqRegeneration": true,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "Per contract: does not save prompt, answer, or hidden chain-of-thought"
+    },
+    {
+      "canonicalObjectName": "ContextDelivery",
+      "owningSchema": "runtime",
+      "contractSection": "2.4",
+      "contractTable": "runtime.context_delivery",
+      "implementationClassification": "ABSENT",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": false,
+      "primaryKey": "delivery_id uuid (contract)",
+      "foreignKeys": [],
+      "uniqueConstraints": [],
+      "stateColumn": null,
+      "domainRecordPath": null,
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "Flyway migration creating runtime.context_delivery table",
+        "ContextDelivery domain record",
+        "Port and adapter methods"
+      ],
+      "needsNewMigration": true,
+      "needsJooqRegeneration": true,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "Per contract: max 10 minutes lifetime; turn end/cancel/fail/compact immediately invalidates"
+    },
+    {
+      "canonicalObjectName": "MemoryRelation",
+      "owningSchema": "memory",
+      "contractSection": "2.2",
+      "contractTable": "memory.memory_relation",
+      "implementationClassification": "PARTIAL",
+      "hdm006Scope": "IN_SCOPE",
+      "routeOwner": null,
+      "currentTableExists": false,
+      "primaryKey": "relation_id uuid (contract)",
+      "foreignKeys": [
+        "from_revision_id → memory.memory_revision (contract)",
+        "to_revision_id → memory.memory_revision (contract, nullable)",
+        "to_anchor_id → evidence.source_anchor (contract, nullable)",
+        "perspective_actor_id → memory.actor_ref (contract, nullable)",
+        "created_by_decision_id → memory.decision (contract)"
+      ],
+      "uniqueConstraints": [],
+      "stateColumn": null,
+      "domainRecordPath": "modules/memory/src/main/java/io/github/candyxi0/hidenest/memory/domain/MemoryRelation.java",
+      "domainRecordEvidence": "MemoryRelation record EXISTS. Contract fields match. PARTIAL — domain exists, table absent.",
+      "portInterfacePath": "modules/memory/src/main/java/io/github/candyxi0/hidenest/memory/port/MemoryGovernancePort.java",
+      "portMethodCoverage": ["insertMemoryRelations(List<MemoryRelation>) — declared but fail-closed"],
+      "adapterImplementationPath": "modules/database-adapter/src/main/java/io/github/candyxi0/hidenest/database/adapter/JooqMemoryGovernanceAdapter.java",
+      "adapterEvidence": "insertMemoryRelations throws: 'memory_relation table not available (deferred to HDM-017)'. PARTIAL.",
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "Flyway migration creating memory.memory_relation table (NOW IN HDM-006 SCOPE per R1)",
+        "CHECK constraint: exactly one of to_revision_id/to_anchor_id is NOT NULL",
+        "jOOQ generated table class",
+        "Real adapter implementation"
+      ],
+      "needsNewMigration": true,
+      "needsJooqRegeneration": true,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "CURRENT: fail-closed (safe). When implemented, relation queries must not join through to memory_revision.body_text"
+    },
+    {
+      "canonicalObjectName": "DerivationBlock",
+      "owningSchema": "memory",
+      "contractSection": "2.3",
+      "contractTable": "memory.derivation_block",
+      "implementationClassification": "PARTIAL",
+      "hdm006Scope": "ROUTED_LATER",
+      "routeOwner": "HDM-017/018 (via HDM-016 analysis)",
+      "currentTableExists": false,
+      "primaryKey": "block_id uuid (contract)",
+      "foreignKeys": ["created_by_decision_id → memory.decision (contract)", "removed_by_decision_id → memory.decision (contract)"],
+      "uniqueConstraints": [],
+      "stateColumn": null,
+      "domainRecordPath": "modules/memory/src/main/java/io/github/candyxi0/hidenest/memory/domain/DerivationBlock.java",
+      "domainRecordEvidence": "DerivationBlock record EXISTS. Contract fields match. PARTIAL — domain exists, table absent. ROUTED_LATER.",
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "ROUTED_LATER — HDM-006 must NOT create this table or implement its adapter",
+        "HDM-006 Worker 完成前复核只能使用 fail-closed port/seam"
+      ],
+      "needsNewMigration": false,
+      "needsJooqRegeneration": false,
+      "needsNewRepositoryAdapter": false,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "ROUTED_LATER — out of HDM-006 scope"
+    },
+    {
+      "canonicalObjectName": "DeletionFence",
+      "owningSchema": "memory",
+      "contractSection": "2.3",
+      "contractTable": "memory.deletion_fence",
+      "implementationClassification": "PARTIAL",
+      "hdm006Scope": "ROUTED_LATER",
+      "routeOwner": "HDM-017/018 (via HDM-016 analysis)",
+      "currentTableExists": false,
+      "primaryKey": "fence_id uuid (contract)",
+      "foreignKeys": ["closure_id → memory.deletion_closure (contract)", "created_by_decision_id → memory.decision (contract)"],
+      "uniqueConstraints": ["(closure_id, target_kind, target_id, target_revision_ref) (contract)"],
+      "stateColumn": null,
+      "domainRecordPath": "modules/memory/src/main/java/io/github/candyxi0/hidenest/memory/domain/DeletionFence.java",
+      "domainRecordEvidence": "DeletionFence record EXISTS. Contract fields match. PARTIAL — domain exists, table absent. ROUTED_LATER.",
+      "portInterfacePath": null,
+      "portMethodCoverage": [],
+      "adapterImplementationPath": null,
+      "jooqGeneratedPath": null,
+      "missingItems": [
+        "ROUTED_LATER — HDM-006 must NOT create this table or implement its adapter",
+        "memory.deletion_closure + memory.deletion_closure_member also ROUTED_LATER"
+      ],
+      "needsNewMigration": false,
+      "needsJooqRegeneration": false,
+      "needsNewRepositoryAdapter": false,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "ROUTED_LATER — out of HDM-006 scope"
+    },
+    {
+      "canonicalObjectName": "MemoryRecord",
+      "owningSchema": "memory",
+      "contractSection": "2.2",
+      "implementationClassification": "COMPLETE",
+      "hdm006Scope": "REFERENCE_ONLY",
+      "routeOwner": null,
+      "currentTableExists": true,
+      "primaryKey": "memory_id uuid (V003: memory.memory_record)",
+      "foreignKeys": ["current_revision_id → memory.memory_revision DEFERRABLE", "policy_id → memory.access_policy_revision DEFERRABLE"],
+      "uniqueConstraints": ["current_revision_id UNIQUE"],
+      "stateColumn": "state: ACTIVE | ARCHIVED (CHECK constraint)",
+      "domainRecordPath": "modules/memory/.../domain/MemoryRecord.java",
+      "portInterfacePath": "modules/memory/.../port/MemoryGovernancePort.java",
+      "portMethodCoverage": ["lockMemoryRecordForWrite", "insertMemoryRecord", "updateMemoryRecordPointerCAS"],
+      "adapterImplementationPath": "modules/database-adapter/.../adapter/JooqMemoryGovernanceAdapter.java",
+      "jooqGeneratedPath": "modules/database-adapter/.../generated/memory/tables/MemoryRecord.java",
+      "missingItems": [],
+      "needsNewMigration": false,
+      "needsJooqRegeneration": false,
+      "needsNewRepositoryAdapter": false,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "COVERED — HDM-005 completed. REFERENCE_ONLY for HDM-006"
+    },
+    {
+      "canonicalObjectName": "MemoryRevision",
+      "owningSchema": "memory",
+      "contractSection": "2.2",
+      "implementationClassification": "COMPLETE",
+      "hdm006Scope": "REFERENCE_ONLY",
+      "routeOwner": null,
+      "currentTableExists": true,
+      "primaryKey": "memory_revision_id uuid (V003)",
+      "foreignKeys": ["memory_id → memory.memory_record", "perspective_actor_id → memory.actor_ref", "created_by_decision_id → memory.decision UNIQUE"],
+      "uniqueConstraints": ["(memory_id, revision_no)", "(memory_id, memory_revision_id)"],
+      "stateColumn": null,
+      "domainRecordPath": "modules/memory/.../domain/MemoryRevision.java",
+      "portInterfacePath": "modules/memory/.../port/MemoryGovernancePort.java",
+      "portMethodCoverage": ["insertMemoryRevision", "lockMemoryRevisionForWrite"],
+      "adapterImplementationPath": "modules/database-adapter/.../adapter/JooqMemoryGovernanceAdapter.java",
+      "jooqGeneratedPath": "modules/database-adapter/.../generated/memory/tables/MemoryRevision.java",
+      "missingItems": [],
+      "needsNewMigration": false,
+      "needsJooqRegeneration": false,
+      "needsNewRepositoryAdapter": false,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "COVERED — HDM-005 completed. REFERENCE_ONLY for HDM-006"
+    },
+    {
+      "canonicalObjectName": "IdempotencyReceipt",
+      "owningSchema": "runtime",
+      "contractSection": "2.5",
+      "implementationClassification": "COMPLETE",
+      "hdm006Scope": "REFERENCE_ONLY",
+      "routeOwner": null,
+      "currentTableExists": true,
+      "primaryKey": "idempotency_key text (V002)",
+      "foreignKeys": [],
+      "uniqueConstraints": [],
+      "stateColumn": "state: COMMITTED only (CHECK constraint)",
+      "domainRecordPath": "modules/runtime/.../domain/IdempotencyReceipt.java",
+      "portInterfacePath": "modules/runtime/.../port/RuntimeTransactionPort.java",
+      "portMethodCoverage": ["lockIdempotencyKey", "findReceiptByKey", "commitReceipt"],
+      "adapterImplementationPath": "modules/database-adapter/.../adapter/JooqRuntimeTransactionAdapter.java",
+      "jooqGeneratedPath": "modules/database-adapter/.../generated/runtime/tables/IdempotencyReceipt.java",
+      "missingItems": [],
+      "needsNewMigration": false,
+      "needsJooqRegeneration": false,
+      "needsNewRepositoryAdapter": false,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "COVERED — HDM-005 completed. REFERENCE_ONLY for HDM-006"
+    },
+    {
+      "canonicalObjectName": "ChangeEvent",
+      "owningSchema": "memory",
+      "contractSection": "2.3",
+      "implementationClassification": "COMPLETE",
+      "hdm006Scope": "REFERENCE_ONLY",
+      "routeOwner": null,
+      "currentTableExists": true,
+      "primaryKey": "change_event_id uuid (V003)",
+      "foreignKeys": ["event_type → runtime.event_type_registry", "actor_id → memory.actor_ref", "decision_id → memory.decision"],
+      "uniqueConstraints": ["sequence_no GENERATED ALWAYS AS IDENTITY UNIQUE", "business_fact_unique partial unique index"],
+      "stateColumn": null,
+      "domainRecordPath": "modules/memory/.../domain/ChangeEvent.java",
+      "portInterfacePath": "modules/memory/.../port/MemoryGovernancePort.java",
+      "portMethodCoverage": ["insertChangeEvent"],
+      "adapterImplementationPath": "modules/database-adapter/.../adapter/JooqMemoryGovernanceAdapter.java",
+      "jooqGeneratedPath": "modules/database-adapter/.../generated/memory/tables/ChangeEvent.java",
+      "missingItems": [],
+      "needsNewMigration": false,
+      "needsJooqRegeneration": false,
+      "needsNewRepositoryAdapter": false,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "COVERED — HDM-005 completed. REFERENCE_ONLY for HDM-006"
+    },
+    {
+      "canonicalObjectName": "OutboxEvent",
+      "owningSchema": "runtime",
+      "contractSection": "2.5",
+      "implementationClassification": "COMPLETE",
+      "hdm006Scope": "REFERENCE_ONLY",
+      "routeOwner": null,
+      "currentTableExists": true,
+      "primaryKey": "event_id uuid (V003)",
+      "foreignKeys": ["event_type → runtime.event_type_registry", "change_event_id → memory.change_event (nullable)", "last_failure_code → runtime.failure_code_registry (nullable)"],
+      "uniqueConstraints": ["sequence_no UNIQUE", "idempotency_key UNIQUE", "outbox_event_change_unique partial unique index"],
+      "stateColumn": "state: READY | LEASED | SUCCEEDED | FINAL_FAILED",
+      "domainRecordPath": "modules/runtime/.../domain/OutboxEvent.java",
+      "portInterfacePath": "modules/runtime/.../port/RuntimeTransactionPort.java",
+      "portMethodCoverage": ["insertGovernedOutbox (only). Worker-side polling/leasing methods MISSING — tracked in outboxGateInventory"],
+      "adapterImplementationPath": "modules/database-adapter/.../adapter/JooqRuntimeTransactionAdapter.java",
+      "jooqGeneratedPath": "modules/database-adapter/.../generated/runtime/tables/OutboxEvent.java",
+      "missingItems": [
+        "Worker-side outbox polling (FOR UPDATE SKIP LOCKED) — tracked in outboxGateInventory",
+        "insertOperationalOutbox port method",
+        "lease/update adapter methods"
+      ],
+      "needsNewMigration": false,
+      "needsJooqRegeneration": false,
+      "needsNewRepositoryAdapter": true,
+      "queryMayBypassPortOrReturnUnauthorizedBody": "COVERED for persistence layer. Worker mechanics gaps tracked separately in outboxGateInventory"
+    }
+  ],
+  "ordinaryCounts": {
+    "totalInventoried": 22,
+    "byClassification": {
+      "COMPLETE": 5,
+      "PARTIAL": 5,
+      "ABSENT": 12
+    },
+    "byScope": {
+      "IN_SCOPE": 14,
+      "REFERENCE_ONLY": 5,
+      "ROUTED_LATER": 3
+    },
+    "logicalObjectCount": 22,
+    "inScopePhysicalTableCount": 16,
+    "inScopePhysicalTableBreakdown": {
+      "evidence": 5,
+      "memory": 1,
+      "runtime": 10,
+      "runtimeNote": "CaptureScope = 2 physical tables (capture_scope + capture_scope_unit); 8 logical objects → 10 physical tables"
+    }
+  },
+  "outboxGateInventory": [
+    {
+      "gateName": "FOR UPDATE SKIP LOCKED 竞争领取",
+      "contractReference": "详细契约 2.5",
+      "databaseSchemaEvidence": "V006: outbox_event_ready_lookup + outbox_event_lease_lookup partial indexes designed for SKIP LOCKED polling",
+      "applicationCodeEvidence": "MISSING. No Worker process or polling query.",
+      "status": "GAP",
+      "missingImplementation": ["Worker outbox dispatcher loop", "SELECT ... FOR UPDATE SKIP LOCKED query", "Row-level lock acquisition"]
+    },
+    {
+      "gateName": "lease owner / lease expiry 与过期再领取",
+      "contractReference": "详细契约 2.5",
+      "databaseSchemaEvidence": "V003: lease_owner/lease_until columns. V005: outbox_event_lease_check",
+      "applicationCodeEvidence": "MISSING. No Worker code.",
+      "status": "GAP",
+      "missingImplementation": ["UPDATE SET state='LEASED', lease_owner, lease_until", "Expired lease reclamation", "Worker identity config"]
+    },
+    {
+      "gateName": "指数退避 (exponential backoff with jitter)",
+      "contractReference": "详细契约 2.5",
+      "databaseSchemaEvidence": "V003: attempt_count, max_attempts=8, available_at for scheduling",
+      "applicationCodeEvidence": "MISSING. No backoff logic.",
+      "status": "GAP",
+      "missingImplementation": ["min(2^n * base, max) + jitter formula", "available_at recalculation", "Configurable parameters"]
+    },
+    {
+      "gateName": "第 8 次进入 FINAL_FAILED",
+      "contractReference": "详细契约 2.5",
+      "databaseSchemaEvidence": "V003: max_attempts=8 CHECK, attempt_count bounds, FINAL_FAILED state, last_failure_code FK",
+      "applicationCodeEvidence": "MISSING. No Worker state transition.",
+      "status": "GAP",
+      "missingImplementation": ["attempt_count=8 → FINAL_FAILED transition", "Alert dispatch (no body)", "Fence non-removal guarantee"]
+    },
+    {
+      "gateName": "consumer effect 幂等",
+      "contractReference": "详细契约 2.5: (consumer_code, event_id, effect_key) UNIQUE",
+      "databaseSchemaEvidence": "NOT YET. No consumer_effect table.",
+      "applicationCodeEvidence": "MISSING.",
+      "status": "GAP",
+      "missingImplementation": ["V009: runtime.consumer_effect table with PK(consumer_code, event_id, effect_key)", "ConsumerEffect domain/port/adapter", "Worker-side dedup check"]
+    },
+    {
+      "gateName": "Worker 完成前复核 current／policy／block／fence",
+      "contractReference": "详细契约 2.5",
+      "databaseSchemaEvidence": "V005/V007 governance triggers exist. DerivationBlock/DeletionFence tables NOT YET (ROUTED_LATER).",
+      "applicationCodeEvidence": "MISSING. No Worker verification logic.",
+      "status": "GAP",
+      "missingImplementation": ["Pre-completion re-check logic", "STALE/DENIED on guard failure", "fail-closed seam for ROUTED_LATER tables (table absent → check fails closed)"]
+    },
+    {
+      "gateName": "FINAL_FAILED 不解除围栏、不重新要求小林确认",
+      "contractReference": "HDM-006 不变量",
+      "databaseSchemaEvidence": "State FINAL_FAILED = terminal (completed_at NOT NULL). No fence-linking mechanism.",
+      "applicationCodeEvidence": "MISSING (no Worker). Design constraint.",
+      "status": "DESIGN_CONSTRAINT",
+      "missingImplementation": ["FINAL_FAILED handler: alert only, no fence modification", "No re-confirmation trigger"]
+    },
+    {
+      "gateName": "outbox／receipt／日志中正文 canary 零泄漏",
+      "contractReference": "详细契约 2.5",
+      "databaseSchemaEvidence": "V005: valid_outbox_manifest (5 allowed keys). V005: valid_receipt_manifest.",
+      "applicationCodeEvidence": "VERIFIED: SliceCCoordinatorTest leak test PASS. SliceD: bodyLeakScan=0, secretLeakScan=0.",
+      "status": "PASS",
+      "missingImplementation": []
+    }
+  ],
+  "outboxGateCounts": {
+    "totalGates": 8,
+    "pass": 1,
+    "gap": 6,
+    "designConstraint": 1,
+    "designConstraintNote": "DESIGN_CONSTRAINT is not a pass; it is a design rule to be enforced when Worker is implemented"
+  },
+  "operationalIdentityGap": {
+    "hideRulingReference": "Task19A-R1 §2 — hide final technical rulings; no longer decision points",
+    "c1_Question": "当前 runtime.outbox_event 的 aggregate_kind／aggregate_id／aggregate_revision 能否稳定、精确且数据库可验证地标识 OPERATIONAL 的 run／effect／fact？",
+    "c1_Verdict": "INSUFFICIENT — 三重原因: (1) aggregate_kind 无值域 CHECK, (2) aggregate_id 无 FK, (3) 无 consumer_effect 表",
+    "c2_RuledAnswer": {
+      "aggregate_kind_set": ["RUN", "EFFECT", "FACT"],
+      "ruling": "该集合直接继承 HDM-005 run/effect/fact identity。不是事件类型、业务名称或模型猜测枚举。CLOSEOUT_RUN/INDEX_SYNC/ROUTE_HEALTH 等不能作为 aggregate_kind。",
+      "implementation": "CHECK (event_category = 'OPERATIONAL' → aggregate_kind IN ('RUN', 'EFFECT', 'FACT'))",
+      "tripleConstraint": "OPERATIONAL 事件三元组 (aggregate_kind, aggregate_id, aggregate_revision) 全部 NOT NULL，aggregate_revision≥1",
+      "noNewColumns": true,
+      "noNewIdentityTables": true,
+      "noPseudoPolymorphicFK": true
+    },
+    "c3_ProducersDisabled": [
+      "所有 OPERATIONAL producer 保持 PRODUCTION_DISABLED",
+      "每个 producer 必须在其所属任务中证明 aggregate_id/revision 与真实父对象精确绑定",
+      "没有真实父对象和绑定测试的 producer 继续 PRODUCTION_DISABLED",
+      "HDM-006 完成不自动启用任何业务 producer"
+    ],
+    "c4_BoundaryAnalysis": "候选不重开 HDM-005 规范事务、不侵入 HDM-007/008 身份授权边界。仅修改 runtime schema CHECK 约束，不改变 memory schema 任何已审定对象。",
+    "hideDecisionPoints": []
+  },
+  "hideDecisionRecords": [
+    {
+      "id": "HDM006-D01",
+      "ruling": "OPERATIONAL aggregate_kind 精确允许集合为 RUN、EFFECT、FACT。不是事件类型。删除 CLOSEOUT_RUN/INDEX_SYNC/ROUTE_HEALTH 等候选。三元组使用现有 aggregate_kind + aggregate_id + aggregate_revision，不新增 identity 列。"
+    },
+    {
+      "id": "HDM006-D02",
+      "ruling": "runtime.consumer_effect 在 HDM-006 创建。实现 (consumer_code, event_id, effect_key) 唯一约束。只负责 effect 幂等，不承载权限、正文或业务状态。"
+    },
+    {
+      "id": "HDM006-D03",
+      "ruling": "本阶段不增加伪多态 FK、operational_identity 表或多组 nullable identity 列。数据库以 CHECK 锁定 RUN/EFFECT/FACT 和三元组非空/格式边界。每个 OPERATIONAL producer 在所属任务中证明绑定；无绑定的 producer 继续 PRODUCTION_DISABLED。"
+    }
+  ],
+  "plannedSlices": [
+    {
+      "id": "HDM006-SA",
+      "name": "A_EVIDENCE_MEMORY_SCHEMA",
+      "goal": "创建 evidence 5 张表 + memory.memory_relation 表，重新生成 jOOQ，验证迁移和生成确定性",
+      "allowlistPaths": [
+        "modules/database-adapter/src/main/resources/db/migration/V008__evidence_and_memory_relation.sql",
+        "modules/database-adapter/src/generated/** (jOOQ 重新生成)",
+        "modules/database-adapter/pom.xml (仅限 jOOQ 生成配置调整)",
+        "reports/HDM-006-SA-执行报告.md"
+      ],
+      "prohibitedPaths": [
+        "modules/evidence/** (domain/port 代码)",
+        "modules/runtime/**",
+        "modules/memory/** (domain/port 代码)",
+        "modules/application/**",
+        "modules/security/**",
+        "V001–V007",
+        "runtime 表、OPERATIONAL CHECK、consumer_effect、outbox Worker 代码"
+      ],
+      "prerequisites": [
+        "HDM-005 Slice B/C/D 已验收 (HEAD eec36bb)",
+        "Docker PostgreSQL 18 + pgvector 0.8.2",
+        "scripts/db.ps1 Migration + Generate + GenerateCheck 可运行"
+      ],
+      "targetedTests": [
+        "空库 V001→V008 迁移",
+        "V007→V008 升级迁移",
+        "重复迁移幂等",
+        "jOOQ GenerateCheck PASS",
+        "所有新表 ON DELETE NO ACTION FK",
+        "所有新表 GRANT 权限正确",
+        "memory_relation CHECK: exactly one of to_revision_id/to_anchor_id NOT NULL"
+      ],
+      "stopCondition": "V008 空库+升级迁移成功；GenerateCheck PASS；所有新表符合 B01–B12 门",
+      "estimatedMinutes": 40
+    },
+    {
+      "id": "HDM006-SB",
+      "name": "B_RUNTIME_SCHEMA",
+      "goal": "创建 HDM-006 范围内 runtime 普通表 (8 逻辑对象/10 物理表) + consumer_effect 表 + OPERATIONAL aggregate_kind CHECK，重新生成 jOOQ",
+      "allowlistPaths": [
+        "modules/database-adapter/src/main/resources/db/migration/V009__runtime_tables_operational_identity.sql",
+        "modules/database-adapter/src/generated/** (jOOQ 重新生成)",
+        "reports/HDM-006-SB-执行报告.md"
+      ],
+      "prohibitedPaths": [
+        "modules/evidence/**",
+        "modules/runtime/** (domain/port 代码)",
+        "modules/memory/**",
+        "modules/application/**",
+        "modules/security/**",
+        "V001–V008",
+        "outbox Worker 代码",
+        "domain/port/adapter 实现"
+      ],
+      "prerequisites": [
+        "Slice A (HDM006-SA) 已完成并验收"
+      ],
+      "targetedTests": [
+        "空库 V001→V009 迁移",
+        "V008→V009 升级迁移",
+        "OPERATIONAL CHECK: RUN/EFFECT/FACT 有效值通过，无效值拒绝",
+        "OPERATIONAL CHECK: aggregate_revision IS NULL 被拒绝",
+        "consumer_effect PK 唯一约束：重复 (consumer_code, event_id, effect_key) 拒绝",
+        "consumer_effect event_id FK → outbox_event",
+        "jOOQ GenerateCheck PASS",
+        "所有新表 ON DELETE NO ACTION FK + GRANT 权限"
+      ],
+      "stopCondition": "V009 迁移成功；OPERATIONAL CHECK 生效；consumer_effect 唯一约束生效；GenerateCheck PASS；所有新表符合 B01–B12",
+      "estimatedMinutes": 40
+    },
+    {
+      "id": "HDM006-SC",
+      "name": "C_REPOSITORY_ADAPTERS",
+      "goal": "为 HDM-006 IN_SCOPE 对象创建 domain record、扩展 port 接口、实现 jOOQ adapter；不含业务工作流",
+      "allowlistPaths": [
+        "modules/evidence/src/main/java/.../domain/*.java (新增 Source, SourceUnit, SourcePayload, SourceAnchor, SourceAnchorUnit)",
+        "modules/evidence/src/main/java/.../port/EvidenceReferencePort.java (扩展 CRUD)",
+        "modules/runtime/src/main/java/.../domain/*.java (新增 CloseoutRun, Checkpoint, RetrievalTrace, CaptureScope, WorkArtifact, ModelRun, ContextDelivery, ConsumerEffect)",
+        "modules/runtime/src/main/java/.../port/RuntimeTransactionPort.java (扩展 run/checkpoint/trace 方法)",
+        "modules/memory/src/main/java/.../domain/ActorRef.java (新增)",
+        "modules/memory/src/main/java/.../port/MemoryGovernancePort.java (扩展 actor 方法)",
+        "modules/database-adapter/src/main/java/.../adapter/JooqEvidenceReferenceAdapter.java (实现)",
+        "modules/database-adapter/src/main/java/.../adapter/JooqRuntimeTransactionAdapter.java (扩展)",
+        "modules/database-adapter/src/main/java/.../adapter/JooqRuntimeQueryAdapter.java (新增只读)",
+        "modules/database-adapter/src/main/java/.../adapter/JooqMemoryGovernanceAdapter.java (扩展 actor+relation)",
+        "modules/architecture-tests/** (边界验证)",
+        "reports/HDM-006-SC-执行报告.md"
+      ],
+      "prohibitedPaths": [
+        "V008/V009 migration (只读)",
+        "outbox Worker 代码、apps/worker/**",
+        "modules/security/**",
+        "业务工作流 coordinator (仅 CRUD adapter，不编排业务流程)"
+      ],
+      "prerequisites": [
+        "Slice A + B 完成",
+        "所有 jOOQ 生成类型可用"
+      ],
+      "targetedTests": [
+        "Evidence CRUD 契约测试: Source/SourceUnit/SourcePayload/SourceAnchor",
+        "ActorRef CRUD 测试",
+        "MemoryRelation CRUD 测试 (含 to_revision_id/to_anchor_id 互斥)",
+        "CloseoutRun 生命周期: READY→RUNNING→COMPLETED/FAILED",
+        "Checkpoint 不可变写入",
+        "RetrievalTrace uuid[] 读写",
+        "ConsumerEffect 幂等检查",
+        "架构边界: domain 不依赖 jOOQ/JDBC, adapter 不泄漏生成类型",
+        "正文泄漏扫描: 新 adapter 查询无 body_text 泄漏",
+        "ROUTED_LATER 对象 (DerivationBlock/DeletionFence/DeletionRun) 仅保留 fail-closed seam"
+      ],
+      "stopCondition": "所有 IN_SCOPE 对象 CRUD 测试 PASS；架构边界测试 PASS；正文泄漏零命中；ROUTED_LATER seam fail-closed",
+      "estimatedMinutes": 45
+    },
+    {
+      "id": "HDM006-SD",
+      "name": "D_OUTBOX_MECHANICS",
+      "goal": "实现 Worker 端 outbox 轮询/租约/重试/终败/effect 幂等及 fail-closed gates",
+      "allowlistPaths": [
+        "modules/runtime/src/main/java/.../port/RuntimeTransactionPort.java (扩展 Worker 方法)",
+        "modules/database-adapter/src/main/java/.../adapter/JooqRuntimeTransactionAdapter.java (SKIP LOCKED/lease/backoff)",
+        "modules/database-adapter/src/main/java/.../adapter/JooqRuntimeQueryAdapter.java (只读查询)",
+        "apps/worker/src/main/java/** (Worker 启动、outbox 调度循环)",
+        "modules/application/src/main/java/.../coordinator/ (新增 OutboxWorkerCoordinator)",
+        "modules/architecture-tests/** (Worker 不依赖 API)",
+        "reports/HDM-006-SD-执行报告.md"
+      ],
+      "prohibitedPaths": [
+        "V001–V009 migration (只读)",
+        "memory schema 表/触发器/函数",
+        "GOVERNED outbox 生产路径",
+        "modules/security/**",
+        "apps/api/**",
+        "ROUTED_LATER 对象 (DerivationBlock/DeletionFence — Worker 复核使用 fail-closed seam)"
+      ],
+      "prerequisites": [
+        "Slice A + B + C 完成",
+        "PostgreSQL 18 + pgvector 0.8.2 Docker 可用"
+      ],
+      "targetedTests": [
+        "两 Worker SKIP LOCKED 并发竞争",
+        "租约过期再领取",
+        "指数退避 (验证公式+抖动)",
+        "第 8 次 FINAL_FAILED + last_failure_code",
+        "consumer_effect 幂等重放拒绝",
+        "Worker 完成前复核 (current revision/policy; ROUTED_LATER block/fence 使用 fail-closed seam)",
+        "正文 canary 零命中",
+        "FINAL_FAILED 不解除围栏",
+        "所有 OPERATIONAL producer 仍 PRODUCTION_DISABLED",
+        "jOOQ 生成无变化 (无新 migration)"
+      ],
+      "stopCondition": "所有 outbox 机械门测试 PASS；OPERATIONAL CHECK 生效；effect 幂等通过；正文泄漏零命中；FINAL_FAILED 不解除围栏",
+      "estimatedMinutes": 45
+    }
+  ],
+  "hideDecisionPoints": [],
+  "authorityConflicts": [],
+  "scopeSummary": {
+    "IN_SCOPE": [
+      "evidence 普通持久化: Source, SourceUnit, SourcePayload (元数据), SourceAnchor, SourceAnchorUnit",
+      "memory 普通持久化: ActorRef adapter, MemoryRelation",
+      "runtime 普通持久化: CaptureScope/Unit, CloseoutRun, Checkpoint, WorkArtifact, ModelRun, RetrievalTrace, ContextDelivery",
+      "outbox mechanics: 租约, SKIP LOCKED, 过期再领取, 指数退避, 8次FINAL_FAILED, consumer effect 幂等",
+      "OPERATIONAL identity: RUN/EFFECT/FACT CHECK + fail-closed producer fence",
+      "SourcePayload 仅元数据持久化；真实 Local/OSS PayloadStore → HDM-019/020"
+    ],
+    "ROUTED_LATER": [
+      "DerivationBlock, DeletionFence, DeletionRun → HDM-016 分析后由 HDM-017/018 处理",
+      "actor/role/purpose/effect 授权 → HDM-007/008",
+      "closeout/检索/删除等业务 producer → 各自后续任务, 绑定证据出现前保持禁用"
+    ],
+    "REFERENCE_ONLY": [
+      "HDM-005 已完成的规范对象和事务 (MemoryRecord, MemoryRevision, Decision, Proposal, ProposalRevision, ReviewSession, ChangeEvent, IdempotencyReceipt, OutboxEvent 表结构)",
+      "不修改其领域语义、V001–V007 或 GOVERNED outbox 路径"
+    ]
+  },
+  "forbiddenNewStates": [
+    "不在 runtime.outbox_event 新增状态值: READY/LEASED/SUCCEEDED/FINAL_FAILED 已足够",
+    "不在 runtime.closeout_run 新增状态: READY/RUNNING/COMPLETED/FAILED/CANCELLED 已足够 (契约 2.4)",
+    "不将原型伪状态 ISOLATED/DELETED/DELETE_PENDING 引入任何表"
+  ],
+  "forbiddenNewFailureCodes": [
+    "不新增 failure code。现有 50 个 code 已注册, OUTBOX_FINAL_FAILED 覆盖终败场景",
+    "OPERATIONAL identity 约束违反使用 SQLSTATE 23514 (CHECK violation), 映射到 REQUEST_SCHEMA_INVALID 或 INTERNAL_FAILURE"
+  ],
+  "networkRequired": false,
+  "repositoryWrites": [
+    "reports/HDM-006-PreflightManifest.json (R1 corrected)",
+    "reports/HDM-006-预检报告.md (R1 corrected)"
+  ]
+}

@@ -1,0 +1,166 @@
+{
+  "schemaVersion": "HDM-006-SA-EVIDENCE-R1",
+  "status": "HDM006_SLICE_A_R2_READY_FOR_LOCAL_COMMIT",
+  "baselineHead": "eec36bba7b48c98f3f28cf405a3a87cea99e68b0",
+  "preflightReportSha256": {
+    "start": "20cfc94c3a2c04eeb837f6f434bbdcdd508602d6a0f479c0e0a051cc26713806",
+    "end": "20cfc94c3a2c04eeb837f6f434bbdcdd508602d6a0f479c0e0a051cc26713806",
+    "match": true
+  },
+  "preflightManifestSha256": {
+    "start": "8600d808f3faddf932e8f4cc8774b3e29bbe601ffd797f8862487baae22c3a39",
+    "end": "8600d808f3faddf932e8f4cc8774b3e29bbe601ffd797f8862487baae22c3a39",
+    "match": true
+  },
+  "migrationFile": {
+    "path": "modules/database-adapter/src/main/resources/db/migration/V008__evidence_and_memory_relation.sql",
+    "sha256": "cd4fd16ad58a708f01e879dbbb4176a41c4f10ecb7743a241396d2fc76aa2ce0",
+    "bytes": 12207,
+    "lines": 291
+  },
+  "newTables": [
+    "evidence.source",
+    "evidence.source_unit",
+    "evidence.source_payload",
+    "evidence.source_anchor",
+    "evidence.source_anchor_unit",
+    "memory.memory_relation"
+  ],
+  "columns": {
+    "evidence.source": ["source_id", "source_kind", "platform", "external_ref", "observed_accessible", "compressed_observed", "policy_id", "created_at", "ingested_at"],
+    "evidence.source_unit": ["source_unit_id", "source_id", "external_unit_ref", "source_version", "ordinal", "actor_id", "occurred_at", "created_at"],
+    "evidence.source_payload": ["payload_id", "source_unit_id", "payload_kind", "store_adapter", "object_ref", "object_version_ref", "content_type", "size_bytes", "content_hash", "policy_id", "current_policy_revision_no", "retention_class", "expires_at", "created_at"],
+    "evidence.source_anchor": ["anchor_id", "source_id", "anchor_kind", "created_at"],
+    "evidence.source_anchor_unit": ["anchor_id", "source_unit_id", "from_offset", "to_offset", "ordinal"],
+    "memory.memory_relation": ["relation_id", "from_revision_id", "relation_type", "to_revision_id", "to_anchor_id", "perspective_actor_id", "created_by_decision_id", "created_at"]
+  },
+  "primaryKeys": {
+    "evidence.source": "source_id",
+    "evidence.source_unit": "source_unit_id",
+    "evidence.source_payload": "payload_id",
+    "evidence.source_anchor": "anchor_id",
+    "evidence.source_anchor_unit": "(anchor_id, ordinal)",
+    "memory.memory_relation": "relation_id"
+  },
+  "foreignKeys": {
+    "evidence": 8,
+    "memoryRelation": 5,
+    "total": 13,
+    "allDeleteRule": "NO ACTION",
+    "noneDeferrable": true
+  },
+  "uniqueConstraints": {
+    "evidence.source": ["(platform, external_ref)"],
+    "evidence.source_unit": ["(source_id, external_unit_ref, source_version)"]
+  },
+  "checkConstraints": {
+    "codeFormatRegex": "^[A-Z][A-Z0-9_]{0,63}$",
+    "codeFormatColumns": ["source_kind", "payload_kind", "store_adapter", "retention_class", "anchor_kind"],
+    "memoryRelationTarget": "single CHECK: EVIDENCED_BY→anchor, other 8→revision, exactly one target",
+    "offsetConstraints": ["both_or_none", "from_non_negative", "to_ge_from"]
+  },
+  "r1Trigger": {
+    "function": "evidence.enforce_anchor_unit_same_source",
+    "language": "plpgsql",
+    "searchPath": "pg_catalog, evidence",
+    "trigger": "source_anchor_unit_same_source_guard",
+    "type": "CONSTRAINT TRIGGER AFTER INSERT OR UPDATE DEFERRABLE INITIALLY DEFERRED",
+    "publicExecuteRevoked": true,
+    "testEvidence": "same-source passes; cross-source rejected via assertCommitSqlState 23514"
+  },
+  "privileges": {
+    "evidence.schema": "GRANT USAGE TO hide_nest_api, hide_nest_worker",
+    "evidence.tables.api": "SELECT + INSERT on all 5 evidence tables",
+    "evidence.tables.worker": "SELECT only on all 5 evidence tables",
+    "evidence.functions.public": "REVOKE EXECUTE — 0 PUBLIC grants confirmed",
+    "memory.memory_relation.api": "SELECT + INSERT",
+    "memory.memory_relation.worker": "SELECT only"
+  },
+  "migrationResults": {
+    "emptyMigration": { "status": "PASS", "migrationsExecuted": 8, "currentVersion": "v008", "schemaHistory": 8 },
+    "upgradeMigration": { "status": "PASS" },
+    "repeatMigration": { "status": "PASS", "migrationsExecuted": 0 },
+    "migrationValidate": { "status": "PASS" }
+  },
+  "jooqGeneration": {
+    "totalFileCount": 63,
+    "evidence": 14,
+    "memory": 32,
+    "runtime": 16,
+    "defaultCatalog": 1,
+    "breakdownSumsTo63": true,
+    "newFilesInSliceA": 16,
+    "modifiedButExistingFilesInSliceA": 47,
+    "aBDualGenerationConsistent": true,
+    "trackedMatchesGenerated": true,
+    "generateCheckPass": true
+  },
+  "testResults": {
+    "targetedTestCount": 57,
+    "targetedTestPassCount": 57,
+    "targetedTestExitCode": 0,
+    "fullMavenVerifyModuleCount": 11,
+    "fullMavenVerifyExitCode": 0,
+    "architectureTestCount": 13,
+    "architectureTestExitCode": 0,
+    "sliceATestCount": 7,
+    "sliceATestNegativeCount": 20
+  },
+  "r1NegativeTests": {
+    "R1-01 anchorSameSource": { "sameSourcePass": true, "crossSourceRejected": true, "reverseCrossSourceRejected": true },
+    "R1-02 relationTarget": { "evidencedByToAnchor": "PASS", "interpretsToRevision": "PASS", "bothNull": "REJECTED 23514", "bothNonNull": "REJECTED 23514", "evidencedByToRevision": "REJECTED 23514", "supportsToAnchor": "REJECTED 23514", "invalidType": "REJECTED 23514", "refinesToAnchor": "REJECTED 23514" },
+    "R1-03 codeFormat": { "lowercase": "REJECTED 23514", "leadingSpace": "REJECTED 23514", "internalSpace": "REJECTED 23514", "hyphen": "REJECTED 23514", "digitsOnly": "REJECTED 23514", "nonAscii": "REJECTED 23514", "storeAdapterLowercase": "REJECTED 23514", "validCodes": "PASS" }
+  },
+  "canaryScan": {
+    "bodyTextLeak": 0,
+    "secretLeak": 0,
+    "credentialLeak": 0
+  },
+  "diffCheck": {
+    "gitDiffCheckExitCode": 0,
+    "outsideAllowlistFiles": 0,
+    "modifiedV001toV007": false,
+    "modifiedHdm005Artifacts": false
+  },
+  "worktreeState": {
+    "trackedModifiedPaths": 12,
+    "untrackedFilePaths": 21,
+    "gitStatusCollapsedEntries": 8,
+    "untrackedLogicalCategoryCount": 6,
+    "untrackedLogicalCategories": {
+      "V008Migration": 1,
+      "jooqNewEvidenceFiles": 14,
+      "jooqNewMemoryRelationFiles": 2,
+      "preflightReports": 2,
+      "sliceAExecutionReport": 1,
+      "sliceAEvidenceJson": 1
+    },
+    "stagedFiles": 0,
+    "outsideAllowlistFiles": 0
+  },
+  "gitIndex": {
+    "headBeforeAndAfter": "eec36bba7b48c98f3f28cf405a3a87cea99e68b0",
+    "noStagedFiles": true,
+    "noGitWriteOperations": true
+  },
+  "dockerLeakage": {
+    "runningContainers": 0,
+    "exitedContainers": 0
+  },
+  "javaResidualProcesses": 0,
+  "actualNetworkDomains": [],
+  "networkAccess": {
+    "required": false,
+    "actual": false,
+    "mavenUsedOfflineMode": true
+  },
+  "semanticAllowlistStatus": {
+    "codeFormat": "^[A-Z][A-Z0-9_]{0,63}$ enforced on 5 columns via CHECK",
+    "sourceKind": "NOT_FROZEN — strict format only; no semantic enum values registered",
+    "payloadKind": "NOT_FROZEN — strict format only",
+    "anchorKind": "NOT_FROZEN — strict format only",
+    "retentionClass": "NOT_FROZEN — strict format only",
+    "storeAdapter": "NOT_FROZEN — strict format only; intentionally NOT restricted to LOCAL_FILE/ALIYUN_OSS",
+    "relationType": "FROZEN — 9 values"
+  }
+}

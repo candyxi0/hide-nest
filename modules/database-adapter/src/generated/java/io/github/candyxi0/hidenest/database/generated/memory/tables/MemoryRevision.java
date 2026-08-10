@@ -10,6 +10,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.Memory;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ActorRef.ActorRefPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision.DecisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRecord.MemoryRecordPath;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation.MemoryRelationPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ProposalRevision.ProposalRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.MemoryRevisionRecord;
 
@@ -256,6 +257,34 @@ public class MemoryRevision extends TableImpl<MemoryRevisionRecord> {
             _memoryRecord = new MemoryRecordPath(this, Keys.MEMORY_REVISION__MEMORY_REVISION_MEMORY_FK, null);
 
         return _memoryRecord;
+    }
+
+    private transient MemoryRelationPath _memoryRelationFromRevisionFk;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>memory.memory_relation</code> table, via the
+     * <code>memory_relation_from_revision_fk</code> key
+     */
+    public MemoryRelationPath memoryRelationFromRevisionFk() {
+        if (_memoryRelationFromRevisionFk == null)
+            _memoryRelationFromRevisionFk = new MemoryRelationPath(this, null, Keys.MEMORY_RELATION__MEMORY_RELATION_FROM_REVISION_FK.getInverseKey());
+
+        return _memoryRelationFromRevisionFk;
+    }
+
+    private transient MemoryRelationPath _memoryRelationToRevisionFk;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>memory.memory_relation</code> table, via the
+     * <code>memory_relation_to_revision_fk</code> key
+     */
+    public MemoryRelationPath memoryRelationToRevisionFk() {
+        if (_memoryRelationToRevisionFk == null)
+            _memoryRelationToRevisionFk = new MemoryRelationPath(this, null, Keys.MEMORY_RELATION__MEMORY_RELATION_TO_REVISION_FK.getInverseKey());
+
+        return _memoryRelationToRevisionFk;
     }
 
     private transient ProposalRevisionPath _proposalRevision;

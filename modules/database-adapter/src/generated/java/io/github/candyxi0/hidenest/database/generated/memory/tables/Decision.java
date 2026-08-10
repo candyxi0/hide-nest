@@ -10,6 +10,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.Memory;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicyRevision.AccessPolicyRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ActorRef.ActorRefPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent.ChangeEventPath;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation.MemoryRelationPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevision.MemoryRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ProposalRevision.ProposalRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ReviewSession.ReviewSessionPath;
@@ -290,6 +291,19 @@ public class Decision extends TableImpl<DecisionRecord> {
             _changeEvent = new ChangeEventPath(this, null, Keys.CHANGE_EVENT__CHANGE_EVENT_DECISION_FK.getInverseKey());
 
         return _changeEvent;
+    }
+
+    private transient MemoryRelationPath _memoryRelation;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>memory.memory_relation</code> table
+     */
+    public MemoryRelationPath memoryRelation() {
+        if (_memoryRelation == null)
+            _memoryRelation = new MemoryRelationPath(this, null, Keys.MEMORY_RELATION__MEMORY_RELATION_DECISION_FK.getInverseKey());
+
+        return _memoryRelation;
     }
 
     private transient MemoryRevisionPath _memoryRevision;

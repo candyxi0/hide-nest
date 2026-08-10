@@ -4,6 +4,7 @@
 package io.github.candyxi0.hidenest.database.generated;
 
 
+import io.github.candyxi0.hidenest.database.generated.evidence.Evidence;
 import io.github.candyxi0.hidenest.database.generated.memory.Memory;
 import io.github.candyxi0.hidenest.database.generated.runtime.Runtime;
 
@@ -37,6 +38,11 @@ public class DefaultCatalog extends CatalogImpl {
     public static final DefaultCatalog DEFAULT_CATALOG = new DefaultCatalog();
 
     /**
+     * The schema <code>evidence</code>.
+     */
+    public final Evidence EVIDENCE = Evidence.EVIDENCE;
+
+    /**
      * The schema <code>memory</code>.
      */
     public final Memory MEMORY = Memory.MEMORY;
@@ -56,6 +62,7 @@ public class DefaultCatalog extends CatalogImpl {
     @Override
     public final List<Schema> getSchemas() {
         return Arrays.asList(
+            Evidence.EVIDENCE,
             Memory.MEMORY,
             Runtime.RUNTIME
         );

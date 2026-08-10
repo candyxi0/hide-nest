@@ -11,6 +11,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.tables.ActorRef;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRecord;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevision;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Proposal;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ProposalRevision;
@@ -66,6 +67,11 @@ public class Tables {
      * The table <code>memory.memory_record</code>.
      */
     public static final MemoryRecord MEMORY_RECORD = MemoryRecord.MEMORY_RECORD;
+
+    /**
+     * The table <code>memory.memory_relation</code>.
+     */
+    public static final MemoryRelation MEMORY_RELATION = MemoryRelation.MEMORY_RELATION;
 
     /**
      * The table <code>memory.memory_revision</code>.

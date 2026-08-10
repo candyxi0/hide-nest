@@ -4,6 +4,7 @@
 package io.github.candyxi0.hidenest.database.generated.memory.tables;
 
 
+import io.github.candyxi0.hidenest.database.generated.evidence.tables.SourcePayload.SourcePayloadPath;
 import io.github.candyxi0.hidenest.database.generated.memory.Keys;
 import io.github.candyxi0.hidenest.database.generated.memory.Memory;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicy.AccessPolicyPath;
@@ -227,6 +228,19 @@ public class AccessPolicyRevision extends TableImpl<AccessPolicyRevisionRecord> 
             _accessPolicy = new AccessPolicyPath(this, Keys.ACCESS_POLICY_REVISION__ACCESS_POLICY_REVISION_POLICY_FK, null);
 
         return _accessPolicy;
+    }
+
+    private transient SourcePayloadPath _sourcePayload;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>evidence.source_payload</code> table
+     */
+    public SourcePayloadPath sourcePayload() {
+        if (_sourcePayload == null)
+            _sourcePayload = new SourcePayloadPath(this, null, io.github.candyxi0.hidenest.database.generated.evidence.Keys.SOURCE_PAYLOAD__SOURCE_PAYLOAD_POLICY_REVISION_FK.getInverseKey());
+
+        return _sourcePayload;
     }
 
     private transient AccessPolicyGrantPath _accessPolicyGrant;
