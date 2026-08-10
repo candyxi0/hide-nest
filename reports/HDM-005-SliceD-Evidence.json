@@ -1,0 +1,270 @@
+{
+  "schemaVersion": "HDM-005-SLICED-R1-CORRECTED",
+  "status": "HDM005_SLICE_D_ROUTED_GAPS_SEALED_READY_FOR_LOCAL_COMMIT",
+  "baselineHead": "c3c429ddfda892763a91de3449eff33d5351a671",
+  "baselineParent": "7d174be08cbc1cf5fbc23572f8f8754e779216e8",
+  "buildTool": "Maven 3.9.16 + JDK 25.0.3 (IntelliJ JBR)",
+  "nodeVersion": "v24.14.1 / npm 11.11.0",
+  "surefireTotal": "63/63/0/0/0",
+  "architectureTests": "13/13",
+  "sliceB": "35/35",
+  "sliceC": "15/15",
+  "nodeTests": "13/13",
+  "mavenOfflineCleanVerify": "BUILD_SUCCESS",
+  "nodeUnifiedVerify": {
+    "typecheck": "PASS",
+    "lint": "PASS (0 errors, 2 warnings)",
+    "test": "PASS (13 tests: codex-adapter 2, nest-console 1, ui-contract-fixtures 10)"
+  },
+  "apiSmoke": "PASS (Started in 0.64s, Java 25.0.3)",
+  "workerSmoke": "PASS (Started in 0.66s, Java 25.0.3)",
+  "verifiedPassing": {
+    "architectureNegativeGates": {
+      "summary": "6 formal rules x 6 negative fixtures, all use same rule factory",
+      "ruleApplicationBoundary": {
+        "formalTest": "formalBoundariesPassForMainClasses → applicationBoundaryRule()",
+        "negativeFixture": "applicationFixtureIsRejectedByTheFormalApplicationRule",
+        "fixtureClass": "ApplicationForbiddenDependencyFixture",
+        "forbiddenImports": ["DatabaseAdapterModule", "java.sql.Connection"],
+        "verdict": "PASS"
+      },
+      "ruleDomainBoundary": {
+        "formalTest": "formalBoundariesPassForMainClasses → domainBoundaryRule()",
+        "negativeFixture": "evidenceFixtureIsRejectedByTheFormalDomainRule",
+        "fixtureClass": "EvidenceForbiddenDatabaseFixture",
+        "forbiddenImports": ["DatabaseAdapterModule"],
+        "verdict": "PASS"
+      },
+      "ruleDatabaseBoundary": {
+        "formalTest": "formalBoundariesPassForMainClasses → databaseBoundaryRule()",
+        "negativeFixture": "databaseFixtureIsRejectedByTheFormalDatabaseRule",
+        "fixtureClass": "DatabaseForbiddenApplicationFixture",
+        "forbiddenImports": ["ApplicationModule"],
+        "verdict": "PASS"
+      },
+      "ruleGeneratedTypeBoundary": {
+        "formalTest": "formalBoundariesPassForMainClasses → generatedTypeBoundaryRule()",
+        "negativeFixture": "generatedTypeFixtureIsRejectedByTheFormalGeneratedTypeRule",
+        "fixtureClass": "ApplicationForbiddenGeneratedTypeFixture",
+        "forbiddenImports": ["database.generated.memory.tables.ActorRef"],
+        "verdict": "PASS"
+      },
+      "ruleReactiveDatabaseApis": {
+        "formalTest": "formalBoundariesPassForMainClasses → projectClassesMustNotUseReactiveDatabaseApisRule()",
+        "negativeFixture": "reactiveFixtureIsRejectedByTheFormalProjectRule",
+        "fixtureClass": "ApplicationForbiddenReactiveFixture",
+        "forbiddenImports": ["io.r2dbc.spi.ConnectionFactory"],
+        "verdict": "PASS"
+      },
+      "ruleForbiddenFramework": {
+        "formalTest": "domainMustNotDependOnForbiddenFrameworks → forbiddenFrameworkDependencyRule()",
+        "negativeFixture": "negativeFixtureMustViolateForbiddenFrameworkRule",
+        "fixtureClass": "EvidenceForbiddenFrameworkFixture",
+        "forbiddenImports": ["java.sql.Connection", "java.sql.DriverManager"],
+        "verdict": "PASS"
+      },
+      "ruleApiWorkerIndependence": {
+        "formalTest": "apiAndWorkerMustNotDependOnEachOther",
+        "verdict": "PASS"
+      },
+      "allFixturesUseSameRuleAsFormalGate": true,
+      "reversePollutionApplicationDomainAdapter": "ALL_REJECTED"
+    },
+    "b09GovernedOutboxGate": {
+      "governedMissingChangeEventFails": {
+        "test": "aggregateOutboxGuardIT",
+        "sqlstate": "23503",
+        "mechanism": "FK violation: outbox_event_change_event_id_fkey",
+        "verdict": "REJECTED"
+      },
+      "governedChangeEventNullDecisionIdFails": {
+        "test": "aggregateOutboxGuardIT",
+        "sqlstate": "23514",
+        "mechanism": "trigger enforce_outbox_change_event_match: NULL decision_id",
+        "verdict": "REJECTED"
+      },
+      "governedValidPathSucceeds": {
+        "test": "aggregateOutboxGuardIT",
+        "verdict": "PASS"
+      },
+      "governedDetachedChangeEventFails": {
+        "test": "governedFactBindingIT",
+        "sqlstate": "23514",
+        "mechanism": "trigger enforce_outbox_change_event_match: no decision_id",
+        "verdict": "REJECTED"
+      },
+      "governedWrongEventTypeFails": {
+        "test": "governedFactBindingIT",
+        "sqlstate": "23514",
+        "mechanism": "trigger enforce_outbox_change_event_match: event_type mismatch",
+        "verdict": "REJECTED"
+      },
+      "governedDuplicateOutboxFails": {
+        "test": "governedFactBindingIT",
+        "sqlstate": "23505",
+        "mechanism": "unique index outbox_event_change_unique",
+        "verdict": "REJECTED"
+      }
+    },
+    "b09OperationalSyntheticPath": {
+      "operationalNoChangeEventSucceeds": {
+        "test": "aggregateOutboxGuardIT",
+        "aggregateKind": "CLOSEOUT_RUN",
+        "note": "CLOSEOUT_RUN is synthetic reference path only — production OPERATIONAL producer is DISABLED until HDM-006",
+        "verdict": "PASS"
+      },
+      "noBusinessContent": true
+    },
+    "b04DatabaseExactScopeGate": {
+      "validExactScopeSucceeds": {
+        "test": "accessPolicyConcurrencyIT",
+        "verdict": "PASS"
+      },
+      "selfScopeRejected": {
+        "test": "accessPolicyConcurrencyIT",
+        "sqlstate": "23514",
+        "mechanism": "CHECK access_policy_grant_scope_check (object_scope = 'EXACT_OBJECT')",
+        "scope": "SELF",
+        "verdict": "REJECTED"
+      },
+      "wildcardScopeRejected": {
+        "test": "accessPolicyConcurrencyIT",
+        "sqlstate": "23514",
+        "mechanism": "CHECK access_policy_grant_scope_check",
+        "scope": "*",
+        "verdict": "REJECTED"
+      },
+      "jsonScopeRejected": {
+        "test": "accessPolicyConcurrencyIT",
+        "sqlstate": "23514",
+        "mechanism": "CHECK access_policy_grant_scope_check",
+        "scope": "{\"scope\":\"owner\"}",
+        "verdict": "REJECTED"
+      },
+      "rejectionHitsFormalGateNotMissingRow": true,
+      "evidenceIsCheckViolation23514": true
+    }
+  },
+  "routedGaps": [
+    {
+      "gap": "OPERATIONAL identity (run/effect/fact) value constraint",
+      "evidence": "aggregate_kind column has NOT NULL + single-column constraints only; no CHECK restricting aggregate_kind values to run/effect/fact for OPERATIONAL events",
+      "routedTo": "HDM-006",
+      "rationale": "Stable physical model and producer extension for OPERATIONAL identity belong to HDM-006",
+      "fence": "PRODUCTION_DISABLED — OPERATIONAL producer must not be enabled until HDM-006 completes; current CLOSEOUT_RUN is synthetic reference path only",
+      "noV008": true,
+      "noGuessingEnum": true,
+      "noHdm005CodeChange": true
+    },
+    {
+      "gap": "actor/role/purpose/effect matching and actor-owned scope authorization",
+      "evidence": "Database only enforces object_scope = 'EXACT_OBJECT'; runtime authorization combining actor, role, purpose, effect with unconfirmed actor-owned scope is not implemented",
+      "routedTo": "HDM-007 / HDM-008",
+      "rationale": "Threat analysis for actor/role/purpose/effect and actor-owned scope → HDM-007; formal four-gate model and capability consumption adjudication → HDM-008",
+      "fence": "FAIL_CLOSED — capability seam is fail-closed; no production allow implementation exists",
+      "noV008": true,
+      "noHdm005CodeChange": true
+    }
+  ],
+  "scanResults": {
+    "bodyLeakScan": 0,
+    "secretLeakScan": 0,
+    "hardcodedCredentials": 0,
+    "diffWhitespaceErrors": 0,
+    "outOfAllowlistPaths": 0
+  },
+  "git": {
+    "head": "c3c429ddfda892763a91de3449eff33d5351a671",
+    "branch": "main",
+    "trackedModified": 0,
+    "untrackedNew": 2,
+    "staged": 0,
+    "trackedTotal": 297
+  },
+  "dockerResidual": {
+    "containers": 0,
+    "volumes": 0,
+    "networks": 0
+  },
+  "javaProcessesLeaked": 0,
+  "nodeProcessesResidual": 0,
+  "noNetwork": true,
+  "noGitWrite": true,
+  "noStageNoCommitNoPush": true,
+  "noTestRerun": true,
+  "architectureTestNames": [
+    "allDomainMarkersMustBeImportable",
+    "domainModulesMustNotDependOnApps",
+    "domainModulesMustNotDependOnEachOther",
+    "domainMustNotDependOnForbiddenFrameworks",
+    "apiAndWorkerMustNotDependOnEachOther",
+    "domainModulesMustNotDependOnContracts",
+    "negativeFixtureMustViolateForbiddenFrameworkRule",
+    "formalBoundariesPassForMainClasses",
+    "applicationFixtureIsRejectedByTheFormalApplicationRule",
+    "evidenceFixtureIsRejectedByTheFormalDomainRule",
+    "databaseFixtureIsRejectedByTheFormalDatabaseRule",
+    "generatedTypeFixtureIsRejectedByTheFormalGeneratedTypeRule",
+    "reactiveFixtureIsRejectedByTheFormalProjectRule"
+  ],
+  "sliceBTestNames": [
+    "databaseMigrationIT",
+    "flywayChecksumDriftIT",
+    "coreDatabaseInventoryIT",
+    "sqlTypeAndCollationIT",
+    "foreignKeyDeletePolicyIT",
+    "currentPointerConstraintIT",
+    "decisionCanonicalUniquenessIT",
+    "accessPolicyConcurrencyIT",
+    "immutableTableProtectionIT",
+    "databasePrivilegeIT",
+    "aggregateOutboxGuardIT",
+    "failureCodeContractDriftTest",
+    "eventTypeContractDriftTest",
+    "unknownFailureCodeIT",
+    "jooqGenerationDeterminismIT",
+    "databaseLeakageCanaryIT",
+    "existingDecisionCanonicalBindingIT",
+    "memoryPointerGovernanceIT",
+    "reviewCompletionSetEqualityIT",
+    "governedFactBindingIT",
+    "operationalIdempotencyIT",
+    "manifestShapeAndTypeIT",
+    "jsonBodyLeakageNegativeIT",
+    "databaseFunctionPrivilegeIT",
+    "jooqJudgeMutationIT",
+    "r2StaleRevisionPolicyIT",
+    "r2StateChangeExactDecisionIT",
+    "r2DuplicateGovernedFactIT",
+    "r2FinalVerdictNullPairIT",
+    "r2JsonAllowlistIT",
+    "r4FinalVerdictNullCombinationsIT",
+    "r4PolicySplitPointerIT",
+    "r4StateOldDecisionRevisionIT",
+    "r4ReviewBidirectionalSetIT",
+    "r4JsonAllowlistIllegalValuesIT"
+  ],
+  "sliceCTestNames": [
+    "v007a1",
+    "v007a2",
+    "c1s",
+    "c2s",
+    "ccp",
+    "ccr",
+    "fcr",
+    "c1kr",
+    "c1mm",
+    "c1nc",
+    "c1rp",
+    "c2rb",
+    "c2sp",
+    "c2sr",
+    "leak"
+  ],
+  "surefireXmlPaths": [
+    "modules/architecture-tests/target/surefire-reports/TEST-io.github.candyxi0.hidenest.arch.ArchitectureTest.xml",
+    "modules/architecture-tests/target/surefire-reports/TEST-io.github.candyxi0.hidenest.arch.DatabaseBoundaryTest.xml",
+    "modules/database-adapter/target/surefire-reports/TEST-io.github.candyxi0.hidenest.database.DatabaseSliceBContractTest.xml",
+    "modules/database-adapter/target/surefire-reports/TEST-io.github.candyxi0.hidenest.database.SliceCCoordinatorTest.xml"
+  ]
+}
