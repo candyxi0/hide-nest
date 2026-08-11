@@ -1,11 +1,40 @@
 package io.github.candyxi0.hidenest.memory.port;
 
 import io.github.candyxi0.hidenest.memory.domain.*;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 public interface MemoryGovernancePort {
+
+    /** Insert a proposal. */
+    void insertProposal(Proposal proposal);
+
+    /** Insert a proposal revision. */
+    void insertProposalRevision(ProposalRevision revision);
+
+    /** Insert a review session. */
+    void insertReviewSession(ReviewSession session);
+
+    /** Lock review session for write. */
+    ReviewSession lockReviewSessionForWrite(UUID reviewSessionId);
+
+    /** CAS transition review session state. Returns true iff exactly one row changed. */
+    boolean transitionReviewSessionState(UUID reviewSessionId, String expectedState,
+            String newState, OffsetDateTime terminalAt);
+
+    /** Insert a review member. */
+    void insertReviewMember(ReviewMember member);
+
+    /** Find review members by session ID. */
+    List<ReviewMember> findReviewMembersBySessionId(UUID reviewSessionId);
+
+    /** Insert a decision. */
+    void insertDecision(Decision decision);
+
+    /** Find the unique decision created for an idempotency key. */
+    Decision findDecisionByIdempotencyKey(String idempotencyKey);
 
     /** L2: Lock and verify confirmed decisions match the exact review/proposal/target. */
     List<Decision> lockAndVerifyDecisions(Set<UUID> decisionIds, UUID reviewSessionId,

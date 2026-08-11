@@ -43,4 +43,10 @@ public interface EvidenceReferencePort {
 
     /** Verify that the given anchor IDs exist in the database. */
     void verifyAnchorsExist(Set<UUID> anchorIds);
+
+    /** Find source by platform and external_ref (deterministic binding). */
+    Source findSourceByExternalRef(String platform, String externalRef);
+
+    /** Find all anchors belonging to a source. */
+    List<SourceAnchor> findSourceAnchorsBySourceId(UUID sourceId);
 }

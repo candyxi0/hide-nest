@@ -22,6 +22,125 @@ public class JooqMemoryGovernanceAdapter implements MemoryGovernancePort {
     }
 
     @Override
+    public void insertProposal(Proposal proposal) {
+        dsl.insertInto(PROPOSAL)
+                .set(PROPOSAL.PROPOSAL_ID, proposal.proposalId())
+                .set(PROPOSAL.PROPOSAL_KIND, proposal.proposalKind())
+                .set(PROPOSAL.TARGET_MEMORY_ID, proposal.targetMemoryId())
+                .set(PROPOSAL.CREATED_AT, proposal.createdAt())
+                .execute();
+    }
+
+    @Override
+    public void insertProposalRevision(ProposalRevision revision) {
+        dsl.insertInto(PROPOSAL_REVISION)
+                .set(PROPOSAL_REVISION.PROPOSAL_REVISION_ID, revision.proposalRevisionId())
+                .set(PROPOSAL_REVISION.PROPOSAL_ID, revision.proposalId())
+                .set(PROPOSAL_REVISION.REVISION_NO, revision.revisionNo())
+                .set(PROPOSAL_REVISION.ACTION_CODE, revision.actionCode())
+                .set(PROPOSAL_REVISION.BODY_TEXT, revision.bodyText())
+                .set(PROPOSAL_REVISION.MEMORY_TYPE, revision.memoryType())
+                .set(PROPOSAL_REVISION.PERSPECTIVE_ACTOR_ID, revision.perspectiveActorId())
+                .set(PROPOSAL_REVISION.EXPECTED_MEMORY_REVISION_ID,
+                        revision.expectedMemoryRevisionId())
+                .set(PROPOSAL_REVISION.EXPECTED_POLICY_REVISION_NO,
+                        revision.expectedPolicyRevisionNo())
+                .set(PROPOSAL_REVISION.BODY_HASH, revision.bodyHash())
+                .set(PROPOSAL_REVISION.CREATED_AT, revision.createdAt())
+                .execute();
+    }
+
+    @Override
+    public void insertReviewSession(ReviewSession session) {
+        dsl.insertInto(REVIEW_SESSION)
+                .set(REVIEW_SESSION.REVIEW_SESSION_ID, session.reviewSessionId())
+                .set(REVIEW_SESSION.STATE, session.state())
+                .set(REVIEW_SESSION.IDEMPOTENCY_KEY, session.idempotencyKey())
+                .set(REVIEW_SESSION.REQUEST_HASH, session.requestHash())
+                .set(REVIEW_SESSION.OPENED_AT, session.openedAt())
+                .set(REVIEW_SESSION.TERMINAL_AT, session.terminalAt())
+                .execute();
+    }
+
+    @Override
+    public ReviewSession lockReviewSessionForWrite(UUID reviewSessionId) {
+        var r = dsl.selectFrom(REVIEW_SESSION)
+                .where(REVIEW_SESSION.REVIEW_SESSION_ID.eq(reviewSessionId))
+                .forUpdate()
+                .fetchOne();
+        if (r == null) return null;
+        return new ReviewSession(
+                r.getReviewSessionId(), r.getState(), r.getIdempotencyKey(),
+                r.getRequestHash(), r.getOpenedAt(), r.getTerminalAt());
+    }
+
+    @Override
+    public boolean transitionReviewSessionState(UUID reviewSessionId, String expectedState,
+            String newState, OffsetDateTime terminalAt) {
+        int rows = dsl.update(REVIEW_SESSION)
+                .set(REVIEW_SESSION.STATE, newState)
+                .set(REVIEW_SESSION.TERMINAL_AT, terminalAt)
+                .where(REVIEW_SESSION.REVIEW_SESSION_ID.eq(reviewSessionId))
+                .and(REVIEW_SESSION.STATE.eq(expectedState))
+                .execute();
+        return rows == 1;
+    }
+
+    @Override
+    public void insertReviewMember(ReviewMember member) {
+        dsl.insertInto(REVIEW_MEMBER)
+                .set(REVIEW_MEMBER.REVIEW_SESSION_ID, member.reviewSessionId())
+                .set(REVIEW_MEMBER.PROPOSAL_REVISION_ID, member.proposalRevisionId())
+                .set(REVIEW_MEMBER.ORDINAL, member.ordinal())
+                .execute();
+    }
+
+    @Override
+    public List<ReviewMember> findReviewMembersBySessionId(UUID reviewSessionId) {
+        var records = dsl.selectFrom(REVIEW_MEMBER)
+                .where(REVIEW_MEMBER.REVIEW_SESSION_ID.eq(reviewSessionId))
+                .orderBy(REVIEW_MEMBER.ORDINAL.asc())
+                .fetch();
+        List<ReviewMember> result = new ArrayList<>();
+        for (var r : records) {
+            result.add(new ReviewMember(
+                    r.getReviewSessionId(), r.getProposalRevisionId(), r.getOrdinal()));
+        }
+        return result;
+    }
+
+    @Override
+    public void insertDecision(Decision decision) {
+        dsl.insertInto(DECISION)
+                .set(DECISION.DECISION_ID, decision.decisionId())
+                .set(DECISION.DECISION_KIND, decision.decisionKind())
+                .set(DECISION.ACTOR_ID, decision.actorId())
+                .set(DECISION.ACTOR_ROLE, decision.actorRole())
+                .set(DECISION.PROPOSAL_REVISION_ID, decision.proposalRevisionId())
+                .set(DECISION.REVIEW_SESSION_ID, decision.reviewSessionId())
+                .set(DECISION.TARGET_KIND, decision.targetKind())
+                .set(DECISION.TARGET_ID, decision.targetId())
+                .set(DECISION.TARGET_REVISION_REF, decision.targetRevisionRef())
+                .set(DECISION.AUTHORIZATION_REF, decision.authorizationRef())
+                .set(DECISION.IDEMPOTENCY_KEY, decision.idempotencyKey())
+                .set(DECISION.CREATED_AT, decision.createdAt())
+                .execute();
+    }
+
+    @Override
+    public Decision findDecisionByIdempotencyKey(String idempotencyKey) {
+        var r = dsl.selectFrom(DECISION)
+                .where(DECISION.IDEMPOTENCY_KEY.eq(idempotencyKey))
+                .fetchOne();
+        if (r == null) return null;
+        return new Decision(
+                r.getDecisionId(), r.getDecisionKind(), r.getActorId(),
+                r.getActorRole(), r.getProposalRevisionId(), r.getReviewSessionId(),
+                r.getTargetKind(), r.getTargetId(), r.getTargetRevisionRef(),
+                r.getAuthorizationRef(), r.getIdempotencyKey(), r.getCreatedAt());
+    }
+
+    @Override
     public List<Decision> lockAndVerifyDecisions(Set<UUID> decisionIds, UUID reviewSessionId,
             UUID proposalRevisionId, String targetKind, UUID targetId, Long targetRevisionRef) {
         var records = dsl.selectFrom(DECISION)

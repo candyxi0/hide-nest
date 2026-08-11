@@ -174,4 +174,31 @@ public class JooqEvidenceReferenceAdapter implements EvidenceReferencePort {
                     "CANONICAL_COMMIT_FAILED: one or more anchors not found");
         }
     }
+
+    @Override
+    public Source findSourceByExternalRef(String platform, String externalRef) {
+        var r = dsl.selectFrom(SOURCE)
+                .where(SOURCE.PLATFORM.eq(platform))
+                .and(SOURCE.EXTERNAL_REF.eq(externalRef))
+                .fetchOne();
+        if (r == null) return null;
+        return new Source(
+                r.getSourceId(), r.getSourceKind(), r.getPlatform(), r.getExternalRef(),
+                r.getObservedAccessible(), r.getCompressedObserved(), r.getPolicyId(),
+                r.getCreatedAt(), r.getIngestedAt());
+    }
+
+    @Override
+    public List<SourceAnchor> findSourceAnchorsBySourceId(UUID sourceId) {
+        var records = dsl.selectFrom(SOURCE_ANCHOR)
+                .where(SOURCE_ANCHOR.SOURCE_ID.eq(sourceId))
+                .orderBy(SOURCE_ANCHOR.CREATED_AT.asc())
+                .fetch();
+        List<SourceAnchor> result = new ArrayList<>();
+        for (var r : records) {
+            result.add(new SourceAnchor(
+                    r.getAnchorId(), r.getSourceId(), r.getAnchorKind(), r.getCreatedAt()));
+        }
+        return result;
+    }
 }

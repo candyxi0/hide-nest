@@ -11,8 +11,11 @@ import io.github.candyxi0.hidenest.runtime.port.RuntimeTransactionPort;
 import io.github.candyxi0.hidenest.runtime.port.TransactionExecutor;
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public class CanonicalPublishCoordinator {
@@ -74,9 +77,39 @@ public class CanonicalPublishCoordinator {
                 throw new CanonicalPublishException(CanonicalFailureCode.CANONICAL_COMMIT_FAILED);
             }
 
-            // R1-09: Non-empty relations fail closed
+            // R1-06: Tight EVIDENCED_BY validation
+            List<MemoryRelation> memoryRelations = new ArrayList<>();
             if (request.relations() != null && !request.relations().isEmpty()) {
-                throw new CanonicalPublishException(CanonicalFailureCode.CANONICAL_COMMIT_FAILED);
+                Set<UUID> seenAnchors = new HashSet<>();
+                for (var spec : request.relations()) {
+                    // Must be EVIDENCED_BY
+                    if (!"EVIDENCED_BY".equals(spec.relationType())) {
+                        throw new CanonicalPublishException(
+                                CanonicalFailureCode.CANONICAL_COMMIT_FAILED);
+                    }
+                    // Must target an anchor, not a revision
+                    if (spec.toAnchorId() == null) {
+                        throw new CanonicalPublishException(
+                                CanonicalFailureCode.CANONICAL_COMMIT_FAILED);
+                    }
+                    if (spec.toRevisionId() != null) {
+                        throw new CanonicalPublishException(
+                                CanonicalFailureCode.CANONICAL_COMMIT_FAILED);
+                    }
+                    // Perspective actor must match request
+                    UUID relActor = spec.perspectiveActorId() != null
+                            ? spec.perspectiveActorId()
+                            : request.perspectiveActorId();
+                    if (!relActor.equals(request.perspectiveActorId())) {
+                        throw new CanonicalPublishException(
+                                CanonicalFailureCode.CANONICAL_COMMIT_FAILED);
+                    }
+                    // No duplicate anchors
+                    if (!seenAnchors.add(spec.toAnchorId())) {
+                        throw new CanonicalPublishException(
+                                CanonicalFailureCode.CANONICAL_COMMIT_FAILED);
+                    }
+                }
             }
 
             Decision primaryDecision = decisions.iterator().next();
@@ -121,6 +154,18 @@ public class CanonicalPublishCoordinator {
                     request.memoryType(), request.perspectiveActorId(),
                     request.bodyText(), null, null, null,
                     primaryDecision.decisionId(), now));
+
+            // Insert EVIDENCED_BY relations (already validated above)
+            if (request.relations() != null && !request.relations().isEmpty()) {
+                for (var spec : request.relations()) {
+                    memoryRelations.add(new MemoryRelation(
+                            UUID.randomUUID(), revisionId,
+                            "EVIDENCED_BY", null, spec.toAnchorId(),
+                            request.perspectiveActorId(),
+                            primaryDecision.decisionId(), now));
+                }
+                memoryPort.insertMemoryRelations(memoryRelations);
+            }
 
             // L8: Create change event
             memoryPort.insertChangeEvent(new ChangeEvent(

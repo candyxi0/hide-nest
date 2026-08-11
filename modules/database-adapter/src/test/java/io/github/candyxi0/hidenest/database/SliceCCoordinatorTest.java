@@ -194,7 +194,8 @@ class SliceCCoordinatorTest {
     }
     @Test void fcr() {
         UUID m=UUID.randomUUID(),p=UUID.randomUUID(); S f=sa("CREATE",m,p,1L,null,null);
-        var rel=new CanonicalPublishRequest.RelationSpec("EVIDENCED_BY",null,UUID.randomUUID(),null);
+        // Non-EVIDENCED_BY relation types are still rejected (R1-09 guard active for unsupported types)
+        var rel=new CanonicalPublishRequest.RelationSpec("SUPPORTS",UUID.randomUUID(),null,null);
         var ex=assertThrows(CanonicalPublishException.class,()->pub.publishFirst(new CanonicalPublishRequest(UUID.randomUUID().toString(),h0(),f.dids(),f.pridId(),f.rid(),m,"Claim",f.aid(),"X",p,List.of(rel),h0())));
         assertEquals(CanonicalFailureCode.CANONICAL_COMMIT_FAILED,ex.failureCode());
     }
