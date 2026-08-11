@@ -110,6 +110,24 @@ public class JooqEvidenceReferenceAdapter implements EvidenceReferencePort {
     }
 
     @Override
+    public List<SourcePayload> findSourcePayloadsBySourceUnitId(UUID sourceUnitId) {
+        var records = dsl.selectFrom(SOURCE_PAYLOAD)
+                .where(SOURCE_PAYLOAD.SOURCE_UNIT_ID.eq(sourceUnitId))
+                .orderBy(SOURCE_PAYLOAD.PAYLOAD_ID.asc())
+                .fetch();
+        List<SourcePayload> result = new ArrayList<>(records.size());
+        for (var r : records) {
+            result.add(new SourcePayload(
+                    r.getPayloadId(), r.getSourceUnitId(), r.getPayloadKind(),
+                    r.getStoreAdapter(), r.getObjectRef(), r.getObjectVersionRef(),
+                    r.getContentType(), r.getSizeBytes(), r.getContentHash(),
+                    r.getPolicyId(), r.getCurrentPolicyRevisionNo(),
+                    r.getRetentionClass(), r.getExpiresAt(), r.getCreatedAt()));
+        }
+        return result;
+    }
+
+    @Override
     public void insertSourceAnchor(SourceAnchor anchor) {
         dsl.insertInto(SOURCE_ANCHOR)
                 .set(SOURCE_ANCHOR.ANCHOR_ID, anchor.anchorId())

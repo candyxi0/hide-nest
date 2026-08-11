@@ -29,6 +29,9 @@ public interface EvidenceReferencePort {
     /** Find source payload metadata by primary key. Must not return body text. */
     SourcePayload findSourcePayloadById(UUID payloadId);
 
+    /** Find all payload metadata rows for one source unit, without returning payload bytes. */
+    List<SourcePayload> findSourcePayloadsBySourceUnitId(UUID sourceUnitId);
+
     /** Insert a source anchor. */
     void insertSourceAnchor(SourceAnchor anchor);
 
