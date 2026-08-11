@@ -5,17 +5,22 @@ import static org.junit.jupiter.api.Assertions.*;
 import io.github.candyxi0.hidenest.application.coordinator.*;
 import io.github.candyxi0.hidenest.application.model.*;
 import io.github.candyxi0.hidenest.database.adapter.*;
+import io.github.candyxi0.hidenest.evidence.domain.PayloadStoreException;
 import io.github.candyxi0.hidenest.evidence.port.EvidenceReferencePort;
+import io.github.candyxi0.hidenest.evidence.port.PayloadStore;
 import io.github.candyxi0.hidenest.memory.port.MemoryGovernancePort;
+import io.github.candyxi0.hidenest.payload.LocalPayloadStore;
 import io.github.candyxi0.hidenest.runtime.port.RuntimeTransactionPort;
 import io.github.candyxi0.hidenest.runtime.port.TransactionExecutor;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
 import java.security.MessageDigest;
 import java.sql.*;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
+import java.util.stream.*;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
 import org.jooq.DSLContext;
@@ -44,6 +49,8 @@ class LocalV1S1WindowCloseTest {
     private static EvidenceReferencePort ep;
     private static MemoryGovernancePort mp;
     private static RuntimeTransactionPort rp;
+    private static PayloadStore payloadStore;
+    private static Path payloadRoot;
     private static String PW;
 
     /** Canary lives in test fixture, never enters prepare request. */
@@ -79,12 +86,24 @@ class LocalV1S1WindowCloseTest {
         ep = new JooqEvidenceReferenceAdapter(dsl);
         TransactionExecutor te = new SpringTransactionExecutor(tx);
         pub = new CanonicalPublishCoordinator(mp, rp, te, CLK);
-        coord = new LocalV1S1WindowCloseCoordinator(ep, mp, rp, te, pub, CLK);
+        payloadRoot = Files.createTempDirectory("s2a-payload-test-");
+        payloadStore = new LocalPayloadStore(payloadRoot);
+        coord = new LocalV1S1WindowCloseCoordinator(ep, mp, rp, te, pub, payloadStore, CLK);
     }
 
     @AfterAll
-    static void tearDown() {
+    static void tearDown() throws Exception {
         if (pg != null) pg.stop();
+        if (payloadRoot != null) {
+            try (var files = Files.walk(payloadRoot)) {
+                files.sorted(java.util.Comparator.reverseOrder()).forEach(p -> {
+                    try {
+                        Files.deleteIfExists(p);
+                    } catch (Exception ignored) {
+                    }
+                });
+            }
+        }
     }
 
     private static byte[] h(String in) {
@@ -110,14 +129,16 @@ class LocalV1S1WindowCloseTest {
         String bodyText = "对协作者的判断从误解逐渐变成理解";
         byte[] bodyHash = h(bodyText);
 
-        // R1-01: only evidence messages
+        // R1-01: only evidence messages (with body text for S2A payload store)
         List<LocalV1S1PrepareRequest.EvidenceMessage> messages = List.of(
                 new LocalV1S1PrepareRequest.EvidenceMessage(
                         evidenceMsg1, actorA, 1L, "msg-evidence-1",
-                        OffsetDateTime.now(CLK)),
+                        OffsetDateTime.now(CLK),
+                        "协作者：我们需要重新评估技术方案的可行性，目前的数据支持不够充分"),
                 new LocalV1S1PrepareRequest.EvidenceMessage(
                         evidenceMsg2, actorB, 2L, "msg-evidence-2",
-                        OffsetDateTime.now(CLK)));
+                        OffsetDateTime.now(CLK),
+                        "小林：我理解了，让我重新整理一下证据材料，确保每个结论都有充分支撑"));
 
         UUID anchor1 = UUID.randomUUID();
         UUID anchor2 = UUID.randomUUID();
@@ -247,6 +268,7 @@ class LocalV1S1WindowCloseTest {
         scanTable("evidence.source_unit", CANARY);
         scanTable("evidence.source_anchor", CANARY);
         scanTable("evidence.source_anchor_unit", CANARY);
+        scanTable("evidence.source_payload", CANARY);
 
         // memory tables
         scanTable("memory.memory_record", CANARY);
@@ -1032,6 +1054,362 @@ class LocalV1S1WindowCloseTest {
                 io.github.candyxi0.hidenest.database.generated.memory.Tables.MEMORY_RECORD,
                 io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRecord.MEMORY_RECORD
                         .MEMORY_ID.eq(memoryId)));
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // S2A Test: prepare → SourceUnit=2, SourcePayload=2, files=2
+    // ════════════════════════════════════════════════════════════════════
+    @Test
+    @Order(20)
+    void s2aPrepareCreatesTwoSourcePayloadsAndTwoFiles() throws Exception {
+        UUID actorA = UUID.randomUUID();
+        UUID actorB = UUID.randomUUID();
+        UUID msg1 = UUID.randomUUID();
+        UUID msg2 = UUID.randomUUID();
+        String key = UUID.randomUUID().toString();
+        var req = buildPrepareRequest(key, h(key), actorA, msg1, msg2, actorA, actorB);
+        var result = coord.prepare(req);
+
+        // SourceUnit count = 2
+        long unitCount = dsl.fetchCount(
+                io.github.candyxi0.hidenest.database.generated.evidence.Tables.SOURCE_UNIT,
+                io.github.candyxi0.hidenest.database.generated.evidence.tables.SourceUnit.SOURCE_UNIT
+                        .SOURCE_ID.eq(result.sourceId()));
+        assertEquals(2L, unitCount);
+
+        // SourcePayload count = 2
+        var payloadRecords = dsl.selectFrom(
+                io.github.candyxi0.hidenest.database.generated.evidence.Tables.SOURCE_PAYLOAD)
+                .where(io.github.candyxi0.hidenest.database.generated.evidence.tables.SourcePayload.SOURCE_PAYLOAD
+                        .SOURCE_UNIT_ID.in(msg1, msg2))
+                .fetch();
+        assertEquals(2, payloadRecords.size());
+
+        // Verify SourcePayload fields
+        Set<String> objectRefs = new HashSet<>();
+        for (var sp : payloadRecords) {
+            assertEquals("TEXT", sp.getPayloadKind());
+            assertEquals("LOCAL_FILE", sp.getStoreAdapter());
+            assertEquals("text/plain; charset=UTF-8", sp.getContentType());
+            assertEquals("MINIMUM_EVIDENCE", sp.getRetentionClass());
+            assertNotNull(sp.getObjectRef());
+            assertNull(sp.getObjectVersionRef());
+            assertNotNull(sp.getContentHash());
+            assertEquals(32, sp.getContentHash().length);
+            assertTrue(sp.getSizeBytes() > 0);
+            objectRefs.add(sp.getObjectRef());
+        }
+
+        // Verify each objectRef resolves to an actual file
+        for (String ref : objectRefs) {
+            Path filePath = payloadRoot.resolve(ref);
+            assertTrue(Files.exists(filePath), "payload file must exist: " + ref);
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // S2A Test: read full evidence text, speaker, order via anchor→unit→payload
+    // ════════════════════════════════════════════════════════════════════
+    @Test
+    @Order(21)
+    void s2aReadPayloadViaAnchorUnitPayload() {
+        UUID actorA = UUID.randomUUID(); // 小林 (perspective)
+        UUID actorB = UUID.randomUUID(); // 协作者
+        UUID msg1 = UUID.randomUUID();
+        UUID msg2 = UUID.randomUUID();
+        String key = UUID.randomUUID().toString();
+        String msg1Body = "协作者：我们需要重新评估技术方案的可行性，目前的数据支持不够充分";
+        String msg2Body = "小林：我理解了，让我重新整理一下证据材料，确保每个结论都有充分支撑";
+
+        var req = new LocalV1S1PrepareRequest(
+                key, h(key), actorA, "Interpretation",
+                "对协作者的判断从误解逐渐变成理解", h("对协作者的判断从误解逐渐变成理解"),
+                List.of(
+                        new LocalV1S1PrepareRequest.EvidenceMessage(
+                                msg1, actorB, 1L, "msg-ev-1",
+                                OffsetDateTime.now(CLK), msg1Body),
+                        new LocalV1S1PrepareRequest.EvidenceMessage(
+                                msg2, actorA, 2L, "msg-ev-2",
+                                OffsetDateTime.now(CLK), msg2Body)),
+                List.of(
+                        new LocalV1S1PrepareRequest.AnchorInput(
+                                UUID.randomUUID(), List.of(
+                                        new LocalV1S1PrepareRequest.AnchorInput.AnchorUnitRef(
+                                                msg1, 0L, (long) msg1Body.length(), 1L))),
+                        new LocalV1S1PrepareRequest.AnchorInput(
+                                UUID.randomUUID(), List.of(
+                                        new LocalV1S1PrepareRequest.AnchorInput.AnchorUnitRef(
+                                                msg2, 0L, (long) msg2Body.length(), 2L)))));
+
+        var result = coord.prepare(req);
+
+        // Read back through the chain
+        var sourceUnits = dsl.selectFrom(
+                io.github.candyxi0.hidenest.database.generated.evidence.Tables.SOURCE_UNIT)
+                .where(io.github.candyxi0.hidenest.database.generated.evidence.tables.SourceUnit.SOURCE_UNIT
+                        .SOURCE_ID.eq(result.sourceId()))
+                .orderBy(io.github.candyxi0.hidenest.database.generated.evidence.tables.SourceUnit.SOURCE_UNIT
+                        .ORDINAL.asc())
+                .fetch();
+        assertEquals(2, sourceUnits.size());
+
+        // Verify speaker/order
+        assertEquals(actorB, sourceUnits.get(0).getActorId()); // msg1 actor = 协作者
+        assertEquals(1L, sourceUnits.get(0).getOrdinal());
+        assertEquals(actorA, sourceUnits.get(1).getActorId()); // msg2 actor = 小林
+        assertEquals(2L, sourceUnits.get(1).getOrdinal());
+
+        // Read payloads through source_payload → PayloadStore
+        for (var unit : sourceUnits) {
+            var spRecord = dsl.selectFrom(
+                    io.github.candyxi0.hidenest.database.generated.evidence.Tables.SOURCE_PAYLOAD)
+                    .where(io.github.candyxi0.hidenest.database.generated.evidence.tables.SourcePayload.SOURCE_PAYLOAD
+                            .SOURCE_UNIT_ID.eq(unit.getSourceUnitId()))
+                    .fetchOne();
+            assertNotNull(spRecord, "SourcePayload must exist for unit " + unit.getSourceUnitId());
+
+            byte[] bodyBytes = payloadStore.get(
+                    spRecord.getObjectRef(), spRecord.getContentHash(), 1024 * 1024);
+            String bodyText = new String(bodyBytes, StandardCharsets.UTF_8);
+
+            // Verify the correct body text
+            if (unit.getSourceUnitId().equals(msg1)) {
+                assertEquals(msg1Body, bodyText);
+            } else if (unit.getSourceUnitId().equals(msg2)) {
+                assertEquals(msg2Body, bodyText);
+            } else {
+                fail("unexpected sourceUnitId");
+            }
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // S2A Test: canary 0 in DB source_payload and payload files
+    // ════════════════════════════════════════════════════════════════════
+    @Test
+    @Order(22)
+    void s2aCanaryZeroInPayloadStore() throws Exception {
+        // Unselected chat messages (never enter request)
+        List<String> unselectedChat = List.of(
+                "今天天气不错-" + CANARY,
+                "亲亲抱抱-" + CANARY);
+        assertEquals(2, unselectedChat.size());
+        assertTrue(unselectedChat.stream().allMatch(text -> text.contains(CANARY)));
+
+        UUID actorA = UUID.randomUUID();
+        UUID actorB = UUID.randomUUID();
+        UUID msg1 = UUID.randomUUID();
+        UUID msg2 = UUID.randomUUID();
+        String key = UUID.randomUUID().toString();
+        coord.prepare(buildPrepareRequest(key, h(key), actorA, msg1, msg2, actorA, actorB));
+
+        // Scan evidence.source_payload table for canary
+        scanTable("evidence.source_payload", CANARY);
+
+        // Scan all payload files for canary
+        try (var files = Files.walk(payloadRoot)) {
+            var regularFiles = files.filter(Files::isRegularFile).toList();
+            for (Path f : regularFiles) {
+                String content = Files.readString(f, StandardCharsets.UTF_8);
+                assertFalse(content.contains(CANARY),
+                        "canary must not be in payload file: " + f.getFileName());
+            }
+        }
+
+        // Scan evidence.body_text canary (table name varies) — use source_payload only
+        scanTable("evidence.source_payload", CANARY);
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // S2A Test: prepare replay preserves objectRef and hash
+    // ════════════════════════════════════════════════════════════════════
+    @Test
+    @Order(23)
+    void s2aPrepareReplayPreservesObjectRefAndHash() {
+        UUID actorA = UUID.randomUUID();
+        UUID actorB = UUID.randomUUID();
+        UUID msg1 = UUID.randomUUID();
+        UUID msg2 = UUID.randomUUID();
+        String key = UUID.randomUUID().toString();
+        byte[] hash = h(key);
+        var req = buildPrepareRequest(key, hash, actorA, msg1, msg2, actorA, actorB);
+        coord.prepare(req);
+
+        // Capture SourcePayload rows after first prepare
+        var spRows1 = dsl.selectFrom(
+                io.github.candyxi0.hidenest.database.generated.evidence.Tables.SOURCE_PAYLOAD)
+                .where(io.github.candyxi0.hidenest.database.generated.evidence.tables.SourcePayload.SOURCE_PAYLOAD
+                        .SOURCE_UNIT_ID.in(msg1, msg2))
+                .orderBy(io.github.candyxi0.hidenest.database.generated.evidence.tables.SourcePayload.SOURCE_PAYLOAD
+                        .SOURCE_UNIT_ID.asc())
+                .fetch();
+        assertEquals(2, spRows1.size());
+        Map<UUID, String> objectRefs1 = new HashMap<>();
+        Map<UUID, byte[]> hashes1 = new HashMap<>();
+        for (var sp : spRows1) {
+            objectRefs1.put(sp.getSourceUnitId(), sp.getObjectRef());
+            hashes1.put(sp.getSourceUnitId(), sp.getContentHash());
+        }
+
+        // Replay same request
+        coord.prepare(req);
+
+        // Verify SourcePayload rows unchanged (same count, same objectRef, same hash)
+        var spRows2 = dsl.selectFrom(
+                io.github.candyxi0.hidenest.database.generated.evidence.Tables.SOURCE_PAYLOAD)
+                .where(io.github.candyxi0.hidenest.database.generated.evidence.tables.SourcePayload.SOURCE_PAYLOAD
+                        .SOURCE_UNIT_ID.in(msg1, msg2))
+                .orderBy(io.github.candyxi0.hidenest.database.generated.evidence.tables.SourcePayload.SOURCE_PAYLOAD
+                        .SOURCE_UNIT_ID.asc())
+                .fetch();
+        assertEquals(2, spRows2.size(), "replay must not create additional SourcePayload rows");
+        for (var sp : spRows2) {
+            assertEquals(objectRefs1.get(sp.getSourceUnitId()), sp.getObjectRef(),
+                    "objectRef must be unchanged on replay");
+            assertArrayEquals(hashes1.get(sp.getSourceUnitId()), sp.getContentHash(),
+                    "contentHash must be unchanged on replay");
+        }
+
+        // Files for these objectRefs still exist
+        for (var entry : objectRefs1.entrySet()) {
+            Path filePath = payloadRoot.resolve(entry.getValue());
+            assertTrue(Files.exists(filePath),
+                    "payload file must still exist after replay: " + entry.getValue());
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // S2A Test: DB insert failure triggers file compensation
+    // ════════════════════════════════════════════════════════════════════
+    @Test
+    @Order(24)
+    void s2aDbFailureCompensatesPayloadFiles() throws Exception {
+        UUID actorA = UUID.randomUUID();
+        UUID actorB = UUID.randomUUID();
+        UUID msg1 = UUID.randomUUID();
+        UUID msg2 = UUID.randomUUID();
+        String key = UUID.randomUUID().toString();
+
+        // Count files before
+        long filesBefore;
+        try (var files = Files.walk(payloadRoot)) {
+            filesBefore = files.filter(Files::isRegularFile).count();
+        }
+
+        // Install a trigger to cause source_payload insert to fail
+        try (Connection c = DriverManager.getConnection(pg.getJdbcUrl(), U, PW);
+                Statement s = c.createStatement()) {
+            s.execute("""
+                    CREATE OR REPLACE FUNCTION pg_temp.force_payload_insert_failure()
+                    RETURNS trigger AS $$
+                    BEGIN
+                        RAISE EXCEPTION 'INJECTED_FAILURE: force payload insert rollback';
+                    END;
+                    $$ LANGUAGE plpgsql
+                    """);
+            s.execute("""
+                    CREATE TRIGGER injected_payload_insert_failure
+                    BEFORE INSERT ON evidence.source_payload
+                    FOR EACH ROW EXECUTE FUNCTION pg_temp.force_payload_insert_failure()
+                    """);
+
+            var req = buildPrepareRequest(key, h(key), actorA, msg1, msg2, actorA, actorB);
+            assertThrows(Exception.class, () -> coord.prepare(req));
+
+            // Cleanup triggers
+            s.execute(
+                    "DROP TRIGGER IF EXISTS injected_payload_insert_failure ON evidence.source_payload");
+            s.execute("DROP FUNCTION IF EXISTS pg_temp.force_payload_insert_failure()");
+        }
+
+        // After compensation: file count should be back to before (new files deleted)
+        long filesAfter;
+        try (var files = Files.walk(payloadRoot)) {
+            filesAfter = files.filter(Files::isRegularFile).count();
+        }
+        assertEquals(filesBefore, filesAfter,
+                "compensation must delete newly created payload files on DB failure");
+
+        // SourcePayload count for these units must be 0
+        long spCount = dsl.fetchCount(
+                io.github.candyxi0.hidenest.database.generated.evidence.Tables.SOURCE_PAYLOAD,
+                io.github.candyxi0.hidenest.database.generated.evidence.tables.SourcePayload.SOURCE_PAYLOAD
+                        .SOURCE_UNIT_ID.in(msg1, msg2));
+        assertEquals(0L, spCount, "no SourcePayload rows after rollback");
+    }
+
+    @Test
+    @Order(25)
+    void s2aLatePrepareFailureCompensatesPayloadFiles() throws Exception {
+        UUID actorA = UUID.randomUUID();
+        UUID actorB = UUID.randomUUID();
+        UUID msg1 = UUID.randomUUID();
+        UUID msg2 = UUID.randomUUID();
+        String key = UUID.randomUUID().toString();
+
+        long filesBefore;
+        try (var files = Files.walk(payloadRoot)) {
+            filesBefore = files.filter(Files::isRegularFile).count();
+        }
+
+        var baseReq = buildPrepareRequest(key, h(key), actorA, msg1, msg2, actorA, actorB);
+        UUID missingSourceUnitId = UUID.randomUUID();
+        var badAnchors = List.of(new LocalV1S1PrepareRequest.AnchorInput(
+                UUID.randomUUID(),
+                List.of(new LocalV1S1PrepareRequest.AnchorInput.AnchorUnitRef(
+                        missingSourceUnitId, 0L, 1L, 1L))));
+        var badReq = new LocalV1S1PrepareRequest(
+                baseReq.idempotencyKey(),
+                baseReq.requestHash(),
+                baseReq.perspectiveActorId(),
+                baseReq.memoryType(),
+                baseReq.bodyText(),
+                baseReq.bodyHash(),
+                baseReq.selectedEvidenceMessages(),
+                badAnchors);
+
+        assertThrows(Exception.class, () -> coord.prepare(badReq));
+
+        long filesAfter;
+        try (var files = Files.walk(payloadRoot)) {
+            filesAfter = files.filter(Files::isRegularFile).count();
+        }
+        assertEquals(filesBefore, filesAfter,
+                "compensation must cover failures after SourcePayload insert");
+
+        long spCount = dsl.fetchCount(
+                io.github.candyxi0.hidenest.database.generated.evidence.Tables.SOURCE_PAYLOAD,
+                io.github.candyxi0.hidenest.database.generated.evidence.tables.SourcePayload.SOURCE_PAYLOAD
+                        .SOURCE_UNIT_ID.in(msg1, msg2));
+        assertEquals(0L, spCount, "no SourcePayload rows after late rollback");
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // S2A Test: confirm / reject / concurrent still pass (regression)
+    // ════════════════════════════════════════════════════════════════════
+    @Test
+    @Order(26)
+    void s2aConfirmAndRejectStillWork() {
+        UUID actorA = UUID.randomUUID();
+        UUID actorB = UUID.randomUUID();
+        UUID msg1 = UUID.randomUUID();
+        UUID msg2 = UUID.randomUUID();
+        String prepKey = UUID.randomUUID().toString();
+        var prepResult = coord.prepare(
+                buildPrepareRequest(prepKey, h(prepKey), actorA, msg1, msg2, actorA, actorB));
+
+        // Confirm still works
+        UUID memoryId = UUID.randomUUID();
+        UUID policyId = UUID.randomUUID();
+        String confirmKey = UUID.randomUUID().toString();
+        var confirmReq = new LocalV1S1ConfirmRequest(
+                confirmKey, h(confirmKey),
+                prepResult.proposalRevisionId(),
+                prepResult.reviewSessionId(),
+                memoryId, policyId, h0());
+        var confirmResult = coord.confirm(confirmReq);
+        assertEquals("SUCCEEDED", confirmResult.resultCategory());
+        assertEquals(2, confirmResult.evidenceCount());
     }
 
     // ── helpers ──────────────────────────────────────────────────────────

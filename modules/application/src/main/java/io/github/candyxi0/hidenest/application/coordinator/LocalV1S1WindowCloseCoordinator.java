@@ -3,12 +3,16 @@ package io.github.candyxi0.hidenest.application.coordinator;
 import io.github.candyxi0.hidenest.application.model.*;
 import io.github.candyxi0.hidenest.evidence.domain.*;
 import io.github.candyxi0.hidenest.evidence.port.EvidenceReferencePort;
+import io.github.candyxi0.hidenest.evidence.port.PayloadStore;
 import io.github.candyxi0.hidenest.memory.domain.*;
 import io.github.candyxi0.hidenest.memory.port.MemoryGovernancePort;
 import io.github.candyxi0.hidenest.runtime.domain.IdempotencyReceipt;
 import io.github.candyxi0.hidenest.runtime.domain.OutboxEvent;
 import io.github.candyxi0.hidenest.runtime.port.RuntimeTransactionPort;
 import io.github.candyxi0.hidenest.runtime.port.TransactionExecutor;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.*;
@@ -22,6 +26,7 @@ public class LocalV1S1WindowCloseCoordinator {
     private final RuntimeTransactionPort runtimePort;
     private final TransactionExecutor tx;
     private final CanonicalPublishCoordinator canonicalPublish;
+    private final PayloadStore payloadStore;
     private final Clock clock;
 
     public LocalV1S1WindowCloseCoordinator(
@@ -30,12 +35,14 @@ public class LocalV1S1WindowCloseCoordinator {
             RuntimeTransactionPort runtimePort,
             TransactionExecutor tx,
             CanonicalPublishCoordinator canonicalPublish,
+            PayloadStore payloadStore,
             Clock clock) {
         this.evidencePort = evidencePort;
         this.memoryPort = memoryPort;
         this.runtimePort = runtimePort;
         this.tx = tx;
         this.canonicalPublish = canonicalPublish;
+        this.payloadStore = payloadStore;
         this.clock = clock;
     }
 
@@ -129,6 +136,40 @@ public class LocalV1S1WindowCloseCoordinator {
                         msg.occurredAt(), now));
             }
 
+            // ── S2A: write payload bodies and insert SourcePayload metadata ──
+            List<PayloadPutResult> putResults = new ArrayList<>();
+            try {
+                List<SourcePayload> sourcePayloads = new ArrayList<>();
+                UUID sourcePolicyIdFinal = sourcePolicyId;
+                for (var msg : request.selectedEvidenceMessages()) {
+                    UUID payloadId = generatePayloadId(
+                            request.idempotencyKey(), msg.sourceUnitId());
+                    byte[] bodyBytes = msg.bodyText().getBytes(StandardCharsets.UTF_8);
+                    byte[] bodyHash = sha256(bodyBytes);
+                    PayloadPutResult putResult = payloadStore.put(
+                            payloadId, "text/plain; charset=UTF-8", bodyBytes, bodyHash);
+                    putResults.add(putResult);
+                    SourcePayload sp = new SourcePayload(
+                            payloadId,
+                            msg.sourceUnitId(),
+                            "TEXT",
+                            putResult.storeAdapter(),
+                            putResult.objectRef(),
+                            null, // objectVersionRef null in local V1
+                            "text/plain; charset=UTF-8",
+                            putResult.sizeBytes(),
+                            putResult.contentHash(),
+                            sourcePolicyIdFinal,
+                            1L,
+                            "MINIMUM_EVIDENCE",
+                            null, // expiresAt
+                            now);
+                    sourcePayloads.add(sp);
+                }
+                for (var sp : sourcePayloads) {
+                    evidencePort.insertSourcePayload(sp);
+                }
+
             // Create SourceAnchors and SourceAnchorUnits for evidence
             Set<UUID> anchorIds = new LinkedHashSet<>();
             for (var anchor : request.anchors()) {
@@ -174,6 +215,13 @@ public class LocalV1S1WindowCloseCoordinator {
                     Set.of(hideSelectDecisionId), anchorIds,
                     request.bodyText(), request.memoryType(),
                     request.perspectiveActorId(), "PREPARED");
+            } catch (RuntimeException e) {
+                compensateCreatedPayloads(putResults, e);
+                if (e instanceof LocalV1S1Exception local) {
+                    throw local;
+                }
+                throw new LocalV1S1Exception(CanonicalFailureCode.INTERNAL_FAILURE);
+            }
         });
     }
 
@@ -470,6 +518,37 @@ public class LocalV1S1WindowCloseCoordinator {
         }
         return LocalV1S1ConfirmResult.success(
                 memoryId, rev.memoryRevisionId(), rev.revisionNo(), actualAnchors.size());
+    }
+
+    // ── payload helpers ──────────────────────────────────────────────────
+
+    /** Deterministic payloadId from idempotencyKey and sourceUnitId. */
+    public static UUID generatePayloadId(String idempotencyKey, UUID sourceUnitId) {
+        String seed = idempotencyKey + "/" + sourceUnitId;
+        return UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** SHA-256 hash. */
+    public static byte[] sha256(byte[] data) {
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(data);
+        } catch (NoSuchAlgorithmException e) {
+            throw new LocalV1S1Exception(CanonicalFailureCode.INTERNAL_FAILURE);
+        }
+    }
+
+    private void compensateCreatedPayloads(
+            List<PayloadPutResult> putResults, RuntimeException cause) {
+        for (var pr : putResults) {
+            if (!pr.created()) {
+                continue;
+            }
+            try {
+                payloadStore.delete(pr.objectRef(), pr.contentHash());
+            } catch (RuntimeException deleteFailure) {
+                cause.addSuppressed(deleteFailure);
+            }
+        }
     }
 
     // ── manifest builders ────────────────────────────────────────────────

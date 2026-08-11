@@ -20,6 +20,7 @@ class ArchitectureTest {
     private static final String SECURITY = "io.github.candyxi0.hidenest.security";
     private static final String APPLICATION = "io.github.candyxi0.hidenest.application";
     private static final String DATABASE = "io.github.candyxi0.hidenest.database";
+    private static final String PAYLOAD = "io.github.candyxi0.hidenest.payload";
 
     /**
      * Factory: forbidden framework / infrastructure dependency rule for formal domain modules.
@@ -57,6 +58,7 @@ class ArchitectureTest {
         assertMarkerPresent(mainClasses, SECURITY);
         assertMarkerPresent(mainClasses, APPLICATION);
         assertMarkerPresent(mainClasses, DATABASE);
+        assertMarkerPresent(mainClasses, PAYLOAD);
     }
 
     private static void assertMarkerPresent(JavaClasses classes, String pkg) {

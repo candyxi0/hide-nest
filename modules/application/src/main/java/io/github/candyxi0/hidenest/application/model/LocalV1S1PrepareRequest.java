@@ -20,7 +20,8 @@ public record LocalV1S1PrepareRequest(
             UUID actorId,
             Long ordinal,
             String externalUnitRef,
-            OffsetDateTime occurredAt) {}
+            OffsetDateTime occurredAt,
+            String bodyText) {}
 
     public record AnchorInput(
             UUID anchorId,

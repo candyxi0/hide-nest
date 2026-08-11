@@ -23,6 +23,7 @@
     </properties>
 
     <modules>
+        <module>modules/payload-adapter</module>
         <module>modules/evidence</module>
         <module>modules/memory</module>
         <module>modules/runtime</module>

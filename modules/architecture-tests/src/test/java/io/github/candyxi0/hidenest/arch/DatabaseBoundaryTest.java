@@ -27,6 +27,7 @@ class DatabaseBoundaryTest {
     private static final String DATABASE = ROOT + "database..";
     private static final String API = ROOT + "api..";
     private static final String WORKER = ROOT + "worker..";
+    private static final String PAYLOAD = ROOT + "payload..";
 
     static ArchRule domainBoundaryRule() {
         return noClasses()
@@ -81,6 +82,27 @@ class DatabaseBoundaryTest {
                 .resideInAPackage(ROOT + "database.generated..");
     }
 
+    static ArchRule payloadAdapterBoundaryRule() {
+        return noClasses()
+                .that()
+                .resideInAPackage(PAYLOAD)
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage(
+                        APPLICATION,
+                        DATABASE,
+                        API,
+                        WORKER,
+                        MEMORY,
+                        RUNTIME,
+                        SECURITY,
+                        "org.springframework..",
+                        "org.jooq..",
+                        "org.flywaydb..",
+                        "java.sql..",
+                        "..generated..");
+    }
+
     static ArchRule projectClassesMustNotUseReactiveDatabaseApisRule() {
         return noClasses()
                 .that()
@@ -104,6 +126,7 @@ class DatabaseBoundaryTest {
         assertDoesNotThrow(() -> applicationBoundaryRule().check(mainClasses));
         assertDoesNotThrow(() -> databaseBoundaryRule().check(mainClasses));
         assertDoesNotThrow(() -> generatedTypeBoundaryRule().check(mainClasses));
+        assertDoesNotThrow(() -> payloadAdapterBoundaryRule().check(mainClasses));
         assertDoesNotThrow(
                 () -> projectClassesMustNotUseReactiveDatabaseApisRule().check(mainClasses));
     }
