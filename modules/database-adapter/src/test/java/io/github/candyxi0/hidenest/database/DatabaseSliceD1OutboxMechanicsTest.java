@@ -60,7 +60,7 @@ class DatabaseSliceD1OutboxMechanicsTest {
                 .dataSource(POSTGRES.getJdbcUrl(), USER, PASSWORD).defaultSchema("public")
                 .locations("classpath:db/migration").cleanDisabled(true).baselineOnMigrate(false)
                 .outOfOrder(false).validateMigrationNaming(true).load();
-        assertEquals(10, flyway.migrate().migrationsExecuted);
+        assertEquals(11, flyway.migrate().migrationsExecuted);
         var rds = new DriverManagerDataSource(POSTGRES.getJdbcUrl(), USER, PASSWORD);
         var cfg = new DefaultConfiguration();
         cfg.setSQLDialect(SQLDialect.POSTGRES);
@@ -571,7 +571,7 @@ class DatabaseSliceD1OutboxMechanicsTest {
     // R1-02: V010 three migration paths
     // ═══════════════════════════════════════════════════════════════════════════
     @Test @Order(17)
-    @DisplayName("R1-02: V010 three migration paths — empty 10, V9 upgrade 1, repeat 0")
+    @DisplayName("R1-02: V011 three migration paths — empty 11, V10 upgrade 1, repeat 0")
     void v010ThreeMigrationPaths() throws Exception {
         try (PostgreSQLContainer<?> pg = new PostgreSQLContainer<>(
                 DockerImageName.parse(IMAGE).asCompatibleSubstituteFor("postgres"))
@@ -582,7 +582,7 @@ class DatabaseSliceD1OutboxMechanicsTest {
                     Statement s = c.createStatement()) {
                 s.execute("CREATE ROLE hide_nest_api NOLOGIN"); s.execute("CREATE ROLE hide_nest_worker NOLOGIN");
             }
-            assertEquals(10, Flyway.configure().dataSource(pg.getJdbcUrl(), USER, PASSWORD).defaultSchema("public")
+            assertEquals(11, Flyway.configure().dataSource(pg.getJdbcUrl(), USER, PASSWORD).defaultSchema("public")
                     .locations("classpath:db/migration").cleanDisabled(true).baselineOnMigrate(false)
                     .outOfOrder(false).validateMigrationNaming(true).load().migrate().migrationsExecuted);
             pg.stop();
@@ -598,19 +598,19 @@ class DatabaseSliceD1OutboxMechanicsTest {
             }
             Flyway.configure().dataSource(pg.getJdbcUrl(), USER, PASSWORD).defaultSchema("public")
                     .locations("classpath:db/migration").cleanDisabled(true).baselineOnMigrate(false)
-                    .outOfOrder(false).target("9").load().migrate();
+                    .outOfOrder(false).target("10").load().migrate();
             var fw2 = Flyway.configure().dataSource(pg.getJdbcUrl(), USER, PASSWORD).defaultSchema("public")
                     .locations("classpath:db/migration").cleanDisabled(true).baselineOnMigrate(false)
                     .outOfOrder(false).load();
-            assertEquals(1, fw2.migrate().migrationsExecuted, "V009→V010: 1");
-            assertEquals(10, fw2.info().applied().length, "history=10");
+            assertEquals(1, fw2.migrate().migrationsExecuted, "V010→V011: 1");
+            assertEquals(11, fw2.info().applied().length, "history=11");
             pg.stop();
         }
         var fw3 = Flyway.configure().dataSource(POSTGRES.getJdbcUrl(), USER, PASSWORD).defaultSchema("public")
                 .locations("classpath:db/migration").cleanDisabled(true).baselineOnMigrate(false)
                 .outOfOrder(false).load();
         assertEquals(0, fw3.migrate().migrationsExecuted, "repeat: 0");
-        assertEquals(10, fw3.info().applied().length, "history=10");
+        assertEquals(11, fw3.info().applied().length, "history=11");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

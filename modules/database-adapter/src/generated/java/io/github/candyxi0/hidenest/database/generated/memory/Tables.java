@@ -10,6 +10,8 @@ import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicy
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ActorRef;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionClosure;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionClosureMember;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevision;
@@ -62,6 +64,16 @@ public class Tables {
      * The table <code>memory.decision</code>.
      */
     public static final Decision DECISION = Decision.DECISION;
+
+    /**
+     * The table <code>memory.deletion_closure</code>.
+     */
+    public static final DeletionClosure DELETION_CLOSURE = DeletionClosure.DELETION_CLOSURE;
+
+    /**
+     * The table <code>memory.deletion_closure_member</code>.
+     */
+    public static final DeletionClosureMember DELETION_CLOSURE_MEMBER = DeletionClosureMember.DELETION_CLOSURE_MEMBER;
 
     /**
      * The table <code>memory.memory_record</code>.

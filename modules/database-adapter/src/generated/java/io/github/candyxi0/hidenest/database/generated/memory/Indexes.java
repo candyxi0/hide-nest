@@ -7,6 +7,8 @@ package io.github.candyxi0.hidenest.database.generated.memory;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicyGrant;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionClosure;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionClosureMember;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevision;
@@ -44,6 +46,8 @@ public class Indexes {
     public static final Index DECISION_FINAL_VERDICT_UNIQUE = Internal.createIndex(DSL.name("decision_final_verdict_unique"), Decision.DECISION, new OrderField[] { Decision.DECISION.REVIEW_SESSION_ID, Decision.DECISION.PROPOSAL_REVISION_ID }, true);
     public static final Index DECISION_PROPOSAL_LOOKUP = Internal.createIndex(DSL.name("decision_proposal_lookup"), Decision.DECISION, new OrderField[] { Decision.DECISION.PROPOSAL_REVISION_ID }, false);
     public static final Index DECISION_TARGET_LOOKUP = Internal.createIndex(DSL.name("decision_target_lookup"), Decision.DECISION, new OrderField[] { Decision.DECISION.TARGET_KIND, Decision.DECISION.TARGET_ID, Decision.DECISION.TARGET_REVISION_REF }, false);
+    public static final Index DELETION_CLOSURE_MEMBER_TARGET_LOOKUP = Internal.createIndex(DSL.name("deletion_closure_member_target_lookup"), DeletionClosureMember.DELETION_CLOSURE_MEMBER, new OrderField[] { DeletionClosureMember.DELETION_CLOSURE_MEMBER.TARGET_ID, DeletionClosureMember.DELETION_CLOSURE_MEMBER.MEMBER_KIND }, false);
+    public static final Index DELETION_CLOSURE_ROOT_LOOKUP = Internal.createIndex(DSL.name("deletion_closure_root_lookup"), DeletionClosure.DELETION_CLOSURE, new OrderField[] { DeletionClosure.DELETION_CLOSURE.ROOT_MEMORY_ID, DeletionClosure.DELETION_CLOSURE.PREVIEW_REVISION.desc() }, false);
     public static final Index MEMORY_RECORD_POLICY_LOOKUP = Internal.createIndex(DSL.name("memory_record_policy_lookup"), MemoryRecord.MEMORY_RECORD, new OrderField[] { MemoryRecord.MEMORY_RECORD.POLICY_ID, MemoryRecord.MEMORY_RECORD.CURRENT_POLICY_REVISION_NO }, false);
     public static final Index MEMORY_RECORD_STATE_LOOKUP = Internal.createIndex(DSL.name("memory_record_state_lookup"), MemoryRecord.MEMORY_RECORD, new OrderField[] { MemoryRecord.MEMORY_RECORD.STATE, MemoryRecord.MEMORY_RECORD.MEMORY_ID }, false);
     public static final Index MEMORY_RELATION_DECISION_LOOKUP = Internal.createIndex(DSL.name("memory_relation_decision_lookup"), MemoryRelation.MEMORY_RELATION, new OrderField[] { MemoryRelation.MEMORY_RELATION.CREATED_BY_DECISION_ID }, false);
