@@ -3,12 +3,16 @@ package io.github.candyxi0.hidenest.runtime.port;
 import io.github.candyxi0.hidenest.runtime.domain.CaptureScope;
 import io.github.candyxi0.hidenest.runtime.domain.CaptureScopeUnit;
 import io.github.candyxi0.hidenest.runtime.domain.Checkpoint;
+import io.github.candyxi0.hidenest.runtime.domain.ClaimedOutboxEvent;
 import io.github.candyxi0.hidenest.runtime.domain.CloseoutRun;
 import io.github.candyxi0.hidenest.runtime.domain.ConsumerEffect;
 import io.github.candyxi0.hidenest.runtime.domain.ContextDelivery;
 import io.github.candyxi0.hidenest.runtime.domain.IdempotencyReceipt;
 import io.github.candyxi0.hidenest.runtime.domain.ModelRun;
 import io.github.candyxi0.hidenest.runtime.domain.OutboxEvent;
+import io.github.candyxi0.hidenest.runtime.domain.OutboxFailureSettlement;
+import io.github.candyxi0.hidenest.runtime.domain.OutboxSuccessOutcome;
+import io.github.candyxi0.hidenest.runtime.domain.OutboxTerminalSettlement;
 import io.github.candyxi0.hidenest.runtime.domain.RetrievalTrace;
 import io.github.candyxi0.hidenest.runtime.domain.WorkArtifact;
 import java.time.OffsetDateTime;
@@ -95,4 +99,70 @@ public interface RuntimeTransactionPort {
 
     /** Insert a consumer effect (immutable). */
     void insertConsumerEffect(ConsumerEffect effect);
+
+    // ── HDM-006 Slice D1: Outbox Worker mechanics ──────────────────────────
+
+    /**
+     * Atomically claim and lease the next batch of due outbox events.
+     * Uses caller-provided clock (:now) for eligibility, not database clock.
+     * Adapter must sort returned DTOs by sequenceNo ASC
+     * (UPDATE...RETURNING provides no ordering guarantee).
+     * leaseOwner non-null, leaseUntil > now, batchSize 1–100.
+     */
+    List<ClaimedOutboxEvent> claimAndLeaseOutboxEvents(
+            String leaseOwner,
+            OffsetDateTime now,
+            OffsetDateTime leaseUntil,
+            int batchSize);
+
+    /**
+     * Settle a successfully processed outbox event (R1-02).
+     * Same transaction: lock event by triple match,
+     * INSERT ... ON CONFLICT DO NOTHING ConsumerEffect,
+     * transition to SUCCEEDED and clear lease.
+     * Returns SETTLED (first time), ALREADY_SETTLED (idempotent replay),
+     * or LEASE_LOST (lease expired or wrong owner).
+     */
+    OutboxSuccessOutcome settleOutboxSuccess(
+            UUID eventId,
+            String leaseOwner,
+            String consumerCode,
+            String effectKey,
+            OffsetDateTime completedAt);
+
+    /**
+     * Record a failure (R1-03). Database atomically decides:
+     * - current 0-6 → new 1-7, READY, clear lease, write nextAvailableAt
+     * - current 7 → new 8, FINAL_FAILED, clear lease, write completedAt
+     * Never produces READY + attempt_count=8.
+     * Caller must NOT hardcode attempt=8.
+     */
+    OutboxFailureSettlement settleOutboxFailure(
+            UUID eventId,
+            String leaseOwner,
+            OffsetDateTime nextAvailableAt,
+            OffsetDateTime completedAt,
+            String failureCode);
+
+    /**
+     * Terminate an event due to STALE/DENIED guard failure (R1-04).
+     * One-shot to FINAL_FAILED; no retry, no backoff.
+     * Clears lease; attempt_count incremented by 1 but NOT artificially set to 8.
+     * No ConsumerEffect, no fence lift, no re-confirmation.
+     */
+    OutboxTerminalSettlement settleOutboxRejected(
+            UUID eventId,
+            String leaseOwner,
+            OffsetDateTime completedAt,
+            String failureCode);
+
+    /**
+     * Atomically purge expired work artifacts (R1-06).
+     * Single CTE + FOR UPDATE SKIP LOCKED + DELETE ... RETURNING artifact_id.
+     * Returns purged artifact IDs in stable order.
+     * batchSize 1–100.
+     */
+    List<UUID> purgeExpiredWorkArtifacts(
+            OffsetDateTime cutoff,
+            int batchSize);
 }

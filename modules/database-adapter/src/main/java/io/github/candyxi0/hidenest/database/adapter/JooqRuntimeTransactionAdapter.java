@@ -5,20 +5,27 @@ import static io.github.candyxi0.hidenest.database.generated.runtime.Tables.*;
 import io.github.candyxi0.hidenest.runtime.domain.CaptureScope;
 import io.github.candyxi0.hidenest.runtime.domain.CaptureScopeUnit;
 import io.github.candyxi0.hidenest.runtime.domain.Checkpoint;
+import io.github.candyxi0.hidenest.runtime.domain.ClaimedOutboxEvent;
 import io.github.candyxi0.hidenest.runtime.domain.CloseoutRun;
 import io.github.candyxi0.hidenest.runtime.domain.ConsumerEffect;
 import io.github.candyxi0.hidenest.runtime.domain.ContextDelivery;
 import io.github.candyxi0.hidenest.runtime.domain.IdempotencyReceipt;
 import io.github.candyxi0.hidenest.runtime.domain.ModelRun;
 import io.github.candyxi0.hidenest.runtime.domain.OutboxEvent;
+import io.github.candyxi0.hidenest.runtime.domain.OutboxFailureSettlement;
+import io.github.candyxi0.hidenest.runtime.domain.OutboxSuccessOutcome;
+import io.github.candyxi0.hidenest.runtime.domain.OutboxTerminalSettlement;
 import io.github.candyxi0.hidenest.runtime.domain.RetrievalTrace;
 import io.github.candyxi0.hidenest.runtime.domain.WorkArtifact;
 import io.github.candyxi0.hidenest.runtime.port.RuntimeTransactionPort;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.jooq.DSLContext;
 import org.jooq.JSONB;
+import org.jooq.Record14;
 
 public class JooqRuntimeTransactionAdapter implements RuntimeTransactionPort {
 
@@ -295,5 +302,337 @@ public class JooqRuntimeTransactionAdapter implements RuntimeTransactionPort {
                 .set(CONSUMER_EFFECT.EFFECT_KEY, effect.effectKey())
                 .set(CONSUMER_EFFECT.RECORDED_AT, effect.recordedAt())
                 .execute();
+    }
+
+    // ── HDM-006 Slice D1: Outbox Worker mechanics ─────────────────────────
+
+    @Override
+    public List<ClaimedOutboxEvent> claimAndLeaseOutboxEvents(
+            String leaseOwner,
+            OffsetDateTime now,
+            OffsetDateTime leaseUntil,
+            int batchSize) {
+        // Parameter gates (R1-01 + R1-06)
+        if (leaseOwner == null || leaseOwner.isBlank()) {
+            throw new IllegalArgumentException("leaseOwner must not be blank");
+        }
+        if (now == null) {
+            throw new NullPointerException("now must not be null");
+        }
+        if (leaseUntil == null) {
+            throw new NullPointerException("leaseUntil must not be null");
+        }
+        if (!leaseUntil.isAfter(now)) {
+            throw new IllegalArgumentException("leaseUntil must be > now");
+        }
+        if (batchSize < 1 || batchSize > 100) {
+            throw new IllegalArgumentException("batchSize must be 1-100");
+        }
+
+        java.sql.Timestamp nowTs = java.sql.Timestamp.from(now.toInstant());
+        java.sql.Timestamp leaseTs = java.sql.Timestamp.from(leaseUntil.toInstant());
+
+        // Single CTE: SELECT eligible rows → UPDATE lease → RETURNING
+        var result = dsl.resultQuery(
+                "WITH next_batch AS (" +
+                "  SELECT event_id" +
+                "  FROM runtime.outbox_event" +
+                "  WHERE (state = 'READY' AND available_at <= ?::timestamptz)" +
+                "     OR (state = 'LEASED' AND lease_until <= ?::timestamptz)" +
+                "  ORDER BY available_at ASC, sequence_no ASC" +
+                "  LIMIT ?" +
+                "  FOR UPDATE SKIP LOCKED" +
+                ") " +
+                "UPDATE runtime.outbox_event" +
+                " SET state = 'LEASED'," +
+                "     lease_owner = ?," +
+                "     lease_until = ?::timestamptz" +
+                " FROM next_batch" +
+                " WHERE runtime.outbox_event.event_id = next_batch.event_id" +
+                " RETURNING" +
+                "   runtime.outbox_event.event_id," +
+                "   runtime.outbox_event.sequence_no," +
+                "   runtime.outbox_event.event_category," +
+                "   runtime.outbox_event.event_type," +
+                "   runtime.outbox_event.aggregate_kind," +
+                "   runtime.outbox_event.aggregate_id," +
+                "   runtime.outbox_event.aggregate_revision," +
+                "   runtime.outbox_event.purpose," +
+                "   runtime.outbox_event.policy_revision," +
+                "   runtime.outbox_event.manifest_hash," +
+                "   runtime.outbox_event.payload_manifest," +
+                "   runtime.outbox_event.change_event_id," +
+                "   runtime.outbox_event.attempt_count," +
+                "   runtime.outbox_event.max_attempts",
+                nowTs, nowTs, batchSize, leaseOwner, leaseTs)
+                .fetch();
+
+        List<ClaimedOutboxEvent> events = new ArrayList<>();
+        for (var r : result) {
+            events.add(mapClaimed(r));
+        }
+        // R1-01: UPDATE...RETURNING has no ordering guarantee; sort before return
+        events.sort(Comparator.comparingLong(ClaimedOutboxEvent::sequenceNo));
+        return events;
+    }
+
+    private ClaimedOutboxEvent mapClaimed(org.jooq.Record r) {
+        return new ClaimedOutboxEvent(
+                r.get(0, UUID.class),                         // event_id
+                r.get(1, Long.class),                          // sequence_no
+                r.get(2, String.class),                        // event_category
+                r.get(3, String.class),                        // event_type
+                r.get(4, String.class),                        // aggregate_kind
+                r.get(5, UUID.class),                          // aggregate_id
+                r.get(6, Long.class),                          // aggregate_revision
+                r.get(7, String.class),                        // purpose
+                r.get(8, Long.class),                          // policy_revision
+                r.get(9, byte[].class),                        // manifest_hash
+                r.get(10, String.class),                       // payload_manifest
+                r.get(11, UUID.class),                         // change_event_id
+                r.get(12, Short.class),                        // attempt_count
+                r.get(13, Short.class)                         // max_attempts
+        );
+    }
+
+    @Override
+    public OutboxSuccessOutcome settleOutboxSuccess(
+            UUID eventId,
+            String leaseOwner,
+            String consumerCode,
+            String effectKey,
+            OffsetDateTime completedAt) {
+        // R1-06: param gates
+        if (eventId == null) throw new NullPointerException("eventId must not be null");
+        if (leaseOwner == null || leaseOwner.isBlank()) throw new IllegalArgumentException("leaseOwner must not be blank");
+        if (consumerCode == null || consumerCode.isBlank()) throw new IllegalArgumentException("consumerCode must not be blank");
+        if (effectKey == null || effectKey.isBlank()) throw new IllegalArgumentException("effectKey must not be blank");
+        if (completedAt == null) throw new NullPointerException("completedAt must not be null");
+
+        return dsl.transactionResult(trCtx -> {
+            var tx = trCtx.dsl();
+
+            // 1. Lock and verify triple match
+            var locked = tx.selectFrom(OUTBOX_EVENT)
+                    .where(OUTBOX_EVENT.EVENT_ID.eq(eventId))
+                    .and(OUTBOX_EVENT.STATE.eq("LEASED"))
+                    .and(OUTBOX_EVENT.LEASE_OWNER.eq(leaseOwner))
+                    .forUpdate()
+                    .fetchOne();
+
+            if (locked == null) {
+                var existing = tx.selectFrom(OUTBOX_EVENT)
+                        .where(OUTBOX_EVENT.EVENT_ID.eq(eventId))
+                        .fetchOne();
+                if (existing != null && "SUCCEEDED".equals(existing.getState())) {
+                    int count = tx.selectCount()
+                            .from(CONSUMER_EFFECT)
+                            .where(CONSUMER_EFFECT.CONSUMER_CODE.eq(consumerCode))
+                            .and(CONSUMER_EFFECT.EVENT_ID.eq(eventId))
+                            .and(CONSUMER_EFFECT.EFFECT_KEY.eq(effectKey))
+                            .fetchOne(0, int.class);
+                    if (count > 0) return OutboxSuccessOutcome.ALREADY_SETTLED;
+                }
+                return OutboxSuccessOutcome.LEASE_LOST;
+            }
+
+            // 2. INSERT ... ON CONFLICT DO NOTHING
+            int inserted = tx.insertInto(CONSUMER_EFFECT,
+                    CONSUMER_EFFECT.CONSUMER_CODE, CONSUMER_EFFECT.EVENT_ID,
+                    CONSUMER_EFFECT.EFFECT_KEY, CONSUMER_EFFECT.RECORDED_AT)
+                    .values(consumerCode, eventId, effectKey, completedAt)
+                    .onConflictDoNothing()
+                    .execute();
+
+            // R1-02: marker already existed → convergence (R2-02: must UPDATE exactly 1)
+            if (inserted == 0) {
+                int convRows = tx.update(OUTBOX_EVENT)
+                        .set(OUTBOX_EVENT.STATE, "SUCCEEDED")
+                        .set(OUTBOX_EVENT.LEASE_OWNER, (String) null)
+                        .set(OUTBOX_EVENT.LEASE_UNTIL, (OffsetDateTime) null)
+                        .set(OUTBOX_EVENT.COMPLETED_AT, completedAt)
+                        .where(OUTBOX_EVENT.EVENT_ID.eq(eventId))
+                        .and(OUTBOX_EVENT.STATE.eq("LEASED"))
+                        .and(OUTBOX_EVENT.LEASE_OWNER.eq(leaseOwner))
+                        .execute();
+                if (convRows != 1) {
+                    throw new IllegalStateException(
+                            "HDM006_INVARIANT: settleOutboxSuccess marker convergence UPDATE affected "
+                            + convRows + " rows for event " + eventId + " (expected 1); transaction rolls back");
+                }
+                return OutboxSuccessOutcome.ALREADY_SETTLED;
+            }
+
+            // 3. Transition to SUCCEEDED
+            int rows = tx.update(OUTBOX_EVENT)
+                    .set(OUTBOX_EVENT.STATE, "SUCCEEDED")
+                    .set(OUTBOX_EVENT.LEASE_OWNER, (String) null)
+                    .set(OUTBOX_EVENT.LEASE_UNTIL, (OffsetDateTime) null)
+                    .set(OUTBOX_EVENT.COMPLETED_AT, completedAt)
+                    .where(OUTBOX_EVENT.EVENT_ID.eq(eventId))
+                    .and(OUTBOX_EVENT.STATE.eq("LEASED"))
+                    .and(OUTBOX_EVENT.LEASE_OWNER.eq(leaseOwner))
+                    .execute();
+
+            // R1-05: UPDATE must affect exactly 1 row; otherwise rollback
+            if (rows != 1) {
+                throw new IllegalStateException(
+                        "HDM006_INVARIANT: settleOutboxSuccess UPDATE affected " + rows
+                        + " rows for event " + eventId + " (expected 1); transaction rolls back");
+            }
+
+            return OutboxSuccessOutcome.SETTLED;
+        });
+    }
+
+    @Override
+    public OutboxFailureSettlement settleOutboxFailure(
+            UUID eventId,
+            String leaseOwner,
+            OffsetDateTime nextAvailableAt,
+            OffsetDateTime completedAt,
+            String failureCode) {
+        // R1-06: param gates
+        if (eventId == null) throw new NullPointerException("eventId must not be null");
+        if (leaseOwner == null || leaseOwner.isBlank()) throw new IllegalArgumentException("leaseOwner must not be blank");
+        if (failureCode == null || failureCode.isBlank()) throw new IllegalArgumentException("failureCode must not be blank");
+        if (nextAvailableAt == null) throw new NullPointerException("nextAvailableAt must not be null");
+        if (completedAt == null) throw new NullPointerException("completedAt must not be null");
+
+        return dsl.transactionResult(trCtx -> {
+            var tx = trCtx.dsl();
+            var locked = tx.selectFrom(OUTBOX_EVENT)
+                    .where(OUTBOX_EVENT.EVENT_ID.eq(eventId))
+                    .forUpdate()
+                    .fetchOne();
+
+            if (locked == null) {
+                return new OutboxFailureSettlement.LeaseLost("UNKNOWN", (short) 0);
+            }
+            if ("SUCCEEDED".equals(locked.getState()) || "FINAL_FAILED".equals(locked.getState())) {
+                return new OutboxFailureSettlement.Terminal(
+                        locked.getState(), locked.getAttemptCount());
+            }
+            if (!"LEASED".equals(locked.getState()) || !leaseOwner.equals(locked.getLeaseOwner())) {
+                return new OutboxFailureSettlement.LeaseLost(
+                        locked.getState(), locked.getAttemptCount());
+            }
+
+            int newAttempt = locked.getAttemptCount() + 1;
+            if (newAttempt >= 1 && newAttempt <= 7) {
+                tx.update(OUTBOX_EVENT)
+                        .set(OUTBOX_EVENT.STATE, "READY")
+                        .set(OUTBOX_EVENT.LEASE_OWNER, (String) null)
+                        .set(OUTBOX_EVENT.LEASE_UNTIL, (OffsetDateTime) null)
+                        .set(OUTBOX_EVENT.ATTEMPT_COUNT, (short) newAttempt)
+                        .set(OUTBOX_EVENT.AVAILABLE_AT, nextAvailableAt)
+                        .set(OUTBOX_EVENT.LAST_FAILURE_CODE, failureCode)
+                        .where(OUTBOX_EVENT.EVENT_ID.eq(eventId))
+                        .execute();
+                return new OutboxFailureSettlement.RetryScheduled((short) newAttempt);
+            } else {
+                tx.update(OUTBOX_EVENT)
+                        .set(OUTBOX_EVENT.STATE, "FINAL_FAILED")
+                        .set(OUTBOX_EVENT.LEASE_OWNER, (String) null)
+                        .set(OUTBOX_EVENT.LEASE_UNTIL, (OffsetDateTime) null)
+                        .set(OUTBOX_EVENT.ATTEMPT_COUNT, (short) newAttempt)
+                        .set(OUTBOX_EVENT.COMPLETED_AT, completedAt)
+                        .set(OUTBOX_EVENT.LAST_FAILURE_CODE, failureCode)
+                        .where(OUTBOX_EVENT.EVENT_ID.eq(eventId))
+                        .execute();
+                return new OutboxFailureSettlement.FinalFailed((short) newAttempt);
+            }
+        });
+    }
+
+    @Override
+    public OutboxTerminalSettlement settleOutboxRejected(
+            UUID eventId,
+            String leaseOwner,
+            OffsetDateTime completedAt,
+            String failureCode) {
+        // R1-06: param gates
+        if (eventId == null) throw new NullPointerException("eventId must not be null");
+        if (leaseOwner == null || leaseOwner.isBlank()) throw new IllegalArgumentException("leaseOwner must not be blank");
+        if (failureCode == null || failureCode.isBlank()) throw new IllegalArgumentException("failureCode must not be blank");
+        if (completedAt == null) throw new NullPointerException("completedAt must not be null");
+
+        return dsl.transactionResult(trCtx -> {
+            var tx = trCtx.dsl();
+            var locked = tx.selectFrom(OUTBOX_EVENT)
+                    .where(OUTBOX_EVENT.EVENT_ID.eq(eventId))
+                    .forUpdate()
+                    .fetchOne();
+
+            if (locked == null) {
+                return new OutboxTerminalSettlement.LeaseLost("UNKNOWN");
+            }
+            if ("SUCCEEDED".equals(locked.getState()) || "FINAL_FAILED".equals(locked.getState())) {
+                return new OutboxTerminalSettlement.AlreadyTerminal(locked.getState());
+            }
+            if (!"LEASED".equals(locked.getState()) || !leaseOwner.equals(locked.getLeaseOwner())) {
+                return new OutboxTerminalSettlement.LeaseLost(locked.getState());
+            }
+
+            int currentAttempt = locked.getAttemptCount();
+            int newAttempt = Math.min(currentAttempt + 1, 8);
+
+            tx.update(OUTBOX_EVENT)
+                    .set(OUTBOX_EVENT.STATE, "FINAL_FAILED")
+                    .set(OUTBOX_EVENT.LEASE_OWNER, (String) null)
+                    .set(OUTBOX_EVENT.LEASE_UNTIL, (OffsetDateTime) null)
+                    .set(OUTBOX_EVENT.ATTEMPT_COUNT, (short) newAttempt)
+                    .set(OUTBOX_EVENT.COMPLETED_AT, completedAt)
+                    .set(OUTBOX_EVENT.LAST_FAILURE_CODE, failureCode)
+                    .where(OUTBOX_EVENT.EVENT_ID.eq(eventId))
+                    .execute();
+
+            return new OutboxTerminalSettlement.Rejected();
+        });
+    }
+
+    @Override
+    public List<UUID> purgeExpiredWorkArtifacts(OffsetDateTime cutoff, int batchSize) {
+        // R1-06: param gates
+        if (cutoff == null) throw new NullPointerException("cutoff must not be null");
+        if (batchSize < 1 || batchSize > 100) {
+            throw new IllegalArgumentException("batchSize must be 1-100");
+        }
+
+        java.sql.Timestamp cutoffTs = java.sql.Timestamp.from(cutoff.toInstant());
+
+        // R1-03: eligibility is expires_at <= cutoff (not <), CTE retains expires_at/artifact_id for stable sort
+        var result = dsl.resultQuery(
+                "WITH expired AS (" +
+                "  SELECT artifact_id, expires_at" +
+                "  FROM runtime.work_artifact" +
+                "  WHERE expires_at <= ?::timestamptz" +
+                "  ORDER BY expires_at ASC, artifact_id ASC" +
+                "  LIMIT ?" +
+                "  FOR UPDATE SKIP LOCKED" +
+                ") " +
+                "DELETE FROM runtime.work_artifact" +
+                " USING expired" +
+                " WHERE runtime.work_artifact.artifact_id = expired.artifact_id" +
+                " RETURNING expired.expires_at, runtime.work_artifact.artifact_id",
+                cutoffTs, batchSize)
+                .fetch();
+
+        // R1-03: RETURNING includes (expires_at, artifact_id); sort in Java
+        // (PostgreSQL DELETE...RETURNING does not support ORDER BY)
+        List<java.util.AbstractMap.SimpleImmutableEntry<OffsetDateTime, UUID>> temp = new ArrayList<>();
+        for (var r : result) {
+            java.sql.Timestamp ts = r.get(0, java.sql.Timestamp.class);
+            OffsetDateTime exp = ts != null ? ts.toLocalDateTime().atOffset(java.time.ZoneOffset.UTC) : null;
+            temp.add(new java.util.AbstractMap.SimpleImmutableEntry<>(exp, r.get(1, UUID.class)));
+        }
+        temp.sort(java.util.Comparator
+                .<java.util.AbstractMap.SimpleImmutableEntry<OffsetDateTime, UUID>, OffsetDateTime>comparing(
+                        java.util.AbstractMap.SimpleImmutableEntry::getKey,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                .thenComparing(java.util.AbstractMap.SimpleImmutableEntry::getValue));
+        List<UUID> ids = new ArrayList<>();
+        for (var e : temp) ids.add(e.getValue());
+        return ids;
     }
 }

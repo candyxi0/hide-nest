@@ -1,0 +1,532 @@
+﻿{
+    "status":  "HDM006_SLICE_D_FINAL_EVIDENCE_COMMANDER_READY_FOR_LOCAL_COMMIT",
+    "producerScriptSha256":  "0274393ABD555F6ECC8A14B1F5B603E2E9713E304FCDBF1DDF6F8E2C4006AB47",
+    "producerStartedAt":  "2026-08-11T12:57:01.6308455+08:00",
+    "producerCompletedAt":  "2026-08-11T12:58:31.9734238+08:00",
+    "head":  "2425883ebf0cacafbe1b621916dfcc7296ecdacd",
+    "criteria":  {
+                     "headMatch":  {
+                                       "passed":  true,
+                                       "detail":  "HEAD=2425883ebf0cacafbe1b621916dfcc7296ecdacd"
+                                   },
+                     "mavenExitZero":  {
+                                           "passed":  true,
+                                           "detail":  "exit=0"
+                                       },
+                     "requiredSuitesPresent":  {
+                                                   "passed":  true,
+                                                   "detail":  "missing="
+                                               },
+                     "allJavaTestsPass":  {
+                                              "passed":  true,
+                                              "detail":  "xml=21, tests=266, failures=0, errors=0, skipped=0"
+                                          },
+                     "node-typecheck":  {
+                                            "passed":  true,
+                                            "detail":  "exit=0"
+                                        },
+                     "node-lint":  {
+                                       "passed":  true,
+                                       "detail":  "exit=0"
+                                   },
+                     "node-test":  {
+                                       "passed":  true,
+                                       "detail":  "exit=0"
+                                   },
+                     "node-build":  {
+                                        "passed":  true,
+                                        "detail":  "exit=0"
+                                    },
+                     "apiSmoke":  {
+                                      "passed":  true,
+                                      "detail":  "exit=0, started=True"
+                                  },
+                     "workerDefaultSmoke":  {
+                                                "passed":  true,
+                                                "detail":  "exit=0, started=True"
+                                            },
+                     "workerMisconfiguredFailClosed":  {
+                                                           "passed":  true,
+                                                           "detail":  "exit=1, correctReason=True"
+                                                       },
+                     "v001v009Match":  {
+                                           "passed":  true,
+                                           "detail":  "files=9, changed="
+                                       },
+                     "v010Present":  {
+                                         "passed":  true,
+                                         "detail":  "count=1, bytes=233"
+                                     },
+                     "generatedTreeMatch":  {
+                                                "passed":  true,
+                                                "detail":  "files=81, changed="
+                                            },
+                     "productionGuardZero":  {
+                                                 "passed":  true,
+                                                 "detail":  "count=0"
+                                             },
+                     "productionHandlerZero":  {
+                                                   "passed":  true,
+                                                   "detail":  "count=0"
+                                               },
+                     "operationalProducerZero":  {
+                                                     "passed":  true,
+                                                     "detail":  "count=0"
+                                                 },
+                     "outboxBodyLeakZero":  {
+                                                "passed":  true,
+                                                "detail":  "count=0"
+                                            },
+                     "secretLeakZero":  {
+                                            "passed":  true,
+                                            "detail":  "count=0"
+                                        },
+                     "trivialAssertionZero":  {
+                                                  "passed":  true,
+                                                  "detail":  "count=0"
+                                              },
+                     "dockerNoNewResources":  {
+                                                  "passed":  true,
+                                                  "detail":  "added=0-0-0"
+                                              },
+                     "gitIndexUnchanged":  {
+                                               "passed":  true,
+                                               "detail":  "start=E66D648F9500005759491DAC6A081F47C1EAE34CF055ED8D1E9917EC726F6B49, end=E66D648F9500005759491DAC6A081F47C1EAE34CF055ED8D1E9917EC726F6B49"
+                                           },
+                     "stagedZero":  {
+                                        "passed":  true,
+                                        "detail":  "count=0"
+                                    },
+                     "outOfScopeDeltaZero":  {
+                                                 "passed":  true,
+                                                 "detail":  "added=0, removed=0"
+                                             },
+                     "taskProcessResidueZero":  {
+                                                    "passed":  true,
+                                                    "detail":  "count=0"
+                                                }
+                 },
+    "failedCriteria":  [
+
+                       ],
+    "commands":  {
+                     "maven-clean-verify":  {
+                                                "command":  "mvnw.cmd clean verify -o -DforkCount=1",
+                                                "exitCode":  0,
+                                                "logSha256":  "3D2A049E8FB1674982D2A6132C83B06BA71DEE4127D1C6E6D9912F4F71EAA305",
+                                                "tail":  [
+                                                             "[INFO] hide-nest-application .............................. SUCCESS [  2.119 s]",
+                                                             "[INFO] hide-nest-database-adapter ......................... SUCCESS [ 46.105 s]",
+                                                             "[INFO] hide-nest-contracts ................................ SUCCESS [  5.781 s]",
+                                                             "[INFO] hide-nest-api ...................................... SUCCESS [  0.583 s]",
+                                                             "[INFO] hide-nest-worker ................................... SUCCESS [  2.148 s]",
+                                                             "[INFO] hide-nest-architecture-tests ....................... SUCCESS [  6.213 s]",
+                                                             "[INFO] ------------------------------------------------------------------------",
+                                                             "[INFO] BUILD SUCCESS",
+                                                             "[INFO] ------------------------------------------------------------------------",
+                                                             "[INFO] Total time:  01:05 min",
+                                                             "[INFO] Finished at: 2026-08-11T12:58:09+08:00",
+                                                             "[INFO] ------------------------------------------------------------------------"
+                                                         ]
+                                            },
+                     "node-typecheck":  {
+                                            "command":  "npm.cmd --offline run typecheck",
+                                            "exitCode":  0,
+                                            "logSha256":  "568C89116DDCDC67DE1408234D2BB22273487E25460ECF01CC5F3ADB907DC74F",
+                                            "tail":  [
+                                                         "",
+                                                         "\u003e @hide-nest/nest-console@0.0.1 typecheck",
+                                                         "\u003e tsc -b",
+                                                         "",
+                                                         "",
+                                                         "\u003e @hide-nest/api-client-ts@0.0.1 typecheck",
+                                                         "\u003e tsc --noEmit",
+                                                         "",
+                                                         "",
+                                                         "\u003e @hide-nest/ui-contract-fixtures@0.0.1 typecheck",
+                                                         "\u003e tsc --noEmit",
+                                                         ""
+                                                     ]
+                                        },
+                     "node-lint":  {
+                                       "command":  "npm.cmd --offline run lint",
+                                       "exitCode":  0,
+                                       "logSha256":  "C162F8565793A8546A21609EAD0A749267F2375FC265CB9AAE3F4EEF4861C628",
+                                       "tail":  [
+                                                    "",
+                                                    "\u003e @hide-nest/nest-console@0.0.1 lint",
+                                                    "\u003e eslint src/",
+                                                    "",
+                                                    "",
+                                                    "\u003e @hide-nest/api-client-ts@0.0.1 lint",
+                                                    "\u003e eslint src/",
+                                                    "",
+                                                    "",
+                                                    "\u003e @hide-nest/ui-contract-fixtures@0.0.1 lint",
+                                                    "\u003e eslint src/",
+                                                    ""
+                                                ]
+                                   },
+                     "node-test":  {
+                                       "command":  "npm.cmd --offline run test",
+                                       "exitCode":  0,
+                                       "logSha256":  "5C0D2DDBA19304F5A42D852E2743B27F18C2752DBF2BACD4F4EB5C8A49370D9C",
+                                       "tail":  [
+                                                    "\u003e @hide-nest/ui-contract-fixtures@0.0.1 test",
+                                                    "\u003e vitest run",
+                                                    "",
+                                                    "",
+                                                    " RUN  v4.1.10 D:/myproject/hide-nest/packages/ui-contract-fixtures",
+                                                    "",
+                                                    "",
+                                                    " Test Files  2 passed (2)",
+                                                    "      Tests  10 passed (10)",
+                                                    "   Start at  12:58:21",
+                                                    "   Duration  222ms (transform 133ms, setup 0ms, import 196ms, tests 7ms, environment 0ms)",
+                                                    ""
+                                                ]
+                                   },
+                     "node-build":  {
+                                        "command":  "npm.cmd --offline run build",
+                                        "exitCode":  0,
+                                        "logSha256":  "C7F820B153C06A52EF4C10AB1A198B206AF5C3C0E381EDA44E1E459CCFCC8089",
+                                        "tail":  [
+                                                     "dist/index.html                  0.32 kB │ gzip:  0.23 kB",
+                                                     "dist/assets/index-DW2eZGqw.js  251.35 kB │ gzip: 79.57 kB",
+                                                     "",
+                                                     "\u001b[32m✓ built in 107ms\u001b[39m",
+                                                     "",
+                                                     "\u003e @hide-nest/api-client-ts@0.0.1 build",
+                                                     "\u003e tsc",
+                                                     "",
+                                                     "",
+                                                     "\u003e @hide-nest/ui-contract-fixtures@0.0.1 build",
+                                                     "\u003e tsc",
+                                                     ""
+                                                 ]
+                                    },
+                     "api-smoke":  {
+                                       "command":  "java -jar D:\\myproject\\hide-nest\\apps\\api\\target\\hide-nest-api-0.0.1-SNAPSHOT-exec.jar",
+                                       "pid":  37576,
+                                       "exitCode":  0,
+                                       "logSha256":  "F925E098F5C67E58D91836646B6ED43C452E298ACB27DF394231CA5DD7BF7442",
+                                       "tail":  [
+                                                    "2026-08-11T12:58:27.029+08:00  INFO 37576 --- [hide-nest-api] [           main] i.g.c.h.api.HideNestApiApplication       : Starting HideNestApiApplication v0.0.1-SNAPSHOT using Java 25.0.4 with PID 37576 (D:\\myproject\\hide-nest\\apps\\api\\target\\hide-nest-api-0.0.1-SNAPSHOT-exec.jar started by tangx in D:\\myproject\\hide-nest)",
+                                                    "2026-08-11T12:58:27.034+08:00  INFO 37576 --- [hide-nest-api] [           main] i.g.c.h.api.HideNestApiApplication       : No active profile set, falling back to 1 default profile: \"default\"",
+                                                    "2026-08-11T12:58:27.374+08:00  INFO 37576 --- [hide-nest-api] [           main] i.g.c.h.api.HideNestApiApplication       : Started HideNestApiApplication in 0.632 seconds (process running for 0.914)",
+                                                    "hide-nest-api started"
+                                                ]
+                                   },
+                     "worker-default-smoke":  {
+                                                  "command":  "java -jar D:\\myproject\\hide-nest\\apps\\worker\\target\\hide-nest-worker-0.0.1-SNAPSHOT-exec.jar",
+                                                  "pid":  28536,
+                                                  "exitCode":  0,
+                                                  "logSha256":  "942AA1F9EA5CD5A5DAD5D2A9B1BEEF1D6C85C3000AF856F930BB9C1F4D6DA463",
+                                                  "tail":  [
+                                                               "2026-08-11T12:58:28.059+08:00  INFO 28536 --- [hide-nest-worker] [           main] i.g.c.h.w.HideNestWorkerApplication      : Starting HideNestWorkerApplication v0.0.1-SNAPSHOT using Java 25.0.4 with PID 28536 (D:\\myproject\\hide-nest\\apps\\worker\\target\\hide-nest-worker-0.0.1-SNAPSHOT-exec.jar started by tangx in D:\\myproject\\hide-nest)",
+                                                               "2026-08-11T12:58:28.076+08:00  INFO 28536 --- [hide-nest-worker] [           main] i.g.c.h.w.HideNestWorkerApplication      : No active profile set, falling back to 1 default profile: \"default\"",
+                                                               "2026-08-11T12:58:28.477+08:00  INFO 28536 --- [hide-nest-worker] [           main] i.g.c.h.w.HideNestWorkerApplication      : Started HideNestWorkerApplication in 0.693 seconds (process running for 0.986)",
+                                                               "hide-nest-worker started"
+                                                           ]
+                                              },
+                     "worker-enabled-failclosed":  {
+                                                       "command":  "java -jar D:\\myproject\\hide-nest\\apps\\worker\\target\\hide-nest-worker-0.0.1-SNAPSHOT-exec.jar --hide.outbox.worker.enabled=true",
+                                                       "pid":  13508,
+                                                       "exitCode":  1,
+                                                       "logSha256":  "D0BE0017EE1697B2E088A037D7D6ED5490AA0F717E4E90D9A07E9A709F37377B",
+                                                       "tail":  [
+                                                                    "\tat io.github.candyxi0.hidenest.worker.OutboxWorkerConfiguration.validateDependencies(OutboxWorkerConfiguration.java:37) ~[!/:0.0.1-SNAPSHOT]",
+                                                                    "\tat io.github.candyxi0.hidenest.worker.OutboxWorkerConfiguration.workerStartupGuard(OutboxWorkerConfiguration.java:50) ~[!/:0.0.1-SNAPSHOT]",
+                                                                    "\tat io.github.candyxi0.hidenest.worker.OutboxWorkerConfiguration$$SpringCGLIB$$0.CGLIB$workerStartupGuard$3(\u003cgenerated\u003e) ~[!/:0.0.1-SNAPSHOT]",
+                                                                    "\tat io.github.candyxi0.hidenest.worker.OutboxWorkerConfiguration$$SpringCGLIB$$FastClass$$1.invoke(\u003cgenerated\u003e) ~[!/:0.0.1-SNAPSHOT]",
+                                                                    "\tat org.springframework.cglib.proxy.MethodProxy.invokeSuper(MethodProxy.java:258) ~[spring-core-7.0.8.jar!/:7.0.8]",
+                                                                    "\tat org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:398) ~[spring-context-7.0.8.jar!/:7.0.8]",
+                                                                    "\tat io.github.candyxi0.hidenest.worker.OutboxWorkerConfiguration$$SpringCGLIB$$0.workerStartupGuard(\u003cgenerated\u003e) ~[!/:0.0.1-SNAPSHOT]",
+                                                                    "\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104) ~[na:na]",
+                                                                    "\tat java.base/java.lang.reflect.Method.invoke(Method.java:565) ~[na:na]",
+                                                                    "\tat org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:155) ~[spring-beans-7.0.8.jar!/:7.0.8]",
+                                                                    "\t... 26 common frames omitted",
+                                                                    ""
+                                                                ]
+                                                   }
+                 },
+    "logHashes":  {
+                      "maven-clean-verify":  "3D2A049E8FB1674982D2A6132C83B06BA71DEE4127D1C6E6D9912F4F71EAA305",
+                      "node-typecheck":  "568C89116DDCDC67DE1408234D2BB22273487E25460ECF01CC5F3ADB907DC74F",
+                      "node-lint":  "C162F8565793A8546A21609EAD0A749267F2375FC265CB9AAE3F4EEF4861C628",
+                      "node-test":  "5C0D2DDBA19304F5A42D852E2743B27F18C2752DBF2BACD4F4EB5C8A49370D9C",
+                      "node-build":  "C7F820B153C06A52EF4C10AB1A198B206AF5C3C0E381EDA44E1E459CCFCC8089",
+                      "api-smoke":  "F925E098F5C67E58D91836646B6ED43C452E298ACB27DF394231CA5DD7BF7442",
+                      "worker-default-smoke":  "942AA1F9EA5CD5A5DAD5D2A9B1BEEF1D6C85C3000AF856F930BB9C1F4D6DA463",
+                      "worker-enabled-failclosed":  "D0BE0017EE1697B2E088A037D7D6ED5490AA0F717E4E90D9A07E9A709F37377B"
+                  },
+    "java":  {
+                 "mavenExitCode":  0,
+                 "xmlFileCount":  21,
+                 "requiredSuites":  [
+                                        "BackoffCalculatorTest",
+                                        "OutboxWorkerCoordinatorTest",
+                                        "OutboxWorkerAssemblyTest",
+                                        "DatabaseSliceD1OutboxMechanicsTest",
+                                        "DatabaseSliceBContractTest",
+                                        "DatabaseSliceC2AEvidenceMemoryAdapterTest",
+                                        "DatabaseSliceC2BRuntimeAdapterTest",
+                                        "SliceCCoordinatorTest",
+                                        "ArchitectureTest",
+                                        "DatabaseBoundaryTest",
+                                        "PortBoundaryTest"
+                                    ],
+                 "missingSuites":  [
+
+                                   ],
+                 "total":  {
+                               "run":  266,
+                               "failures":  0,
+                               "errors":  0,
+                               "skipped":  0
+                           },
+                 "suites":  {
+                                "apps/worker/target/surefire-reports/TEST-io.github.candyxi0.hidenest.worker.OutboxWorkerAssemblyTest.xml":  {
+                                                                                                                                                 "run":  5,
+                                                                                                                                                 "failures":  0,
+                                                                                                                                                 "errors":  0,
+                                                                                                                                                 "skipped":  0,
+                                                                                                                                                 "sha256":  "88FF1BC993C3E38423A811A99B9F5B58BF037FEB7654D171AB14BD9EEFA0176A"
+                                                                                                                                             },
+                                "modules/application/target/surefire-reports/TEST-io.github.candyxi0.hidenest.application.outbox.BackoffCalculatorTest.xml":  {
+                                                                                                                                                                  "run":  24,
+                                                                                                                                                                  "failures":  0,
+                                                                                                                                                                  "errors":  0,
+                                                                                                                                                                  "skipped":  0,
+                                                                                                                                                                  "sha256":  "B9B4DD0CCA77FB81275FF68C77AB78034F07065F2CFEE4A82C563B8592E85B62"
+                                                                                                                                                              },
+                                "modules/application/target/surefire-reports/TEST-io.github.candyxi0.hidenest.application.outbox.OutboxWorkerCoordinatorTest.xml":  {
+                                                                                                                                                                        "run":  16,
+                                                                                                                                                                        "failures":  0,
+                                                                                                                                                                        "errors":  0,
+                                                                                                                                                                        "skipped":  0,
+                                                                                                                                                                        "sha256":  "A6833DF767A0C58BB959D4332315E695DCCF96C6B5832EA4D5965C385D81A695"
+                                                                                                                                                                    },
+                                "modules/architecture-tests/target/surefire-reports/TEST-io.github.candyxi0.hidenest.arch.ArchitectureTest.xml":  {
+                                                                                                                                                      "run":  7,
+                                                                                                                                                      "failures":  0,
+                                                                                                                                                      "errors":  0,
+                                                                                                                                                      "skipped":  0,
+                                                                                                                                                      "sha256":  "5C495DECEAFE6382061F47E9B9199921CBE0D51115ECE1152ECBD86833AC3176"
+                                                                                                                                                  },
+                                "modules/architecture-tests/target/surefire-reports/TEST-io.github.candyxi0.hidenest.arch.DatabaseBoundaryTest.xml":  {
+                                                                                                                                                          "run":  6,
+                                                                                                                                                          "failures":  0,
+                                                                                                                                                          "errors":  0,
+                                                                                                                                                          "skipped":  0,
+                                                                                                                                                          "sha256":  "081DC20916DABC7D02660C0970852E68EC9DA4D538B6731423305FA11A3F2422"
+                                                                                                                                                      },
+                                "modules/architecture-tests/target/surefire-reports/TEST-io.github.candyxi0.hidenest.arch.PortBoundaryTest.xml":  {
+                                                                                                                                                      "run":  11,
+                                                                                                                                                      "failures":  0,
+                                                                                                                                                      "errors":  0,
+                                                                                                                                                      "skipped":  0,
+                                                                                                                                                      "sha256":  "1EEAD28DE9A15CFC2F8DE1E941BF42EC35A5EA3CC721885DEB75E0E2D15A8973"
+                                                                                                                                                  },
+                                "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.CompatibilityFixtureTest.xml":  {
+                                                                                                                                                          "run":  9,
+                                                                                                                                                          "failures":  0,
+                                                                                                                                                          "errors":  0,
+                                                                                                                                                          "skipped":  0,
+                                                                                                                                                          "sha256":  "BCAE2C08C42CADD6003EE0C6EE1B9415B45647536DE43635F6E807968DA1E8D2"
+                                                                                                                                                      },
+                                "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.DeterminismTest.xml":  {
+                                                                                                                                                 "run":  5,
+                                                                                                                                                 "failures":  0,
+                                                                                                                                                 "errors":  0,
+                                                                                                                                                 "skipped":  0,
+                                                                                                                                                 "sha256":  "DB2237BD8D428274E88F4CFD080B23A246400DB4FCAE345B6F6A949CC175BB9A"
+                                                                                                                                             },
+                                "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.EnumCompletenessTest.xml":  {
+                                                                                                                                                      "run":  2,
+                                                                                                                                                      "failures":  0,
+                                                                                                                                                      "errors":  0,
+                                                                                                                                                      "skipped":  0,
+                                                                                                                                                      "sha256":  "B724330FF633786048ED2658DC8A7963FBAC0A1727BBD85AF82B34DFC57F78B9"
+                                                                                                                                                  },
+                                "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.EventSchemaTest.xml":  {
+                                                                                                                                                 "run":  3,
+                                                                                                                                                 "failures":  0,
+                                                                                                                                                 "errors":  0,
+                                                                                                                                                 "skipped":  0,
+                                                                                                                                                 "sha256":  "AB92EA44B8CE6A14763CD7A0D57939B2FBDE3720AC4E3536EA6CBEEBBFFA2EF7"
+                                                                                                                                             },
+                                "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.FixtureValidationTest.xml":  {
+                                                                                                                                                       "run":  3,
+                                                                                                                                                       "failures":  0,
+                                                                                                                                                       "errors":  0,
+                                                                                                                                                       "skipped":  0,
+                                                                                                                                                       "sha256":  "BBAAA0EB5EF875A6396C2391A99FE737DD67DEA51D4A63B43DC66F7D5251D3A8"
+                                                                                                                                                   },
+                                "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.LeakageCanaryTest.xml":  {
+                                                                                                                                                   "run":  4,
+                                                                                                                                                   "failures":  0,
+                                                                                                                                                   "errors":  0,
+                                                                                                                                                   "skipped":  0,
+                                                                                                                                                   "sha256":  "B7EC2535473FC98F6852A497DDE07787AED070A3AF9D47761FBE59977C696ECB"
+                                                                                                                                               },
+                                "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.LocalExcludeTest.xml":  {
+                                                                                                                                                  "run":  1,
+                                                                                                                                                  "failures":  0,
+                                                                                                                                                  "errors":  0,
+                                                                                                                                                  "skipped":  0,
+                                                                                                                                                  "sha256":  "FDFFFFAD02268FD89394BFA98F579D597E2FD036142892015CEBC5F1698F0E74"
+                                                                                                                                              },
+                                "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.OpenApiValidationTest.xml":  {
+                                                                                                                                                       "run":  4,
+                                                                                                                                                       "failures":  0,
+                                                                                                                                                       "errors":  0,
+                                                                                                                                                       "skipped":  0,
+                                                                                                                                                       "sha256":  "EDA8D904830E51EFF00863404772399C0A82C3C0FF42DBDA8DDFEED1A17E2D6B"
+                                                                                                                                                   },
+                                "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.OperationMatrixTest.xml":  {
+                                                                                                                                                     "run":  2,
+                                                                                                                                                     "failures":  0,
+                                                                                                                                                     "errors":  0,
+                                                                                                                                                     "skipped":  0,
+                                                                                                                                                     "sha256":  "80673283F36A1BF8FB6E84F58B2ABFDFF417CEE16BA4761CC6F0061FA3138F13"
+                                                                                                                                                 },
+                                "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.SchemaStructureTest.xml":  {
+                                                                                                                                                     "run":  4,
+                                                                                                                                                     "failures":  0,
+                                                                                                                                                     "errors":  0,
+                                                                                                                                                     "skipped":  0,
+                                                                                                                                                     "sha256":  "A795BEF89FCEADAFF45A2885FCE1DCE86A72A457BF63F49283CEE0523447E0E5"
+                                                                                                                                                 },
+                                "modules/database-adapter/target/surefire-reports/TEST-io.github.candyxi0.hidenest.database.DatabaseSliceBContractTest.xml":  {
+                                                                                                                                                                  "run":  95,
+                                                                                                                                                                  "failures":  0,
+                                                                                                                                                                  "errors":  0,
+                                                                                                                                                                  "skipped":  0,
+                                                                                                                                                                  "sha256":  "40E40EB6778BEB38477FC58E970C71D011AAABA6DBA6B309FD1DF05C7778E33D"
+                                                                                                                                                              },
+                                "modules/database-adapter/target/surefire-reports/TEST-io.github.candyxi0.hidenest.database.DatabaseSliceC2AEvidenceMemoryAdapterTest.xml":  {
+                                                                                                                                                                                 "run":  14,
+                                                                                                                                                                                 "failures":  0,
+                                                                                                                                                                                 "errors":  0,
+                                                                                                                                                                                 "skipped":  0,
+                                                                                                                                                                                 "sha256":  "C0F57354CE9F139E7D26D61632C48057BDFE7942F97B8461F30024CC239C3B89"
+                                                                                                                                                                             },
+                                "modules/database-adapter/target/surefire-reports/TEST-io.github.candyxi0.hidenest.database.DatabaseSliceC2BRuntimeAdapterTest.xml":  {
+                                                                                                                                                                          "run":  14,
+                                                                                                                                                                          "failures":  0,
+                                                                                                                                                                          "errors":  0,
+                                                                                                                                                                          "skipped":  0,
+                                                                                                                                                                          "sha256":  "12BD2B313DE92863C304EFCD85DC6D3683B8CD5FF9D7D343365A40DC3BD407E9"
+                                                                                                                                                                      },
+                                "modules/database-adapter/target/surefire-reports/TEST-io.github.candyxi0.hidenest.database.DatabaseSliceD1OutboxMechanicsTest.xml":  {
+                                                                                                                                                                          "run":  22,
+                                                                                                                                                                          "failures":  0,
+                                                                                                                                                                          "errors":  0,
+                                                                                                                                                                          "skipped":  0,
+                                                                                                                                                                          "sha256":  "6D20FD13C415AF14372DE28CE7AA40B7298D11DB2A4A123C58053BEB2D6F36F7"
+                                                                                                                                                                      },
+                                "modules/database-adapter/target/surefire-reports/TEST-io.github.candyxi0.hidenest.database.SliceCCoordinatorTest.xml":  {
+                                                                                                                                                             "run":  15,
+                                                                                                                                                             "failures":  0,
+                                                                                                                                                             "errors":  0,
+                                                                                                                                                             "skipped":  0,
+                                                                                                                                                             "sha256":  "23B15EEE2C2D7C650239DBAD4193AF2F2AFCE245DAD620B03AD27893C9084FFE"
+                                                                                                                                                         }
+                            },
+                 "xmlHashes":  {
+                                   "apps/worker/target/surefire-reports/TEST-io.github.candyxi0.hidenest.worker.OutboxWorkerAssemblyTest.xml":  "88FF1BC993C3E38423A811A99B9F5B58BF037FEB7654D171AB14BD9EEFA0176A",
+                                   "modules/application/target/surefire-reports/TEST-io.github.candyxi0.hidenest.application.outbox.BackoffCalculatorTest.xml":  "B9B4DD0CCA77FB81275FF68C77AB78034F07065F2CFEE4A82C563B8592E85B62",
+                                   "modules/application/target/surefire-reports/TEST-io.github.candyxi0.hidenest.application.outbox.OutboxWorkerCoordinatorTest.xml":  "A6833DF767A0C58BB959D4332315E695DCCF96C6B5832EA4D5965C385D81A695",
+                                   "modules/architecture-tests/target/surefire-reports/TEST-io.github.candyxi0.hidenest.arch.ArchitectureTest.xml":  "5C495DECEAFE6382061F47E9B9199921CBE0D51115ECE1152ECBD86833AC3176",
+                                   "modules/architecture-tests/target/surefire-reports/TEST-io.github.candyxi0.hidenest.arch.DatabaseBoundaryTest.xml":  "081DC20916DABC7D02660C0970852E68EC9DA4D538B6731423305FA11A3F2422",
+                                   "modules/architecture-tests/target/surefire-reports/TEST-io.github.candyxi0.hidenest.arch.PortBoundaryTest.xml":  "1EEAD28DE9A15CFC2F8DE1E941BF42EC35A5EA3CC721885DEB75E0E2D15A8973",
+                                   "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.CompatibilityFixtureTest.xml":  "BCAE2C08C42CADD6003EE0C6EE1B9415B45647536DE43635F6E807968DA1E8D2",
+                                   "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.DeterminismTest.xml":  "DB2237BD8D428274E88F4CFD080B23A246400DB4FCAE345B6F6A949CC175BB9A",
+                                   "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.EnumCompletenessTest.xml":  "B724330FF633786048ED2658DC8A7963FBAC0A1727BBD85AF82B34DFC57F78B9",
+                                   "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.EventSchemaTest.xml":  "AB92EA44B8CE6A14763CD7A0D57939B2FBDE3720AC4E3536EA6CBEEBBFFA2EF7",
+                                   "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.FixtureValidationTest.xml":  "BBAAA0EB5EF875A6396C2391A99FE737DD67DEA51D4A63B43DC66F7D5251D3A8",
+                                   "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.LeakageCanaryTest.xml":  "B7EC2535473FC98F6852A497DDE07787AED070A3AF9D47761FBE59977C696ECB",
+                                   "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.LocalExcludeTest.xml":  "FDFFFFAD02268FD89394BFA98F579D597E2FD036142892015CEBC5F1698F0E74",
+                                   "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.OpenApiValidationTest.xml":  "EDA8D904830E51EFF00863404772399C0A82C3C0FF42DBDA8DDFEED1A17E2D6B",
+                                   "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.OperationMatrixTest.xml":  "80673283F36A1BF8FB6E84F58B2ABFDFF417CEE16BA4761CC6F0061FA3138F13",
+                                   "modules/contracts/target/surefire-reports/TEST-io.github.candyxi0.hidenest.contracts.SchemaStructureTest.xml":  "A795BEF89FCEADAFF45A2885FCE1DCE86A72A457BF63F49283CEE0523447E0E5",
+                                   "modules/database-adapter/target/surefire-reports/TEST-io.github.candyxi0.hidenest.database.DatabaseSliceBContractTest.xml":  "40E40EB6778BEB38477FC58E970C71D011AAABA6DBA6B309FD1DF05C7778E33D",
+                                   "modules/database-adapter/target/surefire-reports/TEST-io.github.candyxi0.hidenest.database.DatabaseSliceC2AEvidenceMemoryAdapterTest.xml":  "C0F57354CE9F139E7D26D61632C48057BDFE7942F97B8461F30024CC239C3B89",
+                                   "modules/database-adapter/target/surefire-reports/TEST-io.github.candyxi0.hidenest.database.DatabaseSliceC2BRuntimeAdapterTest.xml":  "12BD2B313DE92863C304EFCD85DC6D3683B8CD5FF9D7D343365A40DC3BD407E9",
+                                   "modules/database-adapter/target/surefire-reports/TEST-io.github.candyxi0.hidenest.database.DatabaseSliceD1OutboxMechanicsTest.xml":  "6D20FD13C415AF14372DE28CE7AA40B7298D11DB2A4A123C58053BEB2D6F36F7",
+                                   "modules/database-adapter/target/surefire-reports/TEST-io.github.candyxi0.hidenest.database.SliceCCoordinatorTest.xml":  "23B15EEE2C2D7C650239DBAD4193AF2F2AFCE245DAD620B03AD27893C9084FFE"
+                               }
+             },
+    "node":  {
+                 "typecheck":  "PASS",
+                 "lint":  "PASS",
+                 "test":  "PASS",
+                 "build":  "PASS"
+             },
+    "smoke":  {
+                  "api":  "PASS",
+                  "workerDefault":  "PASS",
+                  "workerMisconfigured":  "PASS"
+              },
+    "static":  {
+                   "v001v009":  "MATCH",
+                   "frozenMigrationCount":  9,
+                   "changedFrozenMigrations":  [
+
+                                               ],
+                   "v010":  "MATCH",
+                   "v010Evidence":  {
+                                        "path":  "modules/database-adapter/src/main/resources/db/migration/V010__work_artifact_delete_privilege.sql",
+                                        "bytes":  233,
+                                        "sha256":  "1D4627D8604AA9D3F51AA32D6FF827B2BD0F785C3B6023CB92DAE3ED64EE6D1A"
+                                    },
+                   "generated":  "MATCH",
+                   "generatedFileCount":  81,
+                   "generatedChanged":  [
+
+                                        ],
+                   "productionScanFileCount":  74,
+                   "productionGuardCount":  0,
+                   "productionHandlerCount":  0,
+                   "operationalProducerCount":  0,
+                   "bodyLeakCount":  0,
+                   "bodyLeakPaths":  [
+
+                                     ],
+                   "secretLeakCount":  0,
+                   "trivialAssertionCount":  0
+               },
+    "workspace":  {
+                      "gitIndexStart":  "E66D648F9500005759491DAC6A081F47C1EAE34CF055ED8D1E9917EC726F6B49",
+                      "gitIndexEnd":  "E66D648F9500005759491DAC6A081F47C1EAE34CF055ED8D1E9917EC726F6B49",
+                      "gitIndexRawStart":  "A85092281AB4237D9E8C19CDF3DED71815D2636E01661538AC157945D34B9238",
+                      "gitIndexRawEnd":  "266BC151E6B05FF7318C07F05ACF4FB885A5460783D9503D3960C58C5A05DCB1",
+                      "gitIndex":  "MATCH",
+                      "stagedCount":  0,
+                      "outOfScopeChanges":  0,
+                      "outOfScopeAdded":  [
+
+                                          ],
+                      "outOfScopeRemoved":  [
+
+                                            ],
+                      "dockerAdded":  {
+                                          "containers":  [
+
+                                                         ],
+                                          "volumes":  [
+
+                                                      ],
+                                          "networks":  [
+
+                                                       ]
+                                      },
+                      "taskPids":  [
+                                       37576,
+                                       28536,
+                                       13508
+                                   ],
+                      "taskProcessResidue":  0
+                  }
+}

@@ -84,7 +84,7 @@ class DatabaseSliceBContractTest {
                 .validateMigrationNaming(true)
                 .load();
         MigrateResult result = flyway.migrate();
-        assertEquals(9, result.migrationsExecuted);
+        assertEquals(10, result.migrationsExecuted);
     }
 
     @AfterAll
@@ -105,7 +105,7 @@ class DatabaseSliceBContractTest {
         MigrateResult repeated = flyway.migrate();
         assertEquals(0, repeated.migrationsExecuted);
         assertEquals(before, catalogFingerprint());
-        assertEquals(9, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(10, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
     }
 
     @Test
@@ -1456,9 +1456,9 @@ class DatabaseSliceBContractTest {
 
     @Test
     @Order(44)
-    @DisplayName("V009: migration history = 9, repeat migrate executes 0")
-    void v009MigrationHistoryAndRepeat() {
-        assertEquals(9, flyway.info().applied().length, "history must be 9");
+    @DisplayName("V010: migration history = 10, repeat migrate executes 0")
+    void v010MigrationHistoryAndRepeat() {
+        assertEquals(10, flyway.info().applied().length, "history must be 10");
         MigrateResult repeat = flyway.migrate();
         assertEquals(0, repeat.migrationsExecuted, "repeat migrate must execute 0");
     }
@@ -1503,15 +1503,15 @@ class DatabaseSliceBContractTest {
         UUID policyId = insertMinimalAccessPolicy();
         UUID sourceId = insertMinimalSource(policyId, "FZ");
         UUID scopeId = UUID.randomUUID();
-        execute(connection(), "INSERT INTO runtime.capture_scope (scope_id, source_id, from_ordinal, to_ordinal, rule_version, coverage_code, frozen_at, manifest_hash, created_at) VALUES"
+        execute( "INSERT INTO runtime.capture_scope (scope_id, source_id, from_ordinal, to_ordinal, rule_version, coverage_code, frozen_at, manifest_hash, created_at) VALUES"
                 + "('" + scopeId + "','" + sourceId + "',0,10,'v1','FULL','2026-01-01T00:00:00Z',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.capture_scope SET rule_version='v2' WHERE scope_id='" + scopeId + "'"));
+            execute( "UPDATE runtime.capture_scope SET rule_version='v2' WHERE scope_id='" + scopeId + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
 
         SQLException ex2 = assertThrows(SQLException.class, () ->
-            execute(connection(), "DELETE FROM runtime.capture_scope WHERE scope_id='" + scopeId + "'"));
+            execute( "DELETE FROM runtime.capture_scope WHERE scope_id='" + scopeId + "'"));
         assertTrue(ex2.getMessage().contains("23514") || ex2.getSQLState().equals("23514"));
     }
 
@@ -1529,12 +1529,12 @@ class DatabaseSliceBContractTest {
         UUID runId = UUID.randomUUID();
 
         // READY → RUNNING
-        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+        execute( "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
                 + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
-        execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
 
         // RUNNING → COMPLETED
-        execute(connection(), "UPDATE runtime.closeout_run SET state='COMPLETED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='COMPLETED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
         assertEquals("COMPLETED", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
     }
 
@@ -1547,12 +1547,12 @@ class DatabaseSliceBContractTest {
         UUID scopeId = insertMinimalCaptureScope(sourceId);
         UUID runId = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+        execute( "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
                 + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
 
         // READY → COMPLETED (skip RUNNING) — should be rejected
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.closeout_run SET state='COMPLETED', started_at='2026-01-01T01:00:00Z', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'"));
+            execute( "UPDATE runtime.closeout_run SET state='COMPLETED', started_at='2026-01-01T01:00:00Z', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -1565,14 +1565,14 @@ class DatabaseSliceBContractTest {
         UUID scopeId = insertMinimalCaptureScope(sourceId);
         UUID runId = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+        execute( "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
                 + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
-        execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
-        execute(connection(), "UPDATE runtime.closeout_run SET state='COMPLETED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='COMPLETED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
 
         // COMPLETED → RUNNING (rollback) — rejected
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', terminal_at=NULL WHERE run_id='" + runId + "'"));
+            execute( "UPDATE runtime.closeout_run SET state='RUNNING', terminal_at=NULL WHERE run_id='" + runId + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -1587,11 +1587,11 @@ class DatabaseSliceBContractTest {
         UUID run2 = UUID.randomUUID();
         UUID subId = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, submission_id, created_at) VALUES"
+        execute( "INSERT INTO runtime.closeout_run (run_id, scope_id, state, submission_id, created_at) VALUES"
                 + "('" + run1 + "','" + scopeId + "','READY','" + subId + "','2026-01-01T00:00:00Z')");
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, submission_id, created_at) VALUES"
+            execute( "INSERT INTO runtime.closeout_run (run_id, scope_id, state, submission_id, created_at) VALUES"
                     + "('" + run2 + "','" + scopeId + "','READY','" + subId + "','2026-01-01T00:00:00Z')"));
         assertTrue(ex.getMessage().contains("23505") || ex.getSQLState().equals("23505"),
                 "duplicate submission_id must be rejected, got: " + ex.getSQLState());
@@ -1608,7 +1608,7 @@ class DatabaseSliceBContractTest {
 
         // READY with started_at should be rejected by CHECK constraint
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, started_at, created_at) VALUES"
+            execute( "INSERT INTO runtime.closeout_run (run_id, scope_id, state, started_at, created_at) VALUES"
                     + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
@@ -1626,11 +1626,11 @@ class DatabaseSliceBContractTest {
         UUID runId = UUID.randomUUID();
         String runKind = "CLOSEOUT_RUN";
 
-        execute(connection(), "INSERT INTO runtime.checkpoint (checkpoint_id, run_kind, run_id, sequence_no, manifest_hash, created_at) VALUES"
+        execute( "INSERT INTO runtime.checkpoint (checkpoint_id, run_kind, run_id, sequence_no, manifest_hash, created_at) VALUES"
                 + "('" + cp1 + "','" + runKind + "','" + runId + "',0,decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "INSERT INTO runtime.checkpoint (checkpoint_id, run_kind, run_id, sequence_no, manifest_hash, created_at) VALUES"
+            execute( "INSERT INTO runtime.checkpoint (checkpoint_id, run_kind, run_id, sequence_no, manifest_hash, created_at) VALUES"
                     + "('" + cp2 + "','" + runKind + "','" + runId + "',0,decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')"));
         assertTrue(ex.getMessage().contains("23505") || ex.getSQLState().equals("23505"),
                 "duplicate (run_kind,run_id,sequence_no) must be rejected");
@@ -1643,15 +1643,15 @@ class DatabaseSliceBContractTest {
         UUID cpId = UUID.randomUUID();
         UUID runId = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.checkpoint (checkpoint_id, run_kind, run_id, sequence_no, manifest_hash, created_at) VALUES"
+        execute( "INSERT INTO runtime.checkpoint (checkpoint_id, run_kind, run_id, sequence_no, manifest_hash, created_at) VALUES"
                 + "('" + cpId + "','CLOSEOUT_RUN','" + runId + "',0,decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.checkpoint SET sequence_no=1 WHERE checkpoint_id='" + cpId + "'"));
+            execute( "UPDATE runtime.checkpoint SET sequence_no=1 WHERE checkpoint_id='" + cpId + "'"));
         assertTrue(ex.getMessage().contains("55000") || ex.getSQLState().equals("55000"));
 
         SQLException ex2 = assertThrows(SQLException.class, () ->
-            execute(connection(), "DELETE FROM runtime.checkpoint WHERE checkpoint_id='" + cpId + "'"));
+            execute( "DELETE FROM runtime.checkpoint WHERE checkpoint_id='" + cpId + "'"));
         assertTrue(ex2.getMessage().contains("55000") || ex2.getSQLState().equals("55000"));
     }
 
@@ -1665,10 +1665,10 @@ class DatabaseSliceBContractTest {
     void v009WorkArtifactDeleteAllowed() throws SQLException {
         UUID artId = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.work_artifact (artifact_id, artifact_kind, object_ref, content_hash, expires_at, created_at) VALUES"
+        execute( "INSERT INTO runtime.work_artifact (artifact_id, artifact_kind, object_ref, content_hash, expires_at, created_at) VALUES"
                 + "('" + artId + "','DRAFT','oss://bucket/key',decode('" + HASH_HEX + "','hex'),'2027-01-01T00:00:00Z','2026-01-01T00:00:00Z')");
         // Must NOT throw — WorkArtifact allows physical delete
-        execute(connection(), "DELETE FROM runtime.work_artifact WHERE artifact_id='" + artId + "'");
+        execute( "DELETE FROM runtime.work_artifact WHERE artifact_id='" + artId + "'");
         long count = scalarLong("SELECT count(*) FROM runtime.work_artifact WHERE artifact_id='" + artId + "'");
         assertEquals(0, count);
     }
@@ -1697,21 +1697,21 @@ class DatabaseSliceBContractTest {
         UUID mr3 = UUID.randomUUID();
 
         // SUCCEEDED
-        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+        execute( "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
                 + "('" + mr1 + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
-        execute(connection(), "UPDATE runtime.model_run SET state='SUCCEEDED', terminal_at='2026-01-01T01:00:00Z', output_manifest_hash=decode('" + HASH_HEX + "','hex') WHERE model_run_id='" + mr1 + "'");
+        execute( "UPDATE runtime.model_run SET state='SUCCEEDED', terminal_at='2026-01-01T01:00:00Z', output_manifest_hash=decode('" + HASH_HEX + "','hex') WHERE model_run_id='" + mr1 + "'");
         assertEquals("SUCCEEDED", scalarString("SELECT state FROM runtime.model_run WHERE model_run_id='" + mr1 + "'"));
 
         // FAILED
-        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+        execute( "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
                 + "('" + mr2 + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
-        execute(connection(), "UPDATE runtime.model_run SET state='FAILED', terminal_at='2026-01-01T01:00:00Z', failure_code='INTERNAL_FAILURE' WHERE model_run_id='" + mr2 + "'");
+        execute( "UPDATE runtime.model_run SET state='FAILED', terminal_at='2026-01-01T01:00:00Z', failure_code='INTERNAL_FAILURE' WHERE model_run_id='" + mr2 + "'");
         assertEquals("FAILED", scalarString("SELECT state FROM runtime.model_run WHERE model_run_id='" + mr2 + "'"));
 
         // CANCELLED
-        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+        execute( "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
                 + "('" + mr3 + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
-        execute(connection(), "UPDATE runtime.model_run SET state='CANCELLED', terminal_at='2026-01-01T01:00:00Z' WHERE model_run_id='" + mr3 + "'");
+        execute( "UPDATE runtime.model_run SET state='CANCELLED', terminal_at='2026-01-01T01:00:00Z' WHERE model_run_id='" + mr3 + "'");
         assertEquals("CANCELLED", scalarString("SELECT state FROM runtime.model_run WHERE model_run_id='" + mr3 + "'"));
     }
 
@@ -1721,13 +1721,13 @@ class DatabaseSliceBContractTest {
     void v009ModelRunTerminalAndHashAttacks() throws SQLException {
         UUID mr = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+        execute( "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
                 + "('" + mr + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
-        execute(connection(), "UPDATE runtime.model_run SET state='SUCCEEDED', terminal_at='2026-01-01T01:00:00Z', output_manifest_hash=decode('" + HASH_HEX + "','hex') WHERE model_run_id='" + mr + "'");
+        execute( "UPDATE runtime.model_run SET state='SUCCEEDED', terminal_at='2026-01-01T01:00:00Z', output_manifest_hash=decode('" + HASH_HEX + "','hex') WHERE model_run_id='" + mr + "'");
 
         // Terminal rollback rejected
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.model_run SET state='RUNNING', terminal_at=NULL, output_manifest_hash=NULL WHERE model_run_id='" + mr + "'"));
+            execute( "UPDATE runtime.model_run SET state='RUNNING', terminal_at=NULL, output_manifest_hash=NULL WHERE model_run_id='" + mr + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -1737,12 +1737,12 @@ class DatabaseSliceBContractTest {
     void v009ModelRunFieldConsistencyAttack() throws SQLException {
         UUID mr = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+        execute( "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
                 + "('" + mr + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
 
         // SUCCEEDED with failure_code should be rejected
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.model_run SET state='SUCCEEDED', terminal_at='2026-01-01T01:00:00Z', output_manifest_hash=decode('" + HASH_HEX + "','hex'), failure_code='INTERNAL_FAILURE' WHERE model_run_id='" + mr + "'"));
+            execute( "UPDATE runtime.model_run SET state='SUCCEEDED', terminal_at='2026-01-01T01:00:00Z', output_manifest_hash=decode('" + HASH_HEX + "','hex'), failure_code='INTERNAL_FAILURE' WHERE model_run_id='" + mr + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -1761,7 +1761,7 @@ class DatabaseSliceBContractTest {
         UUID id1 = UUID.randomUUID();
         UUID id2 = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.retrieval_trace (trace_id, request_id, thread_id, turn_id, purpose, result_category, policy_revision_set_hash, considered_ids, delivered_ids, created_at, expires_at) VALUES"
+        execute( "INSERT INTO runtime.retrieval_trace (trace_id, request_id, thread_id, turn_id, purpose, result_category, policy_revision_set_hash, considered_ids, delivered_ids, created_at, expires_at) VALUES"
                 + "('" + traceId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL','SUCCEEDED',decode('" + HASH_HEX + "','hex'),"
                 + "ARRAY['" + id1 + "','" + id2 + "']::uuid[],ARRAY['" + id1 + "']::uuid[],'2026-01-01T00:00:00Z','2027-01-01T00:00:00Z')");
 
@@ -1779,7 +1779,7 @@ class DatabaseSliceBContractTest {
         UUID turnId = UUID.randomUUID();
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "INSERT INTO runtime.retrieval_trace (trace_id, request_id, thread_id, turn_id, purpose, result_category, policy_revision_set_hash, considered_ids, created_at, expires_at) VALUES"
+            execute( "INSERT INTO runtime.retrieval_trace (trace_id, request_id, thread_id, turn_id, purpose, result_category, policy_revision_set_hash, considered_ids, created_at, expires_at) VALUES"
                     + "('" + traceId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL','SUCCEEDED',decode('" + HASH_HEX + "','hex'),"
                     + "ARRAY[NULL]::uuid[],'2026-01-01T00:00:00Z','2027-01-01T00:00:00Z')"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
@@ -1795,7 +1795,7 @@ class DatabaseSliceBContractTest {
         UUID turnId = UUID.randomUUID();
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "INSERT INTO runtime.retrieval_trace (trace_id, request_id, thread_id, turn_id, purpose, result_category, policy_revision_set_hash, created_at, expires_at) VALUES"
+            execute( "INSERT INTO runtime.retrieval_trace (trace_id, request_id, thread_id, turn_id, purpose, result_category, policy_revision_set_hash, created_at, expires_at) VALUES"
                     + "('" + traceId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL','INVALID_CATEGORY',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z','2027-01-01T00:00:00Z')"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
@@ -1814,7 +1814,7 @@ class DatabaseSliceBContractTest {
         UUID turnId = UUID.randomUUID();
 
         // Exactly 10 minutes — must pass
-        execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
+        execute( "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
                 + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
                 + "'2026-01-01T00:00:00Z','2026-01-01T00:10:00Z')");
     }
@@ -1829,7 +1829,7 @@ class DatabaseSliceBContractTest {
         UUID turnId = UUID.randomUUID();
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
+            execute( "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
                     + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
                     + "'2026-01-01T00:00:00Z','2026-01-01T00:10:01Z')"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
@@ -1845,7 +1845,7 @@ class DatabaseSliceBContractTest {
         UUID turnId = UUID.randomUUID();
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at, invalidated_at) VALUES"
+            execute( "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at, invalidated_at) VALUES"
                     + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
                     + "'2026-01-01T00:00:00Z','2026-01-01T00:05:00Z','2026-01-01T00:01:00Z')"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
@@ -1859,7 +1859,7 @@ class DatabaseSliceBContractTest {
         UUID eventId = UUID.randomUUID();
         UUID aggId = UUID.randomUUID();
         String manifest = manifestPayload(aggId, 1L);
-        execute(connection(), "INSERT INTO runtime.outbox_event (event_id, idempotency_key, event_category, event_type, aggregate_kind, aggregate_id, aggregate_revision, contract_version, purpose, policy_revision, manifest_hash, payload_manifest, available_at, created_at) VALUES"
+        execute( "INSERT INTO runtime.outbox_event (event_id, idempotency_key, event_category, event_type, aggregate_kind, aggregate_id, aggregate_revision, contract_version, purpose, policy_revision, manifest_hash, payload_manifest, available_at, created_at) VALUES"
                 + "('" + eventId + "','" + uniqueKey() + "','OPERATIONAL','index.sync-completed.v1','RUN','" + aggId + "',1,'pink.event.v1','DATABASE_TEST',0,decode('" + HASH_HEX + "','hex'),'" + manifest.replace("'", "''") + "'::jsonb,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')");
         return eventId;
     }
@@ -1872,11 +1872,11 @@ class DatabaseSliceBContractTest {
         String consumerCode = "TEST_CONSUMER";
         String effectKey = "EFFECT_1";
 
-        execute(connection(), "INSERT INTO runtime.consumer_effect (consumer_code, event_id, effect_key, recorded_at) VALUES"
+        execute( "INSERT INTO runtime.consumer_effect (consumer_code, event_id, effect_key, recorded_at) VALUES"
                 + "('" + consumerCode + "','" + eventId + "','" + effectKey + "','2026-01-01T00:00:00Z')");
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "INSERT INTO runtime.consumer_effect (consumer_code, event_id, effect_key, recorded_at) VALUES"
+            execute( "INSERT INTO runtime.consumer_effect (consumer_code, event_id, effect_key, recorded_at) VALUES"
                     + "('" + consumerCode + "','" + eventId + "','" + effectKey + "','2026-01-01T00:00:01Z')"));
         assertTrue(ex.getMessage().contains("23505") || ex.getSQLState().equals("23505"),
                 "duplicate (consumer_code, event_id, effect_key) must be rejected");
@@ -1890,15 +1890,15 @@ class DatabaseSliceBContractTest {
         String consumerCode = "TEST_CONSUMER_IM";
         String effectKey = "EFFECT_IM";
 
-        execute(connection(), "INSERT INTO runtime.consumer_effect (consumer_code, event_id, effect_key, recorded_at) VALUES"
+        execute( "INSERT INTO runtime.consumer_effect (consumer_code, event_id, effect_key, recorded_at) VALUES"
                 + "('" + consumerCode + "','" + eventId + "','" + effectKey + "','2026-01-01T00:00:00Z')");
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.consumer_effect SET recorded_at='2026-01-02T00:00:00Z' WHERE consumer_code='" + consumerCode + "'"));
+            execute( "UPDATE runtime.consumer_effect SET recorded_at='2026-01-02T00:00:00Z' WHERE consumer_code='" + consumerCode + "'"));
         assertTrue(ex.getMessage().contains("55000") || ex.getSQLState().equals("55000"));
 
         SQLException ex2 = assertThrows(SQLException.class, () ->
-            execute(connection(), "DELETE FROM runtime.consumer_effect WHERE consumer_code='" + consumerCode + "'"));
+            execute( "DELETE FROM runtime.consumer_effect WHERE consumer_code='" + consumerCode + "'"));
         assertTrue(ex2.getMessage().contains("55000") || ex2.getSQLState().equals("55000"));
     }
 
@@ -1913,7 +1913,7 @@ class DatabaseSliceBContractTest {
         for (String kind : new String[]{"RUN", "EFFECT", "FACT"}) {
             String key = uniqueKey();
             UUID aggId = UUID.randomUUID();
-            execute(connection(), "INSERT INTO runtime.outbox_event (event_id, idempotency_key, event_category, event_type, aggregate_kind, aggregate_id, aggregate_revision, contract_version, purpose, policy_revision, manifest_hash, payload_manifest, available_at, created_at) VALUES"
+            execute( "INSERT INTO runtime.outbox_event (event_id, idempotency_key, event_category, event_type, aggregate_kind, aggregate_id, aggregate_revision, contract_version, purpose, policy_revision, manifest_hash, payload_manifest, available_at, created_at) VALUES"
                     + "('" + UUID.randomUUID() + "','" + key + "','OPERATIONAL','index.sync-completed.v1','" + kind + "','" + aggId + "',1,'pink.event.v1','INDEX_SYNC',0,decode('" + HASH_HEX + "','hex'),"
                     + "'{\"aggregateId\":\"" + aggId + "\",\"aggregateRevision\":1,\"policyRevision\":0,\"purpose\":\"INDEX_SYNC\",\"manifestHash\":\"" + HASH_HEX + "\"}'::jsonb,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')");
         }
@@ -1929,7 +1929,7 @@ class DatabaseSliceBContractTest {
             String finalKey = key;
             String finalBadKind = badKind;
             SQLException ex = assertThrows(SQLException.class, () ->
-                execute(connection(), "INSERT INTO runtime.outbox_event (event_id, idempotency_key, event_category, event_type, aggregate_kind, aggregate_id, aggregate_revision, contract_version, purpose, policy_revision, manifest_hash, payload_manifest, available_at, created_at) VALUES"
+                execute( "INSERT INTO runtime.outbox_event (event_id, idempotency_key, event_category, event_type, aggregate_kind, aggregate_id, aggregate_revision, contract_version, purpose, policy_revision, manifest_hash, payload_manifest, available_at, created_at) VALUES"
                         + "('" + UUID.randomUUID() + "','" + finalKey + "','OPERATIONAL','index.sync-completed.v1','" + finalBadKind + "','" + aggId + "',1,'pink.event.v1','INDEX_SYNC',0,decode('" + HASH_HEX + "','hex'),"
                         + "'{\"aggregateId\":\"" + aggId + "\",\"aggregateRevision\":1,\"policyRevision\":0,\"purpose\":\"INDEX_SYNC\",\"manifestHash\":\"" + HASH_HEX + "\"}'::jsonb,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')"));
             assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"),
@@ -1944,7 +1944,7 @@ class DatabaseSliceBContractTest {
         String key = uniqueKey();
         UUID aggId = UUID.randomUUID();
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "INSERT INTO runtime.outbox_event (event_id, idempotency_key, event_category, event_type, aggregate_kind, aggregate_id, aggregate_revision, contract_version, purpose, policy_revision, manifest_hash, payload_manifest, available_at, created_at) VALUES"
+            execute( "INSERT INTO runtime.outbox_event (event_id, idempotency_key, event_category, event_type, aggregate_kind, aggregate_id, aggregate_revision, contract_version, purpose, policy_revision, manifest_hash, payload_manifest, available_at, created_at) VALUES"
                     + "('" + UUID.randomUUID() + "','" + key + "','OPERATIONAL','index.sync-completed.v1','RUN','" + aggId + "',NULL,'pink.event.v1','INDEX_SYNC',0,decode('" + HASH_HEX + "','hex'),"
                     + "'{\"aggregateId\":\"" + aggId + "\",\"aggregateRevision\":null,\"policyRevision\":0,\"purpose\":\"INDEX_SYNC\",\"manifestHash\":\"" + HASH_HEX + "\"}'::jsonb,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"),
@@ -2058,7 +2058,7 @@ class DatabaseSliceBContractTest {
 
         // Try to INSERT unit on frozen scope → rejected
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "INSERT INTO runtime.capture_scope_unit (scope_id, source_unit_id, ordinal) VALUES"
+            execute( "INSERT INTO runtime.capture_scope_unit (scope_id, source_unit_id, ordinal) VALUES"
                     + "('" + scopeId + "','" + unitId + "',0)"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"),
                 "append unit on frozen scope must be rejected");
@@ -2081,7 +2081,7 @@ class DatabaseSliceBContractTest {
         }
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.capture_scope SET rule_version='v2' WHERE scope_id='" + scopeId + "'"));
+            execute( "UPDATE runtime.capture_scope SET rule_version='v2' WHERE scope_id='" + scopeId + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -2098,14 +2098,14 @@ class DatabaseSliceBContractTest {
         UUID scopeId = insertMinimalCaptureScope(sourceId);
         UUID runId = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+        execute( "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
                 + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
-        execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
-        execute(connection(), "UPDATE runtime.closeout_run SET state='COMPLETED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='COMPLETED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
 
         // COMPLETED→COMPLETED with different terminal_at → rejected
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.closeout_run SET terminal_at='2026-01-01T03:00:00Z' WHERE run_id='" + runId + "'"));
+            execute( "UPDATE runtime.closeout_run SET terminal_at='2026-01-01T03:00:00Z' WHERE run_id='" + runId + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -2118,13 +2118,13 @@ class DatabaseSliceBContractTest {
         UUID scopeId = insertMinimalCaptureScope(sourceId);
         UUID runId = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+        execute( "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
                 + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
-        execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
 
         // RUNNING→RUNNING with different started_at → rejected
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.closeout_run SET started_at='2026-01-01T01:30:00Z' WHERE run_id='" + runId + "'"));
+            execute( "UPDATE runtime.closeout_run SET started_at='2026-01-01T01:30:00Z' WHERE run_id='" + runId + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -2137,12 +2137,12 @@ class DatabaseSliceBContractTest {
         UUID scopeId = insertMinimalCaptureScope(sourceId);
         UUID runId = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+        execute( "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
                 + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
 
         // submission_id NULL→non-null → rejected
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.closeout_run SET submission_id='" + UUID.randomUUID() + "' WHERE run_id='" + runId + "'"));
+            execute( "UPDATE runtime.closeout_run SET submission_id='" + UUID.randomUUID() + "' WHERE run_id='" + runId + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -2155,13 +2155,13 @@ class DatabaseSliceBContractTest {
     @DisplayName("R1-04: ModelRun SUCCEEDED same-state modify terminal_at rejected")
     void r104ModelRunSucceededSameStateMutate() throws SQLException {
         UUID mr = UUID.randomUUID();
-        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+        execute( "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
                 + "('" + mr + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
-        execute(connection(), "UPDATE runtime.model_run SET state='SUCCEEDED', terminal_at='2026-01-01T01:00:00Z', output_manifest_hash=decode('" + HASH_HEX + "','hex') WHERE model_run_id='" + mr + "'");
+        execute( "UPDATE runtime.model_run SET state='SUCCEEDED', terminal_at='2026-01-01T01:00:00Z', output_manifest_hash=decode('" + HASH_HEX + "','hex') WHERE model_run_id='" + mr + "'");
 
         // SUCCEEDED→SUCCEEDED with different terminal_at → rejected
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.model_run SET terminal_at='2026-01-01T02:00:00Z' WHERE model_run_id='" + mr + "'"));
+            execute( "UPDATE runtime.model_run SET terminal_at='2026-01-01T02:00:00Z' WHERE model_run_id='" + mr + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -2170,12 +2170,12 @@ class DatabaseSliceBContractTest {
     @DisplayName("R1-04: ModelRun RUNNING same-state modify output_manifest_hash rejected")
     void r104ModelRunRunningSameStateMutate() throws SQLException {
         UUID mr = UUID.randomUUID();
-        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+        execute( "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
                 + "('" + mr + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
 
         // RUNNING→RUNNING setting output_manifest_hash → rejected
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.model_run SET output_manifest_hash=decode('" + HASH_HEX + "','hex') WHERE model_run_id='" + mr + "'"));
+            execute( "UPDATE runtime.model_run SET output_manifest_hash=decode('" + HASH_HEX + "','hex') WHERE model_run_id='" + mr + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -2184,13 +2184,13 @@ class DatabaseSliceBContractTest {
     @DisplayName("R1-04: ModelRun FAILED same-state modify failure_code rejected")
     void r104ModelRunFailedSameStateMutate() throws SQLException {
         UUID mr = UUID.randomUUID();
-        execute(connection(), "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
+        execute( "INSERT INTO runtime.model_run (model_run_id, role_code, provider_manifest_id, state, input_manifest_hash, started_at) VALUES"
                 + "('" + mr + "','ANALYZER','provider:v1','RUNNING',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
-        execute(connection(), "UPDATE runtime.model_run SET state='FAILED', terminal_at='2026-01-01T01:00:00Z', failure_code='INTERNAL_FAILURE' WHERE model_run_id='" + mr + "'");
+        execute( "UPDATE runtime.model_run SET state='FAILED', terminal_at='2026-01-01T01:00:00Z', failure_code='INTERNAL_FAILURE' WHERE model_run_id='" + mr + "'");
 
         // FAILED→FAILED with different failure_code → rejected
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.model_run SET failure_code='DATABASE_UNAVAILABLE' WHERE model_run_id='" + mr + "'"));
+            execute( "UPDATE runtime.model_run SET failure_code='DATABASE_UNAVAILABLE' WHERE model_run_id='" + mr + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -2207,11 +2207,11 @@ class DatabaseSliceBContractTest {
         UUID threadId = UUID.randomUUID();
         UUID turnId = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
+        execute( "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
                 + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
                 + "'2026-01-01T00:00:00Z','2026-01-01T00:05:00Z')");
 
-        execute(connection(), "UPDATE runtime.context_delivery SET invalidated_at='2026-01-01T00:01:00Z', invalidation_reason='TURN_END' WHERE delivery_id='" + delId + "'");
+        execute( "UPDATE runtime.context_delivery SET invalidated_at='2026-01-01T00:01:00Z', invalidation_reason='TURN_END' WHERE delivery_id='" + delId + "'");
         assertEquals("TURN_END", scalarString("SELECT invalidation_reason FROM runtime.context_delivery WHERE delivery_id='" + delId + "'"));
     }
 
@@ -2224,14 +2224,14 @@ class DatabaseSliceBContractTest {
         UUID threadId = UUID.randomUUID();
         UUID turnId = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
+        execute( "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
                 + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
                 + "'2026-01-01T00:00:00Z','2026-01-01T00:05:00Z')");
-        execute(connection(), "UPDATE runtime.context_delivery SET invalidated_at='2026-01-01T00:01:00Z', invalidation_reason='TURN_END' WHERE delivery_id='" + delId + "'");
+        execute( "UPDATE runtime.context_delivery SET invalidated_at='2026-01-01T00:01:00Z', invalidation_reason='TURN_END' WHERE delivery_id='" + delId + "'");
 
         // Clear invalidation → rejected
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.context_delivery SET invalidated_at=NULL, invalidation_reason=NULL WHERE delivery_id='" + delId + "'"));
+            execute( "UPDATE runtime.context_delivery SET invalidated_at=NULL, invalidation_reason=NULL WHERE delivery_id='" + delId + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -2244,14 +2244,14 @@ class DatabaseSliceBContractTest {
         UUID threadId = UUID.randomUUID();
         UUID turnId = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
+        execute( "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
                 + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
                 + "'2026-01-01T00:00:00Z','2026-01-01T00:05:00Z')");
-        execute(connection(), "UPDATE runtime.context_delivery SET invalidated_at='2026-01-01T00:01:00Z', invalidation_reason='TURN_END' WHERE delivery_id='" + delId + "'");
+        execute( "UPDATE runtime.context_delivery SET invalidated_at='2026-01-01T00:01:00Z', invalidation_reason='TURN_END' WHERE delivery_id='" + delId + "'");
 
         // Modify invalidation_reason → rejected
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.context_delivery SET invalidation_reason='COMPACT' WHERE delivery_id='" + delId + "'"));
+            execute( "UPDATE runtime.context_delivery SET invalidation_reason='COMPACT' WHERE delivery_id='" + delId + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -2264,12 +2264,12 @@ class DatabaseSliceBContractTest {
         UUID threadId = UUID.randomUUID();
         UUID turnId = UUID.randomUUID();
 
-        execute(connection(), "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
+        execute( "INSERT INTO runtime.context_delivery (delivery_id, request_id, thread_id, turn_id, purpose, policy_revision_set_hash, manifest_hash, delivered_at, expires_at) VALUES"
                 + "('" + delId + "','" + reqId + "','" + threadId + "','" + turnId + "','RETRIEVAL',decode('" + HASH_HEX + "','hex'),decode('" + HASH_HEX + "','hex'),"
                 + "'2026-01-01T00:00:00Z','2026-01-01T00:05:00Z')");
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.context_delivery SET manifest_hash=decode('" + HASH_HEX.replace("ab", "cd") + "','hex') WHERE delivery_id='" + delId + "'"));
+            execute( "UPDATE runtime.context_delivery SET manifest_hash=decode('" + HASH_HEX.replace("ab", "cd") + "','hex') WHERE delivery_id='" + delId + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -2298,7 +2298,7 @@ class DatabaseSliceBContractTest {
         }
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "UPDATE runtime.capture_scope_unit SET ordinal=1 WHERE scope_id='" + scopeId + "' AND source_unit_id='" + unitId + "'"));
+            execute( "UPDATE runtime.capture_scope_unit SET ordinal=1 WHERE scope_id='" + scopeId + "' AND source_unit_id='" + unitId + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -2322,7 +2322,7 @@ class DatabaseSliceBContractTest {
         }
 
         SQLException ex = assertThrows(SQLException.class, () ->
-            execute(connection(), "DELETE FROM runtime.capture_scope_unit WHERE scope_id='" + scopeId + "' AND source_unit_id='" + unitId + "'"));
+            execute( "DELETE FROM runtime.capture_scope_unit WHERE scope_id='" + scopeId + "' AND source_unit_id='" + unitId + "'"));
         assertTrue(ex.getMessage().contains("23514") || ex.getSQLState().equals("23514"));
     }
 
@@ -2335,7 +2335,7 @@ class DatabaseSliceBContractTest {
         UUID sourceId = insertMinimalSource(policyId, suffix);
         UUID scopeId = insertMinimalCaptureScope(sourceId);
         UUID runId = UUID.randomUUID();
-        execute(connection(), "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
+        execute( "INSERT INTO runtime.closeout_run (run_id, scope_id, state, created_at) VALUES"
                 + "('" + runId + "','" + scopeId + "','READY','2026-01-01T00:00:00Z')");
         return runId;
     }
@@ -2345,7 +2345,7 @@ class DatabaseSliceBContractTest {
     @DisplayName("R2-01: CloseoutRun READY→RUNNING")
     void r201CloseoutRunReadyToRunning() throws SQLException {
         UUID runId = r201SetupCloseoutRun("R2RR");
-        execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
         assertEquals("RUNNING", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
     }
 
@@ -2354,7 +2354,7 @@ class DatabaseSliceBContractTest {
     @DisplayName("R2-01: CloseoutRun READY→FAILED")
     void r201CloseoutRunReadyToFailed() throws SQLException {
         UUID runId = r201SetupCloseoutRun("R2RF");
-        execute(connection(), "UPDATE runtime.closeout_run SET state='FAILED', terminal_at='2026-01-01T01:00:00Z', failure_code='INTERNAL_FAILURE' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='FAILED', terminal_at='2026-01-01T01:00:00Z', failure_code='INTERNAL_FAILURE' WHERE run_id='" + runId + "'");
         assertEquals("FAILED", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
     }
 
@@ -2363,13 +2363,13 @@ class DatabaseSliceBContractTest {
     @DisplayName("R2-01: CloseoutRun READY→CANCELLED")
     void r201CloseoutRunReadyToCancelled() throws SQLException {
         UUID runId = r201SetupCloseoutRun("R2RC");
-        execute(connection(), "UPDATE runtime.closeout_run SET state='CANCELLED', terminal_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='CANCELLED', terminal_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
         assertEquals("CANCELLED", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
     }
 
     private UUID r201SetupRunningCloseoutRun(String suffix) throws SQLException {
         UUID runId = r201SetupCloseoutRun(suffix);
-        execute(connection(), "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='RUNNING', started_at='2026-01-01T01:00:00Z' WHERE run_id='" + runId + "'");
         return runId;
     }
 
@@ -2378,7 +2378,7 @@ class DatabaseSliceBContractTest {
     @DisplayName("R2-01: CloseoutRun RUNNING→COMPLETED")
     void r201CloseoutRunRunningToCompleted() throws SQLException {
         UUID runId = r201SetupRunningCloseoutRun("R2RRC");
-        execute(connection(), "UPDATE runtime.closeout_run SET state='COMPLETED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='COMPLETED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
         assertEquals("COMPLETED", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
     }
 
@@ -2387,7 +2387,7 @@ class DatabaseSliceBContractTest {
     @DisplayName("R2-01: CloseoutRun RUNNING→FAILED")
     void r201CloseoutRunRunningToFailed() throws SQLException {
         UUID runId = r201SetupRunningCloseoutRun("R2RRF");
-        execute(connection(), "UPDATE runtime.closeout_run SET state='FAILED', terminal_at='2026-01-01T02:00:00Z', failure_code='INTERNAL_FAILURE' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='FAILED', terminal_at='2026-01-01T02:00:00Z', failure_code='INTERNAL_FAILURE' WHERE run_id='" + runId + "'");
         assertEquals("FAILED", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
     }
 
@@ -2396,7 +2396,7 @@ class DatabaseSliceBContractTest {
     @DisplayName("R2-01: CloseoutRun RUNNING→CANCELLED")
     void r201CloseoutRunRunningToCancelled() throws SQLException {
         UUID runId = r201SetupRunningCloseoutRun("R2RRC2");
-        execute(connection(), "UPDATE runtime.closeout_run SET state='CANCELLED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
+        execute( "UPDATE runtime.closeout_run SET state='CANCELLED', terminal_at='2026-01-01T02:00:00Z' WHERE run_id='" + runId + "'");
         assertEquals("CANCELLED", scalarString("SELECT state FROM runtime.closeout_run WHERE run_id='" + runId + "'"));
     }
 
@@ -2446,6 +2446,7 @@ class DatabaseSliceBContractTest {
                 .cleanDisabled(true)
                 .baselineOnMigrate(false)
                 .outOfOrder(false)
+                .target("9")
                 .load();
         MigrateResult v9Result = v9Flyway.migrate();
         assertEquals(1, v9Result.migrationsExecuted, "V008→V009 must execute exactly 1 migration");
@@ -2520,21 +2521,21 @@ class DatabaseSliceBContractTest {
 
     private static UUID insertMinimalSource(UUID policyId, String suffix) throws SQLException {
         UUID sourceId = UUID.randomUUID();
-        execute(connection(), "INSERT INTO evidence.source (source_id, source_kind, platform, external_ref, observed_accessible, compressed_observed, policy_id, created_at, ingested_at) VALUES"
+        execute( "INSERT INTO evidence.source (source_id, source_kind, platform, external_ref, observed_accessible, compressed_observed, policy_id, created_at, ingested_at) VALUES"
                 + "('" + sourceId + "','CODEX','PLATFORM_" + suffix + "','REF_" + suffix + "',true,false,'" + policyId + "','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')");
         return sourceId;
     }
 
     private static UUID insertMinimalSourceUnit(UUID sourceId, String suffix) throws SQLException {
         UUID unitId = UUID.randomUUID();
-        execute(connection(), "INSERT INTO evidence.source_unit (source_unit_id, source_id, external_unit_ref, source_version, ordinal, created_at) VALUES"
+        execute( "INSERT INTO evidence.source_unit (source_unit_id, source_id, external_unit_ref, source_version, ordinal, created_at) VALUES"
                 + "('" + unitId + "','" + sourceId + "','UNIT_" + suffix + "','v1',0,'2026-01-01T00:00:00Z')");
         return unitId;
     }
 
     private static UUID insertMinimalCaptureScope(UUID sourceId) throws SQLException {
         UUID scopeId = UUID.randomUUID();
-        execute(connection(), "INSERT INTO runtime.capture_scope (scope_id, source_id, from_ordinal, to_ordinal, rule_version, coverage_code, frozen_at, manifest_hash, created_at) VALUES"
+        execute( "INSERT INTO runtime.capture_scope (scope_id, source_id, from_ordinal, to_ordinal, rule_version, coverage_code, frozen_at, manifest_hash, created_at) VALUES"
                 + "('" + scopeId + "','" + sourceId + "',0,10,'v1','FULL','2026-01-01T00:00:00Z',decode('" + HASH_HEX + "','hex'),'2026-01-01T00:00:00Z')");
         return scopeId;
     }
@@ -3437,6 +3438,12 @@ class DatabaseSliceBContractTest {
     private static void execute(Connection connection, String sql) throws SQLException {
         try (Statement statement = connection.createStatement()) {
             statement.execute(sql);
+        }
+    }
+
+    private static void execute(String sql) throws SQLException {
+        try (Connection connection = connection()) {
+            execute(connection, sql);
         }
     }
 

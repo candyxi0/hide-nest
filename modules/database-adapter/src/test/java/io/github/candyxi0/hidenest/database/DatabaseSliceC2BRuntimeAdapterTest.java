@@ -70,7 +70,7 @@ class DatabaseSliceC2BRuntimeAdapterTest {
                 .outOfOrder(false)
                 .validateMigrationNaming(true)
                 .load();
-        assertEquals(9, flyway.migrate().migrationsExecuted);
+        assertEquals(10, flyway.migrate().migrationsExecuted);
 
         var rds = new DriverManagerDataSource(POSTGRES.getJdbcUrl(), USER, PASSWORD);
         DataSource pds = new TransactionAwareDataSourceProxy(rds);
