@@ -10,6 +10,7 @@ import io.github.candyxi0.hidenest.memory.port.MemoryReadFilter;
 import io.github.candyxi0.hidenest.memory.port.MemoryReadPort;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
@@ -23,7 +24,7 @@ public class JooqMemoryReadAdapter implements MemoryReadPort {
     private final DSLContext dsl;
 
     public JooqMemoryReadAdapter(DSLContext dsl) {
-        this.dsl = dsl;
+        this.dsl = Objects.requireNonNull(dsl, "dsl");
     }
 
     @Override
@@ -34,6 +35,12 @@ public class JooqMemoryReadAdapter implements MemoryReadPort {
         validateFilter(filter);
 
         Condition where = DSL.noCondition();
+        where = where.and(DSL.notExists(
+                dsl.selectOne()
+                        .from(DELETION_FENCE)
+                        .where(DELETION_FENCE.TARGET_KIND.eq("MEMORY"))
+                        .and(DELETION_FENCE.TARGET_ID.eq(MEMORY_RECORD.MEMORY_ID))
+                        .and(DELETION_FENCE.TARGET_REVISION_REF.isNull())));
         if (!"ALL".equals(filter.state())) {
             where = where.and(MEMORY_RECORD.STATE.eq(filter.state()));
         }

@@ -17,6 +17,7 @@ import io.github.candyxi0.hidenest.application.model.LocalV1S1PrepareRequest;
 import io.github.candyxi0.hidenest.application.model.LocalV1S3ADeletionPreviewRequest;
 import io.github.candyxi0.hidenest.application.model.LocalV1S3ADeletionPreviewResult;
 import io.github.candyxi0.hidenest.database.adapter.JooqDeletionPreviewAdapter;
+import io.github.candyxi0.hidenest.database.adapter.JooqDeletionFenceAdapter;
 import io.github.candyxi0.hidenest.database.adapter.JooqEvidenceReferenceAdapter;
 import io.github.candyxi0.hidenest.database.adapter.JooqMemoryGovernanceAdapter;
 import io.github.candyxi0.hidenest.database.adapter.JooqRuntimeTransactionAdapter;
@@ -28,9 +29,11 @@ import io.github.candyxi0.hidenest.runtime.port.RuntimeTransactionPort;
 import io.github.candyxi0.hidenest.runtime.port.TransactionExecutor;
 import io.github.candyxi0.hidenest.memory.domain.AccessPolicy;
 import io.github.candyxi0.hidenest.memory.domain.AccessPolicyRevision;
+import io.github.candyxi0.hidenest.memory.domain.DeletionFence;
 import io.github.candyxi0.hidenest.memory.domain.DeletionPreviewGraph;
 import io.github.candyxi0.hidenest.memory.domain.MemoryRecord;
 import io.github.candyxi0.hidenest.memory.domain.MemoryRevision;
+import io.github.candyxi0.hidenest.memory.port.DeletionFencePort;
 import io.github.candyxi0.hidenest.memory.port.DeletionPreviewPort;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -95,7 +98,7 @@ class LocalV1S3ADeletionPreviewTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(11, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, password)
+        assertEquals(12, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, password)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load()
                 .migrate().migrationsExecuted);
         var raw = new DriverManagerDataSource(postgres.getJdbcUrl(), USER, password);
@@ -113,7 +116,8 @@ class LocalV1S3ADeletionPreviewTest {
         payloadRoot = Files.createTempDirectory("s3a-payload-test-");
         PayloadStore payloadStore = new LocalPayloadStore(payloadRoot);
         s1 = new LocalV1S1WindowCloseCoordinator(evidence, governance, runtime, executor, publisher, payloadStore, CLOCK);
-        preview = new LocalV1S3ADeletionPreviewCoordinator(new JooqDeletionPreviewAdapter(dsl), executor, CLOCK);
+        preview = new LocalV1S3ADeletionPreviewCoordinator(
+                new JooqDeletionPreviewAdapter(dsl), executor, CLOCK, new JooqDeletionFenceAdapter(dsl));
     }
 
     @AfterAll
@@ -141,7 +145,7 @@ class LocalV1S3ADeletionPreviewTest {
         assertEquals(10, v10.migrate().migrationsExecuted);
         var v11 = Flyway.configure().dataSource(databaseUrl, USER, dbPassword)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load();
-        assertEquals(1, v11.migrate().migrationsExecuted);
+        assertEquals(2, v11.migrate().migrationsExecuted);
         assertEquals(0, v11.migrate().migrationsExecuted);
     }
 
@@ -319,7 +323,7 @@ class LocalV1S3ADeletionPreviewTest {
         for (Supplier<DeletionPreviewGraph> attack : attacks) {
             FakePreviewPort port = new FakePreviewPort(attack.get());
             LocalV1S3ADeletionPreviewCoordinator coordinator = new LocalV1S3ADeletionPreviewCoordinator(
-                    port, immediateTransactions(), CLOCK);
+                    port, immediateTransactions(), CLOCK, new TestDeletionFencePort());
             assertThrows(LocalV1S3AException.class, () -> coordinator.preview(
                     new LocalV1S3ADeletionPreviewRequest(UUID.randomUUID(), "attack-" + UUID.randomUUID(),
                             new byte[32])));
@@ -333,7 +337,7 @@ class LocalV1S3ADeletionPreviewTest {
         for (int affectedCount : List.of(995, 996)) {
             FakePreviewPort port = new FakePreviewPort(graphWithAffectedMemories(affectedCount));
             LocalV1S3ADeletionPreviewCoordinator coordinator = new LocalV1S3ADeletionPreviewCoordinator(
-                    port, immediateTransactions(), CLOCK);
+                    port, immediateTransactions(), CLOCK, new TestDeletionFencePort());
             LocalV1S3AException exception = null;
             try {
                 coordinator.preview(new LocalV1S3ADeletionPreviewRequest(
@@ -359,7 +363,7 @@ class LocalV1S3ADeletionPreviewTest {
         int members = count("memory.deletion_closure_member");
         DeletionPreviewPort delegate = new JooqDeletionPreviewAdapter(dsl);
         LocalV1S3ADeletionPreviewCoordinator failing = new LocalV1S3ADeletionPreviewCoordinator(
-                new FailingInsertPort(delegate), transactions, CLOCK);
+                new FailingInsertPort(delegate), transactions, CLOCK, new JooqDeletionFenceAdapter(dsl));
         LocalV1S3AException exception = assertThrows(LocalV1S3AException.class, () -> failing.preview(
                 new LocalV1S3ADeletionPreviewRequest(fixture.memoryId(), "rollback-key", new byte[32])));
         assertEquals(LocalV1S3AException.Code.PERSISTENCE_CONFLICT, exception.code());
@@ -594,6 +598,23 @@ class LocalV1S3ADeletionPreviewTest {
         public void insertPreview(PreviewDraft draft) {
             delegate.insertPreview(draft);
             throw new IllegalStateException("synthetic member persistence failure");
+        }
+    }
+
+    private static final class TestDeletionFencePort implements DeletionFencePort {
+        @Override
+        public void insertFences(List<FenceDraft> drafts) {
+            throw new UnsupportedOperationException("S3A preview tests do not write deletion fences");
+        }
+
+        @Override
+        public boolean isFenced(String targetKind, UUID targetId, Long targetRevisionRef) {
+            return false;
+        }
+
+        @Override
+        public List<DeletionFence> findByClosureId(UUID closureId) {
+            return List.of();
         }
     }
 

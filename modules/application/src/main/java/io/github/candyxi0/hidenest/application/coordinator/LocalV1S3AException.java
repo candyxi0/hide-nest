@@ -5,6 +5,7 @@ public final class LocalV1S3AException extends RuntimeException {
     public enum Code {
         INVALID_ARGUMENT,
         NOT_FOUND,
+        DELETION_FENCED,
         IDEMPOTENCY_CONFLICT,
         PREVIEW_STALE,
         CURRENT_POINTER_INVALID,

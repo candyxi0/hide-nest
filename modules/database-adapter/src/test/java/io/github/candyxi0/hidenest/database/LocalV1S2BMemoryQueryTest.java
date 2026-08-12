@@ -9,6 +9,7 @@ import io.github.candyxi0.hidenest.application.model.LocalV1S1ConfirmRequest;
 import io.github.candyxi0.hidenest.application.model.LocalV1S1PrepareRequest;
 import io.github.candyxi0.hidenest.application.model.LocalV1S2BListRequest;
 import io.github.candyxi0.hidenest.database.adapter.JooqEvidenceReferenceAdapter;
+import io.github.candyxi0.hidenest.database.adapter.JooqDeletionFenceAdapter;
 import io.github.candyxi0.hidenest.database.adapter.JooqMemoryGovernanceAdapter;
 import io.github.candyxi0.hidenest.database.adapter.JooqMemoryReadAdapter;
 import io.github.candyxi0.hidenest.database.adapter.JooqRuntimeTransactionAdapter;
@@ -22,9 +23,11 @@ import io.github.candyxi0.hidenest.evidence.domain.SourceUnit;
 import io.github.candyxi0.hidenest.evidence.port.EvidenceReferencePort;
 import io.github.candyxi0.hidenest.evidence.port.PayloadStore;
 import io.github.candyxi0.hidenest.memory.domain.ActorRef;
+import io.github.candyxi0.hidenest.memory.domain.DeletionFence;
 import io.github.candyxi0.hidenest.memory.domain.MemoryRecord;
 import io.github.candyxi0.hidenest.memory.domain.MemoryRelation;
 import io.github.candyxi0.hidenest.memory.domain.MemoryRevision;
+import io.github.candyxi0.hidenest.memory.port.DeletionFencePort;
 import io.github.candyxi0.hidenest.memory.port.MemoryGovernancePort;
 import io.github.candyxi0.hidenest.memory.port.MemoryReadFilter;
 import io.github.candyxi0.hidenest.memory.port.MemoryReadPort;
@@ -99,7 +102,7 @@ class LocalV1S2BMemoryQueryTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(11, Flyway.configure()
+        assertEquals(12, Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), USER, password)
                 .defaultSchema("public")
                 .locations("classpath:db/migration")
@@ -123,8 +126,9 @@ class LocalV1S2BMemoryQueryTest {
         payloadStore = new LocalPayloadStore(payloadRoot);
         s1 = new LocalV1S1WindowCloseCoordinator(
                 evidence, governance, runtime, executor, publisher, payloadStore, CLOCK);
+        JooqDeletionFenceAdapter deletionFence = new JooqDeletionFenceAdapter(dsl);
         query = new LocalV1S2BQueryCoordinator(
-                new JooqMemoryReadAdapter(dsl), evidence, payloadStore);
+                new JooqMemoryReadAdapter(dsl), evidence, payloadStore, deletionFence);
     }
 
     @AfterAll
@@ -539,7 +543,8 @@ class LocalV1S2BMemoryQueryTest {
         }
 
         private LocalV1S2BQueryCoordinator coordinator() {
-            return new LocalV1S2BQueryCoordinator(this, new StubEvidence(), new StubPayloadStore());
+            return new LocalV1S2BQueryCoordinator(
+                    this, new StubEvidence(), new StubPayloadStore(), new TestDeletionFencePort());
         }
 
         @Override
@@ -648,7 +653,24 @@ class LocalV1S2BMemoryQueryTest {
         }
 
         private LocalV1S2BQueryCoordinator coordinator() {
-            return new LocalV1S2BQueryCoordinator(memory, evidence, payloadStore);
+            return new LocalV1S2BQueryCoordinator(memory, evidence, payloadStore, new TestDeletionFencePort());
+        }
+    }
+
+    private static final class TestDeletionFencePort implements DeletionFencePort {
+        @Override
+        public void insertFences(List<FenceDraft> drafts) {
+            throw new UnsupportedOperationException("S2B query tests do not write deletion fences");
+        }
+
+        @Override
+        public boolean isFenced(String targetKind, UUID targetId, Long targetRevisionRef) {
+            return false;
+        }
+
+        @Override
+        public List<DeletionFence> findByClosureId(UUID closureId) {
+            return List.of();
         }
     }
 

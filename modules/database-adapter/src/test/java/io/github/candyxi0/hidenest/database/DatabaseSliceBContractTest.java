@@ -84,7 +84,7 @@ class DatabaseSliceBContractTest {
                 .validateMigrationNaming(true)
                 .load();
         MigrateResult result = flyway.migrate();
-        assertEquals(11, result.migrationsExecuted);
+        assertEquals(12, result.migrationsExecuted);
     }
 
     @AfterAll
@@ -105,7 +105,7 @@ class DatabaseSliceBContractTest {
         MigrateResult repeated = flyway.migrate();
         assertEquals(0, repeated.migrationsExecuted);
         assertEquals(before, catalogFingerprint());
-        assertEquals(11, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(12, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
     }
 
     @Test
@@ -140,7 +140,7 @@ class DatabaseSliceBContractTest {
 
     @Test
     @Order(3)
-    @DisplayName("CoreDatabaseInventoryIT: four schemas and thirty-three approved tables")
+    @DisplayName("CoreDatabaseInventoryIT: four schemas and thirty-four approved tables")
     void coreDatabaseInventoryIT() throws SQLException {
         assertEquals(
                 Set.of("evidence", "memory", "runtime", "security"),
@@ -168,6 +168,7 @@ class DatabaseSliceBContractTest {
                         "memory.change_event",
                         "memory.deletion_closure",
                         "memory.deletion_closure_member",
+                        "memory.deletion_fence",
                         "runtime.idempotency_receipt",
                         "runtime.outbox_event",
                         "runtime.failure_code_registry",
@@ -367,7 +368,7 @@ class DatabaseSliceBContractTest {
     @DisplayName("DatabasePrivilegeIT: migrator ownership and runtime least privilege")
     void databasePrivilegeIT() throws SQLException {
         assertEquals(
-                33,
+                34,
                 scalarLong("SELECT count(*) FROM pg_catalog.pg_tables "
                         + "WHERE schemaname IN ('evidence','memory','runtime','security') "
                         + "AND tableowner='hide_nest_migrator'"));
@@ -1458,9 +1459,9 @@ class DatabaseSliceBContractTest {
 
     @Test
     @Order(44)
-    @DisplayName("V011: migration history = 11, repeat migrate executes 0")
+    @DisplayName("V012: migration history = 12, repeat migrate executes 0")
     void v010MigrationHistoryAndRepeat() {
-        assertEquals(11, flyway.info().applied().length, "history must be 11");
+        assertEquals(12, flyway.info().applied().length, "history must be 12");
         MigrateResult repeat = flyway.migrate();
         assertEquals(0, repeat.migrationsExecuted, "repeat migrate must execute 0");
     }
@@ -4325,7 +4326,8 @@ class DatabaseSliceBContractTest {
 
         // R1-01: same-source trigger exists
         assertEquals(
-                Set.of("enforce_anchor_unit_same_source"),
+                Set.of("enforce_anchor_unit_same_source", "enforce_source_anchor_deletion_fence",
+                        "enforce_source_unit_deletion_fence", "enforce_source_payload_deletion_fence"),
                 querySet("SELECT routine_name FROM information_schema.routines "
                         + "WHERE routine_schema='evidence' AND routine_type='FUNCTION'"));
         assertEquals(

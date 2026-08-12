@@ -10,6 +10,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.Memory;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicyRevision.AccessPolicyRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ActorRef.ActorRefPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent.ChangeEventPath;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionFence.DeletionFencePath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation.MemoryRelationPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevision.MemoryRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ProposalRevision.ProposalRevisionPath;
@@ -291,6 +292,19 @@ public class Decision extends TableImpl<DecisionRecord> {
             _changeEvent = new ChangeEventPath(this, null, Keys.CHANGE_EVENT__CHANGE_EVENT_DECISION_FK.getInverseKey());
 
         return _changeEvent;
+    }
+
+    private transient DeletionFencePath _deletionFence;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>memory.deletion_fence</code> table
+     */
+    public DeletionFencePath deletionFence() {
+        if (_deletionFence == null)
+            _deletionFence = new DeletionFencePath(this, null, Keys.DELETION_FENCE__DELETION_FENCE_DECISION_FK.getInverseKey());
+
+        return _deletionFence;
     }
 
     private transient MemoryRelationPath _memoryRelation;

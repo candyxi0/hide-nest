@@ -18,6 +18,7 @@ import io.github.candyxi0.hidenest.memory.domain.MemoryRelation;
 import io.github.candyxi0.hidenest.memory.domain.MemoryRevision;
 import io.github.candyxi0.hidenest.memory.port.MemoryReadFilter;
 import io.github.candyxi0.hidenest.memory.port.MemoryReadPort;
+import io.github.candyxi0.hidenest.memory.port.DeletionFencePort;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -28,6 +29,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -46,14 +48,17 @@ public class LocalV1S2BQueryCoordinator {
     private final MemoryReadPort memoryReadPort;
     private final EvidenceReferencePort evidenceReferencePort;
     private final PayloadStore payloadStore;
+    private final DeletionFencePort deletionFencePort;
 
     public LocalV1S2BQueryCoordinator(
             MemoryReadPort memoryReadPort,
             EvidenceReferencePort evidenceReferencePort,
-            PayloadStore payloadStore) {
-        this.memoryReadPort = memoryReadPort;
-        this.evidenceReferencePort = evidenceReferencePort;
-        this.payloadStore = payloadStore;
+            PayloadStore payloadStore,
+            DeletionFencePort deletionFencePort) {
+        this.memoryReadPort = Objects.requireNonNull(memoryReadPort, "memoryReadPort");
+        this.evidenceReferencePort = Objects.requireNonNull(evidenceReferencePort, "evidenceReferencePort");
+        this.payloadStore = Objects.requireNonNull(payloadStore, "payloadStore");
+        this.deletionFencePort = Objects.requireNonNull(deletionFencePort, "deletionFencePort");
     }
 
     public LocalV1S2BListResult listMemories(LocalV1S2BListRequest request) {
@@ -83,6 +88,7 @@ public class LocalV1S2BQueryCoordinator {
     }
 
     public LocalV1S2BMemoryDetail getMemoryDetail(UUID memoryId) {
+        rejectMemoryFence(memoryId);
         CurrentMemory current = readCurrent(memoryId);
         return new LocalV1S2BMemoryDetail(
                 current.record().memoryId(),
@@ -97,6 +103,7 @@ public class LocalV1S2BQueryCoordinator {
 
     /** Read complete evidence only for an explicitly supplied memory id. */
     public LocalV1S2BEvidenceResult getFullEvidence(UUID memoryId) {
+        rejectMemoryFence(memoryId);
         CurrentMemory current = readCurrent(memoryId);
         List<MemoryRelation> relations = memoryReadPort.findRelationsByFromRevisionId(
                 current.revision().memoryRevisionId());
@@ -128,6 +135,9 @@ public class LocalV1S2BQueryCoordinator {
                 throw failure(LocalV1S2BException.Code.EVIDENCE_RELATION_INVALID);
             }
             SourceAnchor anchor = evidenceReferencePort.findSourceAnchorById(relation.toAnchorId());
+            if (deletionFencePort.isFenced("SOURCE_ANCHOR", relation.toAnchorId(), null)) {
+                throw failure(LocalV1S2BException.Code.DELETION_FENCED);
+            }
             if (anchor == null
                     || anchor.anchorId() == null
                     || !relation.toAnchorId().equals(anchor.anchorId())
@@ -162,6 +172,9 @@ public class LocalV1S2BQueryCoordinator {
                 }
                 SourceUnit sourceUnit = evidenceReferencePort.findSourceUnitById(
                         anchorUnit.sourceUnitId());
+                if (deletionFencePort.isFenced("SOURCE_UNIT", anchorUnit.sourceUnitId(), null)) {
+                    throw failure(LocalV1S2BException.Code.DELETION_FENCED);
+                }
                 if (sourceUnit == null
                         || !anchor.sourceId().equals(sourceUnit.sourceId())
                         || sourceUnit.occurredAt() == null) {
@@ -178,6 +191,9 @@ public class LocalV1S2BQueryCoordinator {
                     throw failure(LocalV1S2BException.Code.ACTOR_INVALID);
                 }
                 SourcePayload payload = exactPayload(sourceUnit);
+                if (deletionFencePort.isFenced("SOURCE_PAYLOAD", payload.payloadId(), null)) {
+                    throw failure(LocalV1S2BException.Code.DELETION_FENCED);
+                }
                 validatePayloadMetadata(payload);
 
                 byte[] bytes;
@@ -233,6 +249,13 @@ public class LocalV1S2BQueryCoordinator {
             throw failure(LocalV1S2BException.Code.OWNER_BINDING_INVALID);
         }
         return new CurrentMemory(record, revision);
+    }
+
+    private void rejectMemoryFence(UUID memoryId) {
+        if (memoryId == null) throw failure(LocalV1S2BException.Code.INVALID_ARGUMENT);
+        if (deletionFencePort.isFenced("MEMORY", memoryId, null)) {
+            throw failure(LocalV1S2BException.Code.DELETION_FENCED);
+        }
     }
 
     private int evidenceCount(UUID revisionId) {

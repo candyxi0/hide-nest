@@ -4,6 +4,7 @@
 package io.github.candyxi0.hidenest.database.generated.memory;
 
 
+import io.github.candyxi0.hidenest.database.generated.memory.routines.DeletionFenceExists;
 import io.github.candyxi0.hidenest.database.generated.memory.routines.RequireGovernedOutbox;
 
 import java.util.UUID;
@@ -11,6 +12,7 @@ import java.util.UUID;
 import javax.annotation.processing.Generated;
 
 import org.jooq.Configuration;
+import org.jooq.Field;
 
 
 /**
@@ -24,6 +26,56 @@ import org.jooq.Configuration;
 )
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Routines {
+
+    /**
+     * Call <code>memory.deletion_fence_exists</code>
+     */
+    public static Boolean deletionFenceExists(
+          Configuration configuration
+        , String pTargetKind
+        , UUID pTargetId
+        , Long pTargetRevisionRef
+    ) {
+        DeletionFenceExists f = new DeletionFenceExists();
+        f.setPTargetKind(pTargetKind);
+        f.setPTargetId(pTargetId);
+        f.setPTargetRevisionRef(pTargetRevisionRef);
+
+        f.execute(configuration);
+        return f.getReturnValue();
+    }
+
+    /**
+     * Get <code>memory.deletion_fence_exists</code> as a field.
+     */
+    public static Field<Boolean> deletionFenceExists(
+          String pTargetKind
+        , UUID pTargetId
+        , Long pTargetRevisionRef
+    ) {
+        DeletionFenceExists f = new DeletionFenceExists();
+        f.setPTargetKind(pTargetKind);
+        f.setPTargetId(pTargetId);
+        f.setPTargetRevisionRef(pTargetRevisionRef);
+
+        return f.asField();
+    }
+
+    /**
+     * Get <code>memory.deletion_fence_exists</code> as a field.
+     */
+    public static Field<Boolean> deletionFenceExists(
+          Field<String> pTargetKind
+        , Field<UUID> pTargetId
+        , Field<Long> pTargetRevisionRef
+    ) {
+        DeletionFenceExists f = new DeletionFenceExists();
+        f.setPTargetKind(pTargetKind);
+        f.setPTargetId(pTargetId);
+        f.setPTargetRevisionRef(pTargetRevisionRef);
+
+        return f.asField();
+    }
 
     /**
      * Call <code>memory.require_governed_outbox</code>

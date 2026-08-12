@@ -6,6 +6,7 @@ import io.github.candyxi0.hidenest.application.model.LocalV1S3ADeletionPreviewRe
 import io.github.candyxi0.hidenest.memory.domain.DeletionPreviewGraph;
 import io.github.candyxi0.hidenest.memory.domain.MemoryRevision;
 import io.github.candyxi0.hidenest.memory.port.DeletionPreviewPort;
+import io.github.candyxi0.hidenest.memory.port.DeletionFencePort;
 import io.github.candyxi0.hidenest.runtime.port.TransactionExecutor;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -21,6 +22,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -38,12 +40,15 @@ public final class LocalV1S3ADeletionPreviewCoordinator {
     private final DeletionPreviewPort port;
     private final TransactionExecutor transactions;
     private final Clock clock;
+    private final DeletionFencePort deletionFencePort;
 
     public LocalV1S3ADeletionPreviewCoordinator(
-            DeletionPreviewPort port, TransactionExecutor transactions, Clock clock) {
-        this.port = port;
-        this.transactions = transactions;
-        this.clock = clock;
+            DeletionPreviewPort port, TransactionExecutor transactions, Clock clock,
+            DeletionFencePort deletionFencePort) {
+        this.port = Objects.requireNonNull(port, "port");
+        this.transactions = Objects.requireNonNull(transactions, "transactions");
+        this.clock = Objects.requireNonNull(clock, "clock");
+        this.deletionFencePort = Objects.requireNonNull(deletionFencePort, "deletionFencePort");
     }
 
     public LocalV1S3ADeletionPreviewResult preview(LocalV1S3ADeletionPreviewRequest request) {
@@ -53,6 +58,9 @@ public final class LocalV1S3ADeletionPreviewCoordinator {
 
     private LocalV1S3ADeletionPreviewResult previewInTransaction(
             LocalV1S3ADeletionPreviewRequest request) {
+        if (deletionFencePort.isFenced("MEMORY", request.memoryId(), null)) {
+            throw failure(LocalV1S3AException.Code.DELETION_FENCED);
+        }
         DeletionPreviewPort.ExistingPreview existing = port.findByIdempotencyKey(request.idempotencyKey());
         if (existing != null) {
             if (!request.memoryId().equals(existing.rootMemoryId())

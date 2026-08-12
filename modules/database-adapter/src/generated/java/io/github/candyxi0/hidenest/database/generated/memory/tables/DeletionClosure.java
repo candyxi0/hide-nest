@@ -8,6 +8,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.Indexes;
 import io.github.candyxi0.hidenest.database.generated.memory.Keys;
 import io.github.candyxi0.hidenest.database.generated.memory.Memory;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionClosureMember.DeletionClosureMemberPath;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionFence.DeletionFencePath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.DeletionClosureRecord;
 
 import java.time.OffsetDateTime;
@@ -234,6 +235,19 @@ public class DeletionClosure extends TableImpl<DeletionClosureRecord> {
             _deletionClosureMember = new DeletionClosureMemberPath(this, null, Keys.DELETION_CLOSURE_MEMBER__DELETION_CLOSURE_MEMBER_CLOSURE_FK.getInverseKey());
 
         return _deletionClosureMember;
+    }
+
+    private transient DeletionFencePath _deletionFence;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>memory.deletion_fence</code> table
+     */
+    public DeletionFencePath deletionFence() {
+        if (_deletionFence == null)
+            _deletionFence = new DeletionFencePath(this, null, Keys.DELETION_FENCE__DELETION_FENCE_CLOSURE_FK.getInverseKey());
+
+        return _deletionFence;
     }
 
     @Override

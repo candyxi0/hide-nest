@@ -13,6 +13,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionClosure;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionClosureMember;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionFence;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevision;
@@ -92,6 +93,11 @@ public class Memory extends SchemaImpl {
     public final DeletionClosureMember DELETION_CLOSURE_MEMBER = DeletionClosureMember.DELETION_CLOSURE_MEMBER;
 
     /**
+     * The table <code>memory.deletion_fence</code>.
+     */
+    public final DeletionFence DELETION_FENCE = DeletionFence.DELETION_FENCE;
+
+    /**
      * The table <code>memory.memory_record</code>.
      */
     public final MemoryRecord MEMORY_RECORD = MemoryRecord.MEMORY_RECORD;
@@ -150,6 +156,7 @@ public class Memory extends SchemaImpl {
             Decision.DECISION,
             DeletionClosure.DELETION_CLOSURE,
             DeletionClosureMember.DELETION_CLOSURE_MEMBER,
+            DeletionFence.DELETION_FENCE,
             MemoryRecord.MEMORY_RECORD,
             MemoryRelation.MEMORY_RELATION,
             MemoryRevision.MEMORY_REVISION,

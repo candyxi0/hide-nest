@@ -6,6 +6,7 @@ public class LocalV1S2BException extends RuntimeException {
     public enum Code {
         INVALID_ARGUMENT,
         NOT_FOUND,
+        DELETION_FENCED,
         CURRENT_POINTER_INVALID,
         OWNER_BINDING_INVALID,
         EVIDENCE_RELATION_INVALID,
