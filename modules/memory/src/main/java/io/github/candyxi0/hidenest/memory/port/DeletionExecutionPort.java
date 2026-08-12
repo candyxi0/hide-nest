@@ -5,14 +5,28 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Database-neutral boundary for the S3C1A database erasure phase of a confirmed deletion closure. */
+/** Database-neutral boundary for the deletion execution phases of a confirmed deletion closure. */
 public interface DeletionExecutionPort {
+
+    // ── S3C1A database erasure ────────────────────────────────────────────
 
     ExecutionResult executeDatabasePhase(UUID runId, UUID closureId, OffsetDateTime executedAt);
 
     DeletionRun findRunByClosureId(UUID closureId);
 
+    DeletionRun findRunById(UUID runId);
+
     List<PayloadTask> findPendingPayloadTasks(UUID runId);
+
+    // ── S3C2 file settlement ──────────────────────────────────────────────
+
+    SettlementResult settlePayloadTask(UUID runId, UUID payloadId, String objectRef, byte[] expectedHash);
+
+    void recordFileFailure(UUID runId, OffsetDateTime failedAt);
+
+    CompletionResult completeRun(UUID runId, OffsetDateTime completedAt);
+
+    // ── Result types ──────────────────────────────────────────────────────
 
     record ExecutionResult(
             UUID runId,
@@ -71,6 +85,58 @@ public interface DeletionExecutionPort {
         @Override
         public byte[] expectedHash() {
             return expectedHash == null ? null : expectedHash.clone();
+        }
+    }
+
+    sealed interface SettlementResult {
+        UUID runId();
+        UUID payloadId();
+        String state();
+
+        record Settled(UUID runId, UUID payloadId, String state) implements SettlementResult {
+            public Settled {
+                Objects.requireNonNull(runId, "runId");
+                Objects.requireNonNull(payloadId, "payloadId");
+                Objects.requireNonNull(state, "state");
+            }
+        }
+
+        record AlreadySettled(UUID runId, UUID payloadId, String state) implements SettlementResult {
+            public AlreadySettled {
+                Objects.requireNonNull(runId, "runId");
+                Objects.requireNonNull(payloadId, "payloadId");
+                Objects.requireNonNull(state, "state");
+            }
+        }
+    }
+
+    sealed interface CompletionResult {
+        UUID runId();
+        UUID closureId();
+        String state();
+        long payloadTaskCount();
+        OffsetDateTime completedAt();
+
+        record Completed(UUID runId, UUID closureId, String state,
+                         long payloadTaskCount, OffsetDateTime completedAt) implements CompletionResult {
+            public Completed {
+                Objects.requireNonNull(runId, "runId");
+                Objects.requireNonNull(closureId, "closureId");
+                Objects.requireNonNull(state, "state");
+                if (payloadTaskCount < 0) throw new IllegalArgumentException("payloadTaskCount must be non-negative");
+                Objects.requireNonNull(completedAt, "completedAt");
+            }
+        }
+
+        record AlreadyCompleted(UUID runId, UUID closureId, String state,
+                                long payloadTaskCount, OffsetDateTime completedAt) implements CompletionResult {
+            public AlreadyCompleted {
+                Objects.requireNonNull(runId, "runId");
+                Objects.requireNonNull(closureId, "closureId");
+                Objects.requireNonNull(state, "state");
+                if (payloadTaskCount < 0) throw new IllegalArgumentException("payloadTaskCount must be non-negative");
+                Objects.requireNonNull(completedAt, "completedAt");
+            }
         }
     }
 }

@@ -101,7 +101,7 @@ class LocalV1S3C1ADatabaseErasureTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(14, Flyway.configure().dataSource(jdbcUrl, USER, password)
+        assertEquals(15, Flyway.configure().dataSource(jdbcUrl, USER, password)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load()
                 .migrate().migrationsExecuted);
         var raw = new DriverManagerDataSource(jdbcUrl, USER, password);
@@ -147,10 +147,10 @@ class LocalV1S3C1ADatabaseErasureTest {
     @Order(1)
     @DisplayName("1. V014 empty 14, upgrade 13→14 1, repeat 0; generated A/B/tracked consistent")
     void migrationCounts() throws Exception {
-        // Clean migration on a fresh database: 14
-        assertEquals(14, count("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        // Clean migration on a fresh database: 15
+        assertEquals(15, count("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
 
-        // Upgrade from V013 to V014 on separate container
+        // Upgrade from V013 to V015 on separate container
         String upgradePassword = UUID.randomUUID().toString();
         PostgreSQLContainer<?> upgradeContainer = new PostgreSQLContainer<>(
                 DockerImageName.parse(IMAGE).asCompatibleSubstituteFor("postgres"))
@@ -168,12 +168,12 @@ class LocalV1S3C1ADatabaseErasureTest {
                     .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true)
                     .target("13").load();
             assertEquals(13, fw13.migrate().migrationsExecuted);
-            var fw14 = Flyway.configure().dataSource(upgradeContainer.getJdbcUrl(), USER, upgradePassword)
+            var fw15 = Flyway.configure().dataSource(upgradeContainer.getJdbcUrl(), USER, upgradePassword)
                     .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true)
                     .load();
-            assertEquals(1, fw14.migrate().migrationsExecuted);
+            assertEquals(2, fw15.migrate().migrationsExecuted);
             // Repeat: 0
-            assertEquals(0, fw14.migrate().migrationsExecuted);
+            assertEquals(0, fw15.migrate().migrationsExecuted);
         } finally {
             upgradeContainer.stop();
         }

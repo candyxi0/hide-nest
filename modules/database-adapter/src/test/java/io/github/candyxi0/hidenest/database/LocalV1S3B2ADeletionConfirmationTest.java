@@ -50,7 +50,7 @@ class LocalV1S3B2ADeletionConfirmationTest {
         postgres.start();
         createRoles(postgres);
         MigrateResult result = flyway(postgres).migrate();
-        assertEquals(14, result.migrationsExecuted);
+        assertEquals(15, result.migrationsExecuted);
         dsl = dsl(postgres);
     }
 
