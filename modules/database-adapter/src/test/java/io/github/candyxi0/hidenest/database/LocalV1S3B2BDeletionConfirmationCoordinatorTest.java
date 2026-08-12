@@ -96,7 +96,7 @@ class LocalV1S3B2BDeletionConfirmationCoordinatorTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(13, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, password)
+        assertEquals(14, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, password)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load()
                 .migrate().migrationsExecuted);
         var raw = new DriverManagerDataSource(postgres.getJdbcUrl(), USER, password);
