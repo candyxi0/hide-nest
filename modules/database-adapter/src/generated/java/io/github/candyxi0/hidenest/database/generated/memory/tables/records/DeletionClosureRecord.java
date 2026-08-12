@@ -211,6 +211,34 @@ public class DeletionClosureRecord extends UpdatableRecordImpl<DeletionClosureRe
         return (OffsetDateTime) get(12);
     }
 
+    /**
+     * Setter for <code>memory.deletion_closure.confirmed_by_decision_id</code>.
+     */
+    public void setConfirmedByDecisionId(UUID value) {
+        set(13, value);
+    }
+
+    /**
+     * Getter for <code>memory.deletion_closure.confirmed_by_decision_id</code>.
+     */
+    public UUID getConfirmedByDecisionId() {
+        return (UUID) get(13);
+    }
+
+    /**
+     * Setter for <code>memory.deletion_closure.confirmed_at</code>.
+     */
+    public void setConfirmedAt(OffsetDateTime value) {
+        set(14, value);
+    }
+
+    /**
+     * Getter for <code>memory.deletion_closure.confirmed_at</code>.
+     */
+    public OffsetDateTime getConfirmedAt() {
+        return (OffsetDateTime) get(14);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -234,7 +262,7 @@ public class DeletionClosureRecord extends UpdatableRecordImpl<DeletionClosureRe
     /**
      * Create a detached, initialised DeletionClosureRecord
      */
-    public DeletionClosureRecord(UUID closureId, UUID rootMemoryId, Long previewRevision, UUID rootCurrentRevisionId, Long rootRevisionNo, UUID rootPolicyId, Long rootPolicyRevisionNo, String requestIdempotencyKey, byte[] requestHash, byte[] manifestHash, String state, OffsetDateTime createdAt, OffsetDateTime expiresAt) {
+    public DeletionClosureRecord(UUID closureId, UUID rootMemoryId, Long previewRevision, UUID rootCurrentRevisionId, Long rootRevisionNo, UUID rootPolicyId, Long rootPolicyRevisionNo, String requestIdempotencyKey, byte[] requestHash, byte[] manifestHash, String state, OffsetDateTime createdAt, OffsetDateTime expiresAt, UUID confirmedByDecisionId, OffsetDateTime confirmedAt) {
         super(DeletionClosure.DELETION_CLOSURE);
 
         setClosureId(closureId);
@@ -250,6 +278,8 @@ public class DeletionClosureRecord extends UpdatableRecordImpl<DeletionClosureRe
         setState(state);
         setCreatedAt(createdAt);
         setExpiresAt(expiresAt);
+        setConfirmedByDecisionId(confirmedByDecisionId);
+        setConfirmedAt(confirmedAt);
         resetTouchedOnNotNull();
     }
 }

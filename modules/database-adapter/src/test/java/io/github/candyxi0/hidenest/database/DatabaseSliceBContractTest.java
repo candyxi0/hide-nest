@@ -84,7 +84,7 @@ class DatabaseSliceBContractTest {
                 .validateMigrationNaming(true)
                 .load();
         MigrateResult result = flyway.migrate();
-        assertEquals(12, result.migrationsExecuted);
+        assertEquals(13, result.migrationsExecuted);
     }
 
     @AfterAll
@@ -105,7 +105,7 @@ class DatabaseSliceBContractTest {
         MigrateResult repeated = flyway.migrate();
         assertEquals(0, repeated.migrationsExecuted);
         assertEquals(before, catalogFingerprint());
-        assertEquals(12, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(13, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
     }
 
     @Test
@@ -1459,9 +1459,9 @@ class DatabaseSliceBContractTest {
 
     @Test
     @Order(44)
-    @DisplayName("V012: migration history = 12, repeat migrate executes 0")
+    @DisplayName("V013: migration history = 13, repeat migrate executes 0")
     void v010MigrationHistoryAndRepeat() {
-        assertEquals(12, flyway.info().applied().length, "history must be 12");
+        assertEquals(13, flyway.info().applied().length, "history must be 13");
         MigrateResult repeat = flyway.migrate();
         assertEquals(0, repeat.migrationsExecuted, "repeat migrate must execute 0");
     }

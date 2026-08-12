@@ -9,6 +9,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.Keys;
 import io.github.candyxi0.hidenest.database.generated.memory.Memory;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionClosureMember.DeletionClosureMemberPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionFence.DeletionFencePath;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision.DecisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.DeletionClosureRecord;
 
 import java.time.OffsetDateTime;
@@ -136,6 +137,16 @@ public class DeletionClosure extends TableImpl<DeletionClosureRecord> {
      */
     public final TableField<DeletionClosureRecord, OffsetDateTime> EXPIRES_AT = createField(DSL.name("expires_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "");
 
+    /**
+     * The column <code>memory.deletion_closure.confirmed_by_decision_id</code>.
+     */
+    public final TableField<DeletionClosureRecord, UUID> CONFIRMED_BY_DECISION_ID = createField(DSL.name("confirmed_by_decision_id"), SQLDataType.UUID, this, "");
+
+    /**
+     * The column <code>memory.deletion_closure.confirmed_at</code>.
+     */
+    public final TableField<DeletionClosureRecord, OffsetDateTime> CONFIRMED_AT = createField(DSL.name("confirmed_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
+
     private DeletionClosure(Name alias, Table<DeletionClosureRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -211,7 +222,7 @@ public class DeletionClosure extends TableImpl<DeletionClosureRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.DELETION_CLOSURE_ROOT_LOOKUP);
+        return Arrays.asList(Indexes.DELETION_CLOSURE_CONFIRMED_DECISION_UNIQUE, Indexes.DELETION_CLOSURE_ROOT_LOOKUP);
     }
 
     @Override
@@ -250,6 +261,18 @@ public class DeletionClosure extends TableImpl<DeletionClosureRecord> {
         return _deletionFence;
     }
 
+    private transient DecisionPath _decision;
+
+    /**
+     * Get the implicit join path to the confirmation decision.
+     */
+    public DecisionPath decision() {
+        if (_decision == null)
+            _decision = new DecisionPath(this, Keys.DELETION_CLOSURE__DELETION_CLOSURE_CONFIRMED_BY_DECISION_FK, null);
+
+        return _decision;
+    }
+
     @Override
     public List<Check<DeletionClosureRecord>> getChecks() {
         return Arrays.asList(
@@ -260,7 +283,8 @@ public class DeletionClosure extends TableImpl<DeletionClosureRecord> {
             Internal.createCheck(this, DSL.name("deletion_closure_preview_revision_check"), "((preview_revision >= 1))", true),
             Internal.createCheck(this, DSL.name("deletion_closure_request_hash_check"), "((octet_length(request_hash) = 32))", true),
             Internal.createCheck(this, DSL.name("deletion_closure_root_revision_check"), "((root_revision_no >= 1))", true),
-            Internal.createCheck(this, DSL.name("deletion_closure_state_check"), "((state = 'PREVIEWED'::text))", true)
+            Internal.createCheck(this, DSL.name("deletion_closure_state_check"), "((state = ANY (ARRAY['PREVIEWED'::text, 'CONFIRMED'::text])))", true),
+            Internal.createCheck(this, DSL.name("deletion_closure_confirmation_fields_check"), "(((state = 'PREVIEWED'::text) AND (confirmed_by_decision_id IS NULL) AND (confirmed_at IS NULL)) OR ((state = 'CONFIRMED'::text) AND (confirmed_by_decision_id IS NOT NULL) AND (confirmed_at IS NOT NULL)))", true)
         );
     }
 

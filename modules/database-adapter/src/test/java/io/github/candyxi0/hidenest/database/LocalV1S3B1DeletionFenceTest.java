@@ -77,7 +77,7 @@ class LocalV1S3B1DeletionFenceTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(12, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, postgres.getPassword())
+        assertEquals(13, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, postgres.getPassword())
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load()
                 .migrate().migrationsExecuted);
         DefaultConfiguration configuration = new DefaultConfiguration();
