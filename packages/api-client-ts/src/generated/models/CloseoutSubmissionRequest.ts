@@ -13,6 +13,35 @@
  */
 
 import { mapValues } from '../runtime.js';
+import type { HideSelectionSubmission } from './HideSelectionSubmission.js';
+import {
+    HideSelectionSubmissionFromJSON,
+    HideSelectionSubmissionFromJSONTyped,
+    HideSelectionSubmissionToJSON,
+    HideSelectionSubmissionToJSONTyped,
+} from './HideSelectionSubmission.js';
+import type { UserConfirmationSubmission } from './UserConfirmationSubmission.js';
+import {
+    UserConfirmationSubmissionFromJSON,
+    UserConfirmationSubmissionFromJSONTyped,
+    UserConfirmationSubmissionToJSON,
+    UserConfirmationSubmissionToJSONTyped,
+} from './UserConfirmationSubmission.js';
+import type { SyntheticThreadReaderManifest } from './SyntheticThreadReaderManifest.js';
+import {
+    SyntheticThreadReaderManifestFromJSON,
+    SyntheticThreadReaderManifestFromJSONTyped,
+    SyntheticThreadReaderManifestToJSON,
+    SyntheticThreadReaderManifestToJSONTyped,
+} from './SyntheticThreadReaderManifest.js';
+import type { CloseoutSourceAnchorSubmission } from './CloseoutSourceAnchorSubmission.js';
+import {
+    CloseoutSourceAnchorSubmissionFromJSON,
+    CloseoutSourceAnchorSubmissionFromJSONTyped,
+    CloseoutSourceAnchorSubmissionToJSON,
+    CloseoutSourceAnchorSubmissionToJSONTyped,
+} from './CloseoutSourceAnchorSubmission.js';
+
 /**
  * 
  * @export
@@ -33,28 +62,28 @@ export interface CloseoutSubmissionRequest {
     threadId: string;
     /**
      * 
-     * @type {object}
+     * @type {HideSelectionSubmission}
      * @memberof CloseoutSubmissionRequest
      */
-    hideSelection: object;
+    hideSelection: HideSelectionSubmission;
     /**
      * 
-     * @type {object}
+     * @type {UserConfirmationSubmission}
      * @memberof CloseoutSubmissionRequest
      */
-    userConfirmation: object;
+    userConfirmation: UserConfirmationSubmission;
     /**
      * 
-     * @type {Array<object>}
+     * @type {Array<CloseoutSourceAnchorSubmission>}
      * @memberof CloseoutSubmissionRequest
      */
-    sourceAnchors: Array<object>;
+    sourceAnchors: Array<CloseoutSourceAnchorSubmission>;
     /**
      * 
-     * @type {object}
+     * @type {SyntheticThreadReaderManifest}
      * @memberof CloseoutSubmissionRequest
      */
-    threadReaderManifest: object;
+    threadReaderManifest: SyntheticThreadReaderManifest;
     /**
      * 
      * @type {string}
@@ -89,10 +118,10 @@ export function CloseoutSubmissionRequestFromJSONTyped(json: any, ignoreDiscrimi
         
         'submissionId': json['submissionId'],
         'threadId': json['threadId'],
-        'hideSelection': json['hideSelection'],
-        'userConfirmation': json['userConfirmation'],
-        'sourceAnchors': json['sourceAnchors'],
-        'threadReaderManifest': json['threadReaderManifest'],
+        'hideSelection': HideSelectionSubmissionFromJSON(json['hideSelection']),
+        'userConfirmation': UserConfirmationSubmissionFromJSON(json['userConfirmation']),
+        'sourceAnchors': ((json['sourceAnchors'] as Array<any>).map(CloseoutSourceAnchorSubmissionFromJSON)),
+        'threadReaderManifest': SyntheticThreadReaderManifestFromJSON(json['threadReaderManifest']),
         'confirmationProof': json['confirmationProof'],
     };
 }
@@ -110,10 +139,10 @@ export function CloseoutSubmissionRequestToJSONTyped(value?: CloseoutSubmissionR
         
         'submissionId': value['submissionId'],
         'threadId': value['threadId'],
-        'hideSelection': value['hideSelection'],
-        'userConfirmation': value['userConfirmation'],
-        'sourceAnchors': value['sourceAnchors'],
-        'threadReaderManifest': value['threadReaderManifest'],
+        'hideSelection': HideSelectionSubmissionToJSON(value['hideSelection']),
+        'userConfirmation': UserConfirmationSubmissionToJSON(value['userConfirmation']),
+        'sourceAnchors': ((value['sourceAnchors'] as Array<any>).map(CloseoutSourceAnchorSubmissionToJSON)),
+        'threadReaderManifest': SyntheticThreadReaderManifestToJSON(value['threadReaderManifest']),
         'confirmationProof': value['confirmationProof'],
     };
 }

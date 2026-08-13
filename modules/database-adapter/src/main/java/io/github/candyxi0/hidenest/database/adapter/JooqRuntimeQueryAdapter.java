@@ -66,6 +66,21 @@ public class JooqRuntimeQueryAdapter implements RuntimeQueryPort {
     }
 
     @Override
+    public CloseoutRun findCloseoutRunBySubmissionId(UUID submissionId) {
+        if (submissionId == null) {
+            return null;
+        }
+        var r = dsl.selectFrom(CLOSEOUT_RUN)
+                .where(CLOSEOUT_RUN.SUBMISSION_ID.eq(submissionId))
+                .fetchOne();
+        if (r == null) return null;
+        return new CloseoutRun(
+                r.getRunId(), r.getScopeId(), r.getState(), r.getRetryOf(),
+                r.getSubmissionId(), r.getStartedAt(), r.getTerminalAt(),
+                r.getFailureCode(), r.getCreatedAt());
+    }
+
+    @Override
     public List<CloseoutRun> findCloseoutRunsByScopeId(UUID scopeId) {
         var records = dsl.selectFrom(CLOSEOUT_RUN)
                 .where(CLOSEOUT_RUN.SCOPE_ID.eq(scopeId))

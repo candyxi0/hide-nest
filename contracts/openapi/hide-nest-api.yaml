@@ -473,6 +473,154 @@ components:
       additionalProperties: false
 
     # ─── Closeout & Review DTOs ────────────────────────────
+    HideSelectionSubmission:
+      type: object
+      required:
+        - perspectiveActorId
+        - memoryType
+        - bodyText
+        - bodyHash
+      properties:
+        perspectiveActorId:
+          type: string
+          format: uuid
+        memoryType:
+          $ref: "#/components/schemas/MemoryType"
+        bodyText:
+          type: string
+          minLength: 1
+          maxLength: 16000
+        bodyHash:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+      additionalProperties: false
+
+    UserConfirmationSubmission:
+      type: object
+      required:
+        - decision
+        - reviewManifestHash
+        - confirmationSourceUnitId
+      properties:
+        decision:
+          type: string
+          const: CONFIRM
+        reviewManifestHash:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+        confirmationSourceUnitId:
+          type: string
+          format: uuid
+      additionalProperties: false
+
+    CloseoutAnchorUnitSubmission:
+      type: object
+      required:
+        - sourceUnitId
+        - fromOffset
+        - toOffset
+        - ordinal
+      properties:
+        sourceUnitId:
+          type: string
+          format: uuid
+        fromOffset:
+          type: integer
+          minimum: 0
+          nullable: true
+        toOffset:
+          type: integer
+          minimum: 0
+          nullable: true
+        ordinal:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+
+    CloseoutSourceAnchorSubmission:
+      type: object
+      required:
+        - anchorId
+        - units
+      properties:
+        anchorId:
+          type: string
+          format: uuid
+        units:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/CloseoutAnchorUnitSubmission"
+      additionalProperties: false
+
+    SyntheticEvidenceMessage:
+      type: object
+      required:
+        - sourceUnitId
+        - actorId
+        - ordinal
+        - externalUnitRef
+        - occurredAt
+        - bodyText
+        - bodyHash
+      properties:
+        sourceUnitId:
+          type: string
+          format: uuid
+        actorId:
+          type: string
+          format: uuid
+        ordinal:
+          type: integer
+          minimum: 0
+        externalUnitRef:
+          type: string
+          minLength: 1
+          maxLength: 256
+        occurredAt:
+          type: string
+          format: date-time
+        bodyText:
+          type: string
+          minLength: 1
+        bodyHash:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+      additionalProperties: false
+
+    SyntheticThreadReaderManifest:
+      type: object
+      required:
+        - schemaVersion
+        - fromOrdinal
+        - toOrdinal
+        - continuous
+        - manifestHash
+        - selectedEvidenceMessages
+      properties:
+        schemaVersion:
+          type: string
+          const: local-v1-synthetic-v1
+        fromOrdinal:
+          type: integer
+          minimum: 0
+        toOrdinal:
+          type: integer
+          minimum: 0
+        continuous:
+          type: boolean
+        manifestHash:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+        selectedEvidenceMessages:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/SyntheticEvidenceMessage"
+      additionalProperties: false
+
     CloseoutSubmissionRequest:
       type: object
       required:
@@ -491,21 +639,19 @@ components:
           type: string
           format: uuid
         hideSelection:
-          type: object
-          additionalProperties: false
+          $ref: "#/components/schemas/HideSelectionSubmission"
         userConfirmation:
-          type: object
-          additionalProperties: false
+          $ref: "#/components/schemas/UserConfirmationSubmission"
         sourceAnchors:
           type: array
+          minItems: 1
           items:
-            type: object
-            additionalProperties: false
+            $ref: "#/components/schemas/CloseoutSourceAnchorSubmission"
         threadReaderManifest:
-          type: object
-          additionalProperties: false
+          $ref: "#/components/schemas/SyntheticThreadReaderManifest"
         confirmationProof:
           type: string
+          pattern: "^[0-9a-f]{64}$"
       additionalProperties: false
 
     CloseoutReceipt:

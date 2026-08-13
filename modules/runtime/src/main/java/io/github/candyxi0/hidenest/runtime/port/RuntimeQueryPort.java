@@ -24,6 +24,9 @@ public interface RuntimeQueryPort {
     /** Find closeout run by primary key. */
     CloseoutRun findCloseoutRunById(UUID runId);
 
+    /** Find closeout run by permanent submission id (unique binding). */
+    CloseoutRun findCloseoutRunBySubmissionId(UUID submissionId);
+
     /** Find closeout runs by scope id. */
     List<CloseoutRun> findCloseoutRunsByScopeId(UUID scopeId);
 

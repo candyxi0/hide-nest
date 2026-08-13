@@ -40,15 +40,15 @@ class SchemaStructureTest {
     }
 
     @Test
-    void formalClosureJudgeRejectsMissingInlineObjectClosure() throws Exception {
+    void formalClosureJudgeRejectsOpenAdditionalProperties() throws Exception {
         Path tempRoot = Files.createTempDirectory("hdm003-r2-closure-judge-");
         try {
             Path mutated = tempRoot.resolve("missing-inline-closure.yaml");
             String source = ContractTestSupport.readString(ContractTestSupport.OPENAPI_SPEC);
-            String mutatedSource = source.replaceFirst(
-                    "(?m)^(        hideSelection:\\R          type: object\\R)          additionalProperties: false\\R",
-                    "$1");
-            assertTrue(!source.equals(mutatedSource), "inline closure mutation must change the temporary spec");
+            String mutatedSource = source.replace(
+                    "        confirmationSourceUnitId:\n          type: string\n          format: uuid\n      additionalProperties: false",
+                    "        confirmationSourceUnitId:\n          type: string\n          format: uuid");
+            assertTrue(!source.equals(mutatedSource), "open additionalProperties mutation must change the temporary spec");
             Files.writeString(mutated, mutatedSource, StandardCharsets.UTF_8);
             AssertionError failure = assertThrows(AssertionError.class, () -> ClosureJudge.assertClosed(mutated));
             assertTrue(failure.getMessage().contains("additionalProperties"));

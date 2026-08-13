@@ -2,7 +2,9 @@
 /* eslint-disable */
 export * from './ActionResultResponse.js';
 export * from './AsyncAcceptedResponse.js';
+export * from './CloseoutAnchorUnitSubmission.js';
 export * from './CloseoutReceipt.js';
+export * from './CloseoutSourceAnchorSubmission.js';
 export * from './CloseoutSubmissionRequest.js';
 export * from './ComponentHealth.js';
 export * from './ContextPackRequest.js';
@@ -16,6 +18,7 @@ export * from './DeletionPreviewResponse.js';
 export * from './ExportRequest.js';
 export * from './FailureCode.js';
 export * from './GovernanceActionRequest.js';
+export * from './HideSelectionSubmission.js';
 export * from './HookBootstrapRequest.js';
 export * from './HookBootstrapResponse.js';
 export * from './IsolationRestorePreviewResponse.js';
@@ -43,5 +46,8 @@ export * from './RunListResponse.js';
 export * from './RunPhase.js';
 export * from './RunStatusResponse.js';
 export * from './SourceAvailability.js';
+export * from './SyntheticEvidenceMessage.js';
+export * from './SyntheticThreadReaderManifest.js';
 export * from './SystemStatusResponse.js';
 export * from './SystemStatusResponseComponentsInner.js';
+export * from './UserConfirmationSubmission.js';

@@ -13,28 +13,44 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.ObjectMapper;
 
-/** Synthetic local read gate only; this is not a production session or authorization boundary. */
+/**
+ * Synthetic write gate for {@code POST /v1/closeout-submissions}.
+ *
+ * <p>Requires a high-entropy bearer and a high-entropy {@code X-Action-Capability}; both come from
+ * process configuration and never touch HTML, URLs, disk, responses, logs or reports. When no
+ * capability is configured the write path fails closed. This is a local synthetic gate, not a
+ * production session or authorization boundary.</p>
+ */
 @Component
 @Profile("local-v1-synthetic")
-public final class LocalV1SyntheticReadGate extends OncePerRequestFilter {
+@Order(1)
+public final class LocalV1CloseoutWriteGate extends OncePerRequestFilter {
 
-    private static final Pattern ALLOWED_PATH = Pattern.compile(
-            "^/v1/memories(?:/[0-9a-fA-F-]{36}(?:/evidence)?)?$|^/v1/runs/[0-9a-fA-F-]{36}$");
-    private static final Pattern CLOSEOUT_WRITE_PATH = Pattern.compile("^/v1/closeout-submissions$");
+    private static final Pattern CLOSEOUT_PATH = Pattern.compile("^/v1/closeout-submissions$");
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final byte[] expectedToken;
+    private final byte[] expectedCapability;
     private final ObjectMapper objectMapper;
 
-    public LocalV1SyntheticReadGate(
-            @Value("${hidenest.local-v1.synthetic-token}") String token, ObjectMapper objectMapper) {
+    public LocalV1CloseoutWriteGate(
+            @Value("${hidenest.local-v1.synthetic-token}") String token,
+            @Value("${hidenest.local-v1.synthetic-capability:}") String capability,
+            ObjectMapper objectMapper) {
         LocalV1ReadConfiguration.requireHighEntropyToken(token);
         this.expectedToken = token.getBytes(StandardCharsets.UTF_8);
+        if (capability == null || capability.isBlank()) {
+            this.expectedCapability = null;
+        } else {
+            LocalV1ReadConfiguration.requireHighEntropyToken(capability);
+            this.expectedCapability = capability.getBytes(StandardCharsets.UTF_8);
+        }
         this.objectMapper = objectMapper;
     }
 
@@ -48,19 +64,11 @@ public final class LocalV1SyntheticReadGate extends OncePerRequestFilter {
         response.setHeader("Cache-Control", "no-store");
 
         String path = request.getRequestURI();
-        if (!path.startsWith("/v1/")) {
+        if (!"POST".equals(request.getMethod()) || !CLOSEOUT_PATH.matcher(path).matches()) {
             chain.doFilter(request, response);
             return;
         }
-        // The closeout write path is validated by LocalV1CloseoutWriteGate (ordered before us).
-        if ("POST".equals(request.getMethod()) && CLOSEOUT_WRITE_PATH.matcher(path).matches()) {
-            chain.doFilter(request, response);
-            return;
-        }
-        if (!"GET".equals(request.getMethod()) || !ALLOWED_PATH.matcher(path).matches()) {
-            writeProblem(response, requestId, 403, FailureCode.ACCESS_DENIED, "此本机只读入口不允许该请求");
-            return;
-        }
+
         String authorization = request.getHeader("Authorization");
         if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
             writeProblem(response, requestId, 401, FailureCode.ACCESS_DENIED, "本机合成访问凭据缺失");
@@ -71,6 +79,22 @@ public final class LocalV1SyntheticReadGate extends OncePerRequestFilter {
             writeProblem(response, requestId, 403, FailureCode.ACCESS_DENIED, "本机合成访问凭据无效");
             return;
         }
+
+        if (expectedCapability == null) {
+            writeProblem(response, requestId, 403, FailureCode.CAPABILITY_REQUIRED, "本机关窗动作能力未配置");
+            return;
+        }
+        String capability = request.getHeader("X-Action-Capability");
+        if (capability == null) {
+            writeProblem(response, requestId, 403, FailureCode.CAPABILITY_REQUIRED, "本机关窗动作能力缺失");
+            return;
+        }
+        byte[] suppliedCapability = capability.getBytes(StandardCharsets.UTF_8);
+        if (!MessageDigest.isEqual(expectedCapability, suppliedCapability)) {
+            writeProblem(response, requestId, 403, FailureCode.CAPABILITY_REQUIRED, "本机关窗动作能力无效");
+            return;
+        }
+
         chain.doFilter(request, response);
     }
 

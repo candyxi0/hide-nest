@@ -1058,6 +1058,36 @@
         "source": "S04-3.2"
       },
       {
+        "name": "HideSelectionSubmission",
+        "type": "model",
+        "source": "Task31A-4.1"
+      },
+      {
+        "name": "UserConfirmationSubmission",
+        "type": "model",
+        "source": "Task31A-4.2"
+      },
+      {
+        "name": "CloseoutSourceAnchorSubmission",
+        "type": "model",
+        "source": "Task31A-4.3"
+      },
+      {
+        "name": "CloseoutAnchorUnitSubmission",
+        "type": "model",
+        "source": "Task31A-4.3"
+      },
+      {
+        "name": "SyntheticThreadReaderManifest",
+        "type": "model",
+        "source": "Task31A-4.4"
+      },
+      {
+        "name": "SyntheticEvidenceMessage",
+        "type": "model",
+        "source": "Task31A-4.4"
+      },
+      {
         "name": "CloseoutReceipt",
         "type": "response",
         "source": "S04-3.2"
@@ -2628,10 +2658,10 @@
     "remoteApiOperations": 30,
     "localExcludedOperations": 3,
     "privateExcludedEndpoints": 2,
-    "apiSchemas": 35,
+    "apiSchemas": 41,
     "sharedEnums": 9,
     "eventSchemas": 4,
-    "totalSchemaCount": 48,
+    "totalSchemaCount": 54,
     "failureCodes": 50,
     "asyncStages": 5,
     "eventTypes": 12,
