@@ -1123,6 +1123,18 @@
         "source": "S07-2.1"
       },
       {
+        "name": "MemoryDetail",
+        "type": "model",
+        "source": "Task30A-4.1",
+        "description": "Memory detail response body with exact fields per Local V1 S2B read chain"
+      },
+      {
+        "name": "MemoryEvidenceItem",
+        "type": "model",
+        "source": "Task30A-4.2",
+        "description": "Evidence item with exact fields per Local V1 S2B read chain"
+      },
+      {
         "name": "MemoryDetailResponse",
         "type": "response",
         "source": "S07-2.2"
@@ -1475,7 +1487,7 @@
         }
       }
     ],
-    "totalSchemaCount": 46
+    "totalSchemaCount": 48
   },
   "failureCodes": [
     {
@@ -2616,10 +2628,10 @@
     "remoteApiOperations": 30,
     "localExcludedOperations": 3,
     "privateExcludedEndpoints": 2,
-    "apiSchemas": 33,
+    "apiSchemas": 35,
     "sharedEnums": 9,
     "eventSchemas": 4,
-    "totalSchemaCount": 46,
+    "totalSchemaCount": 48,
     "failureCodes": 50,
     "asyncStages": 5,
     "eventTypes": 12,

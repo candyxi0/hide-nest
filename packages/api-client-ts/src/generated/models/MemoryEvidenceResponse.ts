@@ -20,6 +20,13 @@ import {
     ResultCategoryToJSON,
     ResultCategoryToJSONTyped,
 } from './ResultCategory.js';
+import type { MemoryEvidenceItem } from './MemoryEvidenceItem.js';
+import {
+    MemoryEvidenceItemFromJSON,
+    MemoryEvidenceItemFromJSONTyped,
+    MemoryEvidenceItemToJSON,
+    MemoryEvidenceItemToJSONTyped,
+} from './MemoryEvidenceItem.js';
 
 /**
  * 
@@ -40,11 +47,29 @@ export interface MemoryEvidenceResponse {
      */
     resultCategory: ResultCategory;
     /**
-     * 
-     * @type {Array<object>}
+     * Canonical memory identifier.
+     * @type {string}
      * @memberof MemoryEvidenceResponse
      */
-    evidenceItems: Array<object>;
+    memoryId: string;
+    /**
+     * Current canonical memory revision identifier.
+     * @type {string}
+     * @memberof MemoryEvidenceResponse
+     */
+    currentRevisionId: string;
+    /**
+     * Current canonical revision number.
+     * @type {number}
+     * @memberof MemoryEvidenceResponse
+     */
+    revisionNo: number;
+    /**
+     * All minimum-necessary evidence items saved for this memory revision.
+     * @type {Array<MemoryEvidenceItem>}
+     * @memberof MemoryEvidenceResponse
+     */
+    evidenceItems: Array<MemoryEvidenceItem>;
 }
 
 
@@ -55,6 +80,9 @@ export interface MemoryEvidenceResponse {
 export function instanceOfMemoryEvidenceResponse(value: object): value is MemoryEvidenceResponse {
     if (!('requestId' in value) || value['requestId'] === undefined) return false;
     if (!('resultCategory' in value) || value['resultCategory'] === undefined) return false;
+    if (!('memoryId' in value) || value['memoryId'] === undefined) return false;
+    if (!('currentRevisionId' in value) || value['currentRevisionId'] === undefined) return false;
+    if (!('revisionNo' in value) || value['revisionNo'] === undefined) return false;
     if (!('evidenceItems' in value) || value['evidenceItems'] === undefined) return false;
     return true;
 }
@@ -71,7 +99,10 @@ export function MemoryEvidenceResponseFromJSONTyped(json: any, ignoreDiscriminat
         
         'requestId': json['requestId'],
         'resultCategory': ResultCategoryFromJSON(json['resultCategory']),
-        'evidenceItems': json['evidenceItems'],
+        'memoryId': json['memoryId'],
+        'currentRevisionId': json['currentRevisionId'],
+        'revisionNo': json['revisionNo'],
+        'evidenceItems': ((json['evidenceItems'] as Array<any>).map(MemoryEvidenceItemFromJSON)),
     };
 }
 
@@ -88,7 +119,10 @@ export function MemoryEvidenceResponseToJSONTyped(value?: MemoryEvidenceResponse
         
         'requestId': value['requestId'],
         'resultCategory': ResultCategoryToJSON(value['resultCategory']),
-        'evidenceItems': value['evidenceItems'],
+        'memoryId': value['memoryId'],
+        'currentRevisionId': value['currentRevisionId'],
+        'revisionNo': value['revisionNo'],
+        'evidenceItems': ((value['evidenceItems'] as Array<any>).map(MemoryEvidenceItemToJSON)),
     };
 }
 

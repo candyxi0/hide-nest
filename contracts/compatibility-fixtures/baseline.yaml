@@ -185,7 +185,7 @@ components:
             $ref: "#/components/schemas/ProblemDetail"
 
   # ────────────────────────────────────────────────────────
-  # Schemas (42 total: 9 enums + 33 API/DTO schemas)
+  # Schemas (44 total: 9 enums + 35 API/DTO schemas)
   # ────────────────────────────────────────────────────────
   schemas:
     # ─── Shared enums (9) ──────────────────────────────────
@@ -1029,6 +1029,47 @@ components:
           format: date-time
       additionalProperties: false
 
+    MemoryDetail:
+      type: object
+      required:
+        - memoryId
+        - currentRevisionId
+        - revisionNo
+        - state
+        - memoryType
+        - perspectiveActorId
+        - bodyText
+        - updatedAt
+        - evidenceCount
+      properties:
+        memoryId:
+          type: string
+          format: uuid
+        currentRevisionId:
+          type: string
+          format: uuid
+        revisionNo:
+          type: integer
+          minimum: 1
+        state:
+          $ref: "#/components/schemas/MemoryState"
+        memoryType:
+          $ref: "#/components/schemas/MemoryType"
+        perspectiveActorId:
+          type: string
+          format: uuid
+        bodyText:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        evidenceCount:
+          type: integer
+          minimum: 0
+        uncertaintyCode:
+          type: string
+      additionalProperties: false
+
     MemoryDetailResponse:
       type: object
       required:
@@ -1042,8 +1083,7 @@ components:
         resultCategory:
           $ref: "#/components/schemas/ResultCategory"
         memory:
-          type: object
-          additionalProperties: false
+          $ref: "#/components/schemas/MemoryDetail"
       additionalProperties: false
 
     MemoryTrajectoryResponse:
@@ -1067,11 +1107,49 @@ components:
           type: string
       additionalProperties: false
 
+    MemoryEvidenceItem:
+      type: object
+      required:
+        - anchorId
+        - sourceUnitId
+        - ordinal
+        - actorId
+        - actorKind
+        - actorStableRef
+        - occurredAt
+        - bodyText
+      properties:
+        anchorId:
+          type: string
+          format: uuid
+        sourceUnitId:
+          type: string
+          format: uuid
+        ordinal:
+          type: integer
+          minimum: 0
+        actorId:
+          type: string
+          format: uuid
+        actorKind:
+          type: string
+        actorStableRef:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        bodyText:
+          type: string
+      additionalProperties: false
+
     MemoryEvidenceResponse:
       type: object
       required:
         - requestId
         - resultCategory
+        - memoryId
+        - currentRevisionId
+        - revisionNo
         - evidenceItems
       properties:
         requestId:
@@ -1079,11 +1157,23 @@ components:
           format: uuid
         resultCategory:
           $ref: "#/components/schemas/ResultCategory"
+        memoryId:
+          description: Canonical memory identifier.
+          type: string
+          format: uuid
+        currentRevisionId:
+          description: Current canonical memory revision identifier.
+          type: string
+          format: uuid
+        revisionNo:
+          description: Current canonical revision number.
+          type: integer
+          minimum: 1
         evidenceItems:
+          description: All minimum-necessary evidence items saved for this memory revision.
           type: array
           items:
-            type: object
-            additionalProperties: false
+            $ref: "#/components/schemas/MemoryEvidenceItem"
       additionalProperties: false
 
     RunListResponse:

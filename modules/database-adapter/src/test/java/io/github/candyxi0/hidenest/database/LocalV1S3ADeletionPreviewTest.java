@@ -143,10 +143,10 @@ class LocalV1S3ADeletionPreviewTest {
         Flyway v10 = Flyway.configure().dataSource(databaseUrl, USER, dbPassword)
                 .defaultSchema("public").locations("classpath:db/migration").target("10").load();
         assertEquals(10, v10.migrate().migrationsExecuted);
-        var v11 = Flyway.configure().dataSource(databaseUrl, USER, dbPassword)
+        var v15 = Flyway.configure().dataSource(databaseUrl, USER, dbPassword)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load();
-        assertEquals(3, v11.migrate().migrationsExecuted);
-        assertEquals(0, v11.migrate().migrationsExecuted);
+        assertEquals(5, v15.migrate().migrationsExecuted);
+        assertEquals(0, v15.migrate().migrationsExecuted);
     }
 
     @Test

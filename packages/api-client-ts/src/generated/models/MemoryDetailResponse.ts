@@ -20,6 +20,13 @@ import {
     ResultCategoryToJSON,
     ResultCategoryToJSONTyped,
 } from './ResultCategory.js';
+import type { MemoryDetail } from './MemoryDetail.js';
+import {
+    MemoryDetailFromJSON,
+    MemoryDetailFromJSONTyped,
+    MemoryDetailToJSON,
+    MemoryDetailToJSONTyped,
+} from './MemoryDetail.js';
 
 /**
  * 
@@ -41,10 +48,10 @@ export interface MemoryDetailResponse {
     resultCategory: ResultCategory;
     /**
      * 
-     * @type {object}
+     * @type {MemoryDetail}
      * @memberof MemoryDetailResponse
      */
-    memory: object;
+    memory: MemoryDetail;
 }
 
 
@@ -71,7 +78,7 @@ export function MemoryDetailResponseFromJSONTyped(json: any, ignoreDiscriminator
         
         'requestId': json['requestId'],
         'resultCategory': ResultCategoryFromJSON(json['resultCategory']),
-        'memory': json['memory'],
+        'memory': MemoryDetailFromJSON(json['memory']),
     };
 }
 
@@ -88,7 +95,7 @@ export function MemoryDetailResponseToJSONTyped(value?: MemoryDetailResponse | n
         
         'requestId': value['requestId'],
         'resultCategory': ResultCategoryToJSON(value['resultCategory']),
-        'memory': value['memory'],
+        'memory': MemoryDetailToJSON(value['memory']),
     };
 }
 

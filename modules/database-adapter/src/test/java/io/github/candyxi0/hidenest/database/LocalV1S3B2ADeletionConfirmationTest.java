@@ -60,19 +60,19 @@ class LocalV1S3B2ADeletionConfirmationTest {
     }
 
     @Test
-    @DisplayName("V013 empty, V012-to-V013 upgrade, and repeat migration are 13/1/0")
+    @DisplayName("V012 start, upgrade to V015, and repeat migration are 12/3/0")
     void migrationCounts() throws Exception {
         PostgreSQLContainer<?> upgrade = container("hide_nest_upgrade");
         try {
             upgrade.start();
             createRoles(upgrade);
             MigrateResult first = flyway(upgrade, "12").migrate();
-            MigrateResult second = flyway(upgrade, "13").migrate();
+            MigrateResult second = flyway(upgrade).migrate();
             MigrateResult repeat = flyway(upgrade).migrate();
             assertEquals(12, first.migrationsExecuted);
-            assertEquals(1, second.migrationsExecuted);
+            assertEquals(3, second.migrationsExecuted);
             assertEquals(0, repeat.migrationsExecuted);
-            assertEquals(13L, scalar(upgrade, "SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+            assertEquals(15L, scalar(upgrade, "SELECT count(*) FROM public.flyway_schema_history WHERE success"));
         } finally {
             upgrade.stop();
         }

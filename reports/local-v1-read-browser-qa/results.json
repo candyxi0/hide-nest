@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "executedAt": "2026-08-13T03:46:07.869Z",
+  "startTime": "2026-08-13T03:45:32.133Z",
+  "durationMs": 35669.063,
+  "overallStatus": "passed",
+  "browsers": {
+    "desktop-1440": {
+      "name": "chromium",
+      "version": "145.0.7632.6"
+    },
+    "compact-1024": {
+      "name": "chromium",
+      "version": "145.0.7632.6"
+    },
+    "mobile-390": {
+      "name": "chromium",
+      "version": "145.0.7632.6"
+    }
+  },
+  "projects": {
+    "desktop-1440": {
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "total": 8,
+      "durationMs": 10496
+    },
+    "compact-1024": {
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "total": 8,
+      "durationMs": 10810
+    },
+    "mobile-390": {
+      "status": "passed",
+      "passed": 8,
+      "failed": 0,
+      "total": 8,
+      "durationMs": 9652
+    }
+  },
+  "coreFlow": {
+    "desktop-1440": "passed",
+    "compact-1024": "passed",
+    "mobile-390": "passed"
+  },
+  "axeScans": {
+    "total": 9,
+    "serious": 0,
+    "critical": 0,
+    "moderate": 0,
+    "minor": 0,
+    "scans": [
+      {
+        "state": "list",
+        "serious": 0,
+        "critical": 0,
+        "moderate": 0,
+        "minor": 0,
+        "artifactPath": "desktop-1440/01-list.json",
+        "project": "desktop-1440"
+      },
+      {
+        "state": "detail",
+        "serious": 0,
+        "critical": 0,
+        "moderate": 0,
+        "minor": 0,
+        "artifactPath": "desktop-1440/02-detail.json",
+        "project": "desktop-1440"
+      },
+      {
+        "state": "drawer",
+        "serious": 0,
+        "critical": 0,
+        "moderate": 0,
+        "minor": 0,
+        "artifactPath": "desktop-1440/03-drawer.json",
+        "project": "desktop-1440"
+      },
+      {
+        "state": "list",
+        "serious": 0,
+        "critical": 0,
+        "moderate": 0,
+        "minor": 0,
+        "artifactPath": "compact-1024/01-list.json",
+        "project": "compact-1024"
+      },
+      {
+        "state": "detail",
+        "serious": 0,
+        "critical": 0,
+        "moderate": 0,
+        "minor": 0,
+        "artifactPath": "compact-1024/02-detail.json",
+        "project": "compact-1024"
+      },
+      {
+        "state": "drawer",
+        "serious": 0,
+        "critical": 0,
+        "moderate": 0,
+        "minor": 0,
+        "artifactPath": "compact-1024/03-drawer.json",
+        "project": "compact-1024"
+      },
+      {
+        "state": "list",
+        "serious": 0,
+        "critical": 0,
+        "moderate": 0,
+        "minor": 0,
+        "artifactPath": "mobile-390/01-list.json",
+        "project": "mobile-390"
+      },
+      {
+        "state": "detail",
+        "serious": 0,
+        "critical": 0,
+        "moderate": 0,
+        "minor": 0,
+        "artifactPath": "mobile-390/02-detail.json",
+        "project": "mobile-390"
+      },
+      {
+        "state": "drawer",
+        "serious": 0,
+        "critical": 0,
+        "moderate": 0,
+        "minor": 0,
+        "artifactPath": "mobile-390/03-drawer.json",
+        "project": "mobile-390"
+      }
+    ]
+  },
+  "requestAudit": {
+    "authorizationHeaders": 0,
+    "externalRequests": 0,
+    "evidenceRequests": 9,
+    "writeRequests": 0,
+    "totalRequests": 129,
+    "externalUrls": []
+  },
+  "storageAudit": {
+    "localStorageKeys": 0,
+    "sessionStorageKeys": 0,
+    "indexedDbNames": 0,
+    "cacheNames": 0,
+    "serviceWorkers": 0
+  },
+  "consoleAudit": {
+    "consoleError": 0,
+    "pageError": 0,
+    "expectedHttpDiagnostics": 18
+  },
+  "screenshots": [
+    "desktop-1440/01-list.png",
+    "desktop-1440/02-detail.png",
+    "desktop-1440/04-detail-lower.png",
+    "desktop-1440/03-drawer.png",
+    "compact-1024/01-list.png",
+    "compact-1024/02-detail.png",
+    "compact-1024/04-detail-lower.png",
+    "compact-1024/03-drawer.png",
+    "mobile-390/01-list.png",
+    "mobile-390/02-detail.png",
+    "mobile-390/05-detail-actions.png",
+    "mobile-390/04-detail-lower.png",
+    "mobile-390/03-drawer.png"
+  ],
+  "failedCriteria": []
+}

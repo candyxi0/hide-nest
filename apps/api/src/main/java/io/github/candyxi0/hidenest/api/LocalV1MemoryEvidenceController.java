@@ -1,0 +1,43 @@
+package io.github.candyxi0.hidenest.api;
+
+import io.github.candyxi0.hidenest.application.coordinator.LocalV1S2BQueryCoordinator;
+import io.github.candyxi0.hidenest.contracts.model.MemoryEvidenceResponse;
+import io.github.candyxi0.hidenest.contracts.model.ResultCategory;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.UUID;
+import org.springframework.context.annotation.Profile;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@Profile("local-v1-synthetic")
+public final class LocalV1MemoryEvidenceController {
+
+    private final LocalV1S2BQueryCoordinator coordinator;
+
+    public LocalV1MemoryEvidenceController(LocalV1S2BQueryCoordinator coordinator) {
+        this.coordinator = coordinator;
+    }
+
+    @GetMapping(value = "/v1/memories/{memoryId}/evidence", produces = MediaType.APPLICATION_JSON_VALUE)
+    MemoryEvidenceResponse evidence(
+            @PathVariable("memoryId") UUID memoryId,
+            @RequestParam(value = "revisionId", required = false) UUID revisionId,
+            HttpServletRequest request) {
+        var detail = coordinator.getMemoryDetail(memoryId);
+        if (revisionId != null && !revisionId.equals(detail.currentRevisionId())) {
+            throw new LocalV1NotFoundException();
+        }
+        var evidence = coordinator.getFullEvidence(memoryId);
+        return new MemoryEvidenceResponse(
+                LocalV1RequestContext.requestId(request),
+                ResultCategory.SUCCEEDED,
+                evidence.memoryId(),
+                evidence.currentRevisionId(),
+                Math.toIntExact(evidence.revisionNo()),
+                evidence.messages().stream().map(LocalV1MemoryResponseMapper::evidence).toList());
+    }
+}

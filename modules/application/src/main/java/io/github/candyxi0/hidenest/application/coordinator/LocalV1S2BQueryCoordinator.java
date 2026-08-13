@@ -24,6 +24,7 @@ import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -37,7 +38,6 @@ import java.util.UUID;
 public class LocalV1S2BQueryCoordinator {
 
     private static final int MAX_LIST_LIMIT = 50;
-    private static final int MAX_PREVIEW_CODE_POINTS = 120;
     private static final int MAX_EVIDENCE_MESSAGES = 100;
     private static final long MAX_EVIDENCE_BYTES = 4L * 1024L * 1024L;
     private static final String TEXT_PAYLOAD_KIND = "TEXT";
@@ -74,15 +74,21 @@ public class LocalV1S2BQueryCoordinator {
                 new MemoryReadFilter(state, keyword, request.limit(), request.offset()));
         for (MemoryRecord record : records) {
             CurrentMemory current = readCurrent(record.memoryId());
+            int evidenceCount = evidenceCount(current.revision().memoryRevisionId());
+            boolean sourceAvailable = evidenceCount > 0
+                    && !readFullEvidence(current).messages().isEmpty();
             items.add(new LocalV1S2BMemoryItem(
                     record.memoryId(),
+                    current.revision().memoryRevisionId(),
                     record.state(),
                     current.revision().revisionNo(),
                     current.revision().memoryType(),
                     current.revision().perspectiveActorId(),
-                    preview(current.revision().bodyText()),
+                    current.revision().bodyText(),
+                    current.revision().uncertaintyCode(),
                     record.updatedAt(),
-                    evidenceCount(current.revision().memoryRevisionId())));
+                    evidenceCount,
+                    sourceAvailable));
         }
         return new LocalV1S2BListResult(items);
     }
@@ -92,11 +98,13 @@ public class LocalV1S2BQueryCoordinator {
         CurrentMemory current = readCurrent(memoryId);
         return new LocalV1S2BMemoryDetail(
                 current.record().memoryId(),
+                current.revision().memoryRevisionId(),
                 current.record().state(),
                 current.revision().revisionNo(),
                 current.revision().memoryType(),
                 current.revision().perspectiveActorId(),
                 current.revision().bodyText(),
+                current.revision().uncertaintyCode(),
                 current.record().updatedAt(),
                 evidenceCount(current.revision().memoryRevisionId()));
     }
@@ -105,6 +113,10 @@ public class LocalV1S2BQueryCoordinator {
     public LocalV1S2BEvidenceResult getFullEvidence(UUID memoryId) {
         rejectMemoryFence(memoryId);
         CurrentMemory current = readCurrent(memoryId);
+        return readFullEvidence(current);
+    }
+
+    private LocalV1S2BEvidenceResult readFullEvidence(CurrentMemory current) {
         List<MemoryRelation> relations = memoryReadPort.findRelationsByFromRevisionId(
                 current.revision().memoryRevisionId());
         if (relations == null) {
@@ -123,7 +135,7 @@ public class LocalV1S2BQueryCoordinator {
                         .thenComparing(MemoryRelation::relationId))
                 .toList();
 
-        List<LocalV1S2BEvidenceMessage> messages = new ArrayList<>();
+        List<OrderedEvidenceMessage> orderedMessages = new ArrayList<>();
         Set<UUID> seenAnchors = new HashSet<>();
         long totalBytes = 0L;
         for (MemoryRelation relation : relations) {
@@ -167,7 +179,7 @@ public class LocalV1S2BQueryCoordinator {
                 throw failure(LocalV1S2BException.Code.ANCHOR_INVALID);
             }
             for (SourceAnchorUnit anchorUnit : anchorUnits) {
-                if (messages.size() >= MAX_EVIDENCE_MESSAGES) {
+                if (orderedMessages.size() >= MAX_EVIDENCE_MESSAGES) {
                     throw failure(LocalV1S2BException.Code.EVIDENCE_LIMIT_EXCEEDED);
                 }
                 SourceUnit sourceUnit = evidenceReferencePort.findSourceUnitById(
@@ -211,17 +223,28 @@ public class LocalV1S2BQueryCoordinator {
                 }
                 totalBytes += bytes.length;
                 String text = decodeUtf8(bytes);
-                messages.add(new LocalV1S2BEvidenceMessage(
-                        anchor.anchorId(),
-                        sourceUnit.sourceUnitId(),
+                orderedMessages.add(new OrderedEvidenceMessage(
+                        relation.createdAt(),
                         anchorUnit.ordinal(),
-                        actor.actorId(),
-                        actor.actorKind(),
-                        actor.stableRef(),
-                        sourceUnit.occurredAt(),
-                        text));
+                        relation.relationId(),
+                        new LocalV1S2BEvidenceMessage(
+                                anchor.anchorId(),
+                                sourceUnit.sourceUnitId(),
+                                anchorUnit.ordinal(),
+                                actor.actorId(),
+                                actor.actorKind(),
+                                actor.stableRef(),
+                                sourceUnit.occurredAt(),
+                                text)));
             }
         }
+        List<LocalV1S2BEvidenceMessage> messages = orderedMessages.stream()
+                .sorted(Comparator.comparing(OrderedEvidenceMessage::relationCreatedAt)
+                        .thenComparing(OrderedEvidenceMessage::anchorOrdinal)
+                        .thenComparing(OrderedEvidenceMessage::relationId)
+                        .thenComparing(value -> value.message().sourceUnitId()))
+                .map(OrderedEvidenceMessage::message)
+                .toList();
         return new LocalV1S2BEvidenceResult(
                 current.record().memoryId(),
                 current.revision().memoryRevisionId(),
@@ -338,14 +361,6 @@ public class LocalV1S2BQueryCoordinator {
         }
     }
 
-    private static String preview(String value) {
-        int count = value.codePointCount(0, value.length());
-        if (count <= MAX_PREVIEW_CODE_POINTS) {
-            return value;
-        }
-        return value.substring(0, value.offsetByCodePoints(0, MAX_PREVIEW_CODE_POINTS));
-    }
-
     private static boolean blank(String value) {
         return value == null || value.isBlank();
     }
@@ -355,4 +370,10 @@ public class LocalV1S2BQueryCoordinator {
     }
 
     private record CurrentMemory(MemoryRecord record, MemoryRevision revision) {}
+
+    private record OrderedEvidenceMessage(
+            OffsetDateTime relationCreatedAt,
+            Long anchorOrdinal,
+            UUID relationId,
+            LocalV1S2BEvidenceMessage message) {}
 }
