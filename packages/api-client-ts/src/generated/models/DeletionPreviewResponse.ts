@@ -20,6 +20,13 @@ import {
     ResultCategoryToJSON,
     ResultCategoryToJSONTyped,
 } from './ResultCategory.js';
+import type { DeletionClosureMember } from './DeletionClosureMember.js';
+import {
+    DeletionClosureMemberFromJSON,
+    DeletionClosureMemberFromJSONTyped,
+    DeletionClosureMemberToJSON,
+    DeletionClosureMemberToJSONTyped,
+} from './DeletionClosureMember.js';
 
 /**
  * 
@@ -59,10 +66,10 @@ export interface DeletionPreviewResponse {
     manifestHash: string;
     /**
      * 
-     * @type {Array<object>}
+     * @type {Array<DeletionClosureMember>}
      * @memberof DeletionPreviewResponse
      */
-    closureMembers: Array<object>;
+    closureMembers: Array<DeletionClosureMember>;
 }
 
 
@@ -95,7 +102,7 @@ export function DeletionPreviewResponseFromJSONTyped(json: any, ignoreDiscrimina
         'previewId': json['previewId'],
         'previewRevision': json['previewRevision'],
         'manifestHash': json['manifestHash'],
-        'closureMembers': json['closureMembers'],
+        'closureMembers': ((json['closureMembers'] as Array<any>).map(DeletionClosureMemberFromJSON)),
     };
 }
 
@@ -115,7 +122,7 @@ export function DeletionPreviewResponseToJSONTyped(value?: DeletionPreviewRespon
         'previewId': value['previewId'],
         'previewRevision': value['previewRevision'],
         'manifestHash': value['manifestHash'],
-        'closureMembers': value['closureMembers'],
+        'closureMembers': ((value['closureMembers'] as Array<any>).map(DeletionClosureMemberToJSON)),
     };
 }
 

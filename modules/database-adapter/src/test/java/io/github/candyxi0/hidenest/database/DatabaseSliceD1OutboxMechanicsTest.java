@@ -60,7 +60,7 @@ class DatabaseSliceD1OutboxMechanicsTest {
                 .dataSource(POSTGRES.getJdbcUrl(), USER, PASSWORD).defaultSchema("public")
                 .locations("classpath:db/migration").cleanDisabled(true).baselineOnMigrate(false)
                 .outOfOrder(false).validateMigrationNaming(true).load();
-        assertEquals(15, flyway.migrate().migrationsExecuted);
+        assertEquals(16, flyway.migrate().migrationsExecuted);
         var rds = new DriverManagerDataSource(POSTGRES.getJdbcUrl(), USER, PASSWORD);
         var cfg = new DefaultConfiguration();
         cfg.setSQLDialect(SQLDialect.POSTGRES);
@@ -582,7 +582,7 @@ class DatabaseSliceD1OutboxMechanicsTest {
                     Statement s = c.createStatement()) {
                 s.execute("CREATE ROLE hide_nest_api NOLOGIN"); s.execute("CREATE ROLE hide_nest_worker NOLOGIN");
             }
-            assertEquals(15, Flyway.configure().dataSource(pg.getJdbcUrl(), USER, PASSWORD).defaultSchema("public")
+            assertEquals(16, Flyway.configure().dataSource(pg.getJdbcUrl(), USER, PASSWORD).defaultSchema("public")
                     .locations("classpath:db/migration").cleanDisabled(true).baselineOnMigrate(false)
                     .outOfOrder(false).validateMigrationNaming(true).load().migrate().migrationsExecuted);
             pg.stop();
@@ -602,15 +602,15 @@ class DatabaseSliceD1OutboxMechanicsTest {
             var fw2 = Flyway.configure().dataSource(pg.getJdbcUrl(), USER, PASSWORD).defaultSchema("public")
                     .locations("classpath:db/migration").cleanDisabled(true).baselineOnMigrate(false)
                     .outOfOrder(false).load();
-            assertEquals(5, fw2.migrate().migrationsExecuted, "V010→V015: 5");
-            assertEquals(15, fw2.info().applied().length, "history=15");
+            assertEquals(6, fw2.migrate().migrationsExecuted, "V010→V016: 6");
+            assertEquals(16, fw2.info().applied().length, "history=16");
             pg.stop();
         }
         var fw3 = Flyway.configure().dataSource(POSTGRES.getJdbcUrl(), USER, PASSWORD).defaultSchema("public")
                 .locations("classpath:db/migration").cleanDisabled(true).baselineOnMigrate(false)
                 .outOfOrder(false).load();
         assertEquals(0, fw3.migrate().migrationsExecuted, "repeat: 0");
-        assertEquals(15, fw3.info().applied().length, "history=15");
+        assertEquals(16, fw3.info().applied().length, "history=16");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

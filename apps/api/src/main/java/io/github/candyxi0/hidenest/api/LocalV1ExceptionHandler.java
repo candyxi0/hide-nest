@@ -1,6 +1,7 @@
 package io.github.candyxi0.hidenest.api;
 
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1CloseoutException;
+import io.github.candyxi0.hidenest.application.coordinator.LocalV1DeletionException;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1S2BException;
 import io.github.candyxi0.hidenest.contracts.model.FailureCode;
 import io.github.candyxi0.hidenest.contracts.model.ProblemDetail;
@@ -104,6 +105,62 @@ public final class LocalV1ExceptionHandler {
                     ResultCategory.FAILED,
                     FailureCode.REQUEST_SCHEMA_INVALID,
                     "本机关窗请求不符合契约约束",
+                    false);
+            default -> integrityFailure(request);
+        };
+    }
+
+    @ExceptionHandler(LocalV1DeletionException.class)
+    ResponseEntity<ProblemDetail> deletion(LocalV1DeletionException exception, HttpServletRequest request) {
+        return switch (exception.code()) {
+            case IDEMPOTENCY_KEY_REQUIRED -> problem(
+                    request,
+                    HttpStatus.BAD_REQUEST,
+                    ResultCategory.FAILED,
+                    FailureCode.IDEMPOTENCY_KEY_REQUIRED,
+                    "本机删除请求缺少幂等键",
+                    false);
+            case IDEMPOTENCY_KEY_REUSED -> problem(
+                    request,
+                    HttpStatus.CONFLICT,
+                    ResultCategory.FAILED,
+                    FailureCode.IDEMPOTENCY_KEY_REUSED,
+                    "本机删除幂等键已被不同请求复用",
+                    false);
+            case REQUEST_SCHEMA_INVALID -> problem(
+                    request,
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    ResultCategory.FAILED,
+                    FailureCode.REQUEST_SCHEMA_INVALID,
+                    "本机删除请求不符合契约约束",
+                    false);
+            case NOT_FOUND -> problem(
+                    request,
+                    HttpStatus.NOT_FOUND,
+                    ResultCategory.NO_RELEVANT_RESULT,
+                    FailureCode.RETRIEVAL_NO_MATCH,
+                    "未找到可删除的当前记忆",
+                    false);
+            case DELETION_FENCED -> problem(
+                    request,
+                    HttpStatus.FORBIDDEN,
+                    ResultCategory.DENIED,
+                    FailureCode.DELETION_FENCED,
+                    "本机删除目标已被围栏",
+                    false);
+            case DELETION_PREVIEW_STALE -> problem(
+                    request,
+                    HttpStatus.CONFLICT,
+                    ResultCategory.STALE,
+                    FailureCode.DELETION_PREVIEW_STALE,
+                    "本机删除预览已过期",
+                    false);
+            case DELETION_CLOSURE_MISMATCH -> problem(
+                    request,
+                    HttpStatus.CONFLICT,
+                    ResultCategory.FAILED,
+                    FailureCode.DELETION_CLOSURE_MISMATCH,
+                    "本机删除确认与预览快照不一致",
                     false);
             default -> integrityFailure(request);
         };

@@ -1212,6 +1212,11 @@
         "source": "S04-3.2"
       },
       {
+        "name": "DeletionClosureMember",
+        "type": "model",
+        "source": "Task33A-4.1"
+      },
+      {
         "name": "ExportRequest",
         "type": "request",
         "source": "S04-3.2"
@@ -2658,10 +2663,10 @@
     "remoteApiOperations": 30,
     "localExcludedOperations": 3,
     "privateExcludedEndpoints": 2,
-    "apiSchemas": 41,
+    "apiSchemas": 42,
     "sharedEnums": 9,
     "eventSchemas": 4,
-    "totalSchemaCount": 54,
+    "totalSchemaCount": 55,
     "failureCodes": 50,
     "asyncStages": 5,
     "eventTypes": 12,

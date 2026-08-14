@@ -986,6 +986,7 @@ components:
           minimum: 1
         requestManifestHash:
           type: string
+          pattern: "^[0-9a-f]{64}$"
       additionalProperties: false
 
     IsolationRestorePreviewResponse:
@@ -1041,11 +1042,40 @@ components:
           minimum: 1
         manifestHash:
           type: string
+          pattern: "^[0-9a-f]{64}$"
         closureMembers:
           type: array
           items:
-            type: object
-            additionalProperties: false
+            $ref: "#/components/schemas/DeletionClosureMember"
+      additionalProperties: false
+
+    DeletionClosureMember:
+      type: object
+      required:
+        - ordinal
+        - memberKind
+        - targetId
+        - disposition
+      properties:
+        ordinal:
+          type: integer
+          minimum: 1
+        memberKind:
+          type: string
+        targetId:
+          type: string
+          format: uuid
+        targetRevisionRef:
+          type: integer
+          minimum: 1
+        disposition:
+          type: string
+        sizeBytes:
+          type: integer
+          minimum: 0
+        contentHash:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
       additionalProperties: false
 
     DeletionConfirmRequest:
@@ -1070,6 +1100,7 @@ components:
           minimum: 1
         requestManifestHash:
           type: string
+          pattern: "^[0-9a-f]{64}$"
         previewId:
           type: string
           format: uuid
@@ -1078,6 +1109,7 @@ components:
           minimum: 1
         manifestHash:
           type: string
+          pattern: "^[0-9a-f]{64}$"
       additionalProperties: false
 
     ExportRequest:

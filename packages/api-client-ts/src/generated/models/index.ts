@@ -13,6 +13,7 @@ export * from './CreateSessionRequest.js';
 export * from './CreateSessionResponse.js';
 export * from './DeepSearchRequest.js';
 export * from './DeepSearchResponse.js';
+export * from './DeletionClosureMember.js';
 export * from './DeletionConfirmRequest.js';
 export * from './DeletionPreviewResponse.js';
 export * from './ExportRequest.js';
