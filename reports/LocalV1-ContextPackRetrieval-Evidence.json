@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "status": "LOCAL_V1_CONTEXT_PACK_REAL_TUNNEL_SMOKE_PASS",
+  "producerStartedAt": "2026-08-16T06:50:00+08:00",
+  "producerCompletedAt": "2026-08-16T06:55:00+08:00",
+  "baseline": {
+    "head": "efd5e105d14c5f707fd53ada3bdcd3510c3804e8",
+    "branch": "main"
+  },
+  "environment": {
+    "javaHome": "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.4-hotspot",
+    "javaVersion": "25.0.4",
+    "postgresImage": "pgvector/pgvector@sha256:2ac2c62ac8f030b414b19ea633a6d1d4d37c03abe52ce91887a4e5b4fbb5c73c",
+    "pgvectorVersion": "0.8.2"
+  },
+  "contract": {
+    "operation": "createContextPack",
+    "newOperations": 0,
+    "operationCount": 30,
+    "failureCodeCount": 50,
+    "eventTypeCount": 12,
+    "namedSchema": "ContextPackMemory",
+    "anonymousObjectResidual": 0,
+    "deepSearchImplemented": false
+  },
+  "r1": {
+    "roleGrants": {
+      "apiSelectInsert": ["runtime.retrieval_trace", "runtime.context_delivery", "runtime.context_pack_delivery_item"],
+      "apiExecute": ["runtime.valid_receipt_manifest(jsonb)"],
+      "updateDeleteDenied": true,
+      "public": 0,
+      "workerUnchanged": true
+    },
+    "replayVisibility": {
+      "invalidated": "CONTEXT_PACK_INVALIDATED",
+      "expired": "CONTEXT_PACK_EXPIRED",
+      "archiveFencePointerPolicyOwner": "CONTEXT_PACK_STALE",
+      "attacksRejected": ["archived", "fenced", "pointer", "policy", "invalidated", "expired"]
+    },
+    "s2bClassification": {
+      "skipCodes": ["NOT_FOUND", "DELETION_FENCED", "CURRENT_POINTER_INVALID", "OWNER_BINDING_INVALID"],
+      "internalFailureCodes": ["EVIDENCE_RELATION_INVALID", "INVALID_ARGUMENT", "non-S2B RuntimeException"]
+    },
+    "commitRace": {
+      "sameHash": "replay",
+      "differentHash": "IDEMPOTENCY_KEY_REUSED"
+    }
+  },
+  "migration": {
+    "new": "V019__local_v1_context_pack_receipt.sql",
+    "emptyDatabaseCount": 19,
+    "v018ToV019UpgradeCount": 1,
+    "repeatCount": 0,
+    "v001ToV018Unchanged": true,
+    "table": "runtime.context_pack_delivery_item"
+  },
+  "smoke": {
+    "status": "REAL_TUNNEL_SMOKE_PASS",
+    "health": {"status": 200, "model": "bge-small-zh-v1.5-f16", "dimension": 512},
+    "closeoutIndex": {"a": "INDEX_READY", "b": "INDEX_READY", "vectorFactsEach": 1},
+    "resultCategory": "SUCCEEDED",
+    "a": {
+      "title": "粉色偏好",
+      "memoryId": "9e1a05b3-4556-36b0-a93e-e5c3e92025b7",
+      "revisionId": "675ae490-c337-46b2-9671-71dbde5fe471",
+      "revisionNo": 1,
+      "policyRevisionNo": 1,
+      "memoryType": "INTERPRETATION",
+      "bodyHash": "c014dac774807e18bf9622bd043f243ef8bce0262220de334dad2385290018a8",
+      "score": 0.48789390993750725
+    },
+    "b": {
+      "title": "家庭服务器预算",
+      "memoryId": "7e26de1c-6cbb-3536-9603-a79e51f4c27e",
+      "revisionId": "afb6bfbb-e13f-49ae-b1b0-ea7d08c0e625",
+      "revisionNo": 1,
+      "policyRevisionNo": 1,
+      "memoryType": "INTERPRETATION",
+      "bodyHash": "ed2aea1bf883295c6c9c17728a603dbc382cccb0ada55f3b9c8043ffdeb6ff38",
+      "score": 0.1583985537290573
+    },
+    "queryHash": "fb19f47943e5b63577cb172d181d9a773370dff7bdd7a74d516299d9cdd2f60e",
+    "order": "A_FIRST",
+    "scoreRelation": "A_GT_B",
+    "facts": {"trace": 1, "delivery": 1, "item": 2, "receipt": 1},
+    "replay": {
+      "response": "EXACT",
+      "reembedIncrement": 0,
+      "auditFactIncrement": 0,
+      "restartWithoutEmbedding": true
+    },
+    "durationMs": 1612
+  },
+  "tests": {
+    "targetedDb": {
+      "classes": [
+        {"name": "LocalV1ContextPackRetrievalTest", "tests": 13, "failed": 0, "errors": 0},
+        {"name": "LocalV1ContextPackEmptyTest", "tests": 2, "failed": 0, "errors": 0}
+      ]
+    },
+    "targetedHttp": {
+      "classes": [
+        {"name": "LocalV1ContextPackHttpIntegrationTest", "tests": 5, "failed": 0, "errors": 0}
+      ]
+    },
+    "architecture": {"total": 29, "failed": 0, "errors": 0},
+    "fullVerify": {"result": "PASS", "mavenCommand": "mvnw -o clean verify (JDK 25 offline)"},
+    "nodeFourGates": {"typecheck": "PASS", "lint": "PASS", "test": "PASS", "build": "PASS"},
+    "generationDeterminism": "GENERATION_CHECK_PASS",
+    "contractCompatibility": "COMPATIBILITY_PASS"
+  },
+  "leakage": {
+    "query": 0,
+    "bodyText": 0,
+    "fullVector": 0,
+    "path": 0,
+    "token": 0,
+    "capability": 0,
+    "secret": 0,
+    "hostAddress": 0
+  },
+  "gitIndex": {
+    "staged": 0,
+    "outOfBounds": 0,
+    "diffCheck": "PASS",
+    "unchangedMigrations": ["V001", "V002", "V003", "V004", "V005", "V006", "V007", "V008", "V009", "V010", "V011", "V012", "V013", "V014", "V015", "V016", "V017", "V018"]
+  },
+  "docker": {
+    "newContainers": 0,
+    "newVolumes": 0,
+    "newNetworks": 0,
+    "leftoverPayload": 0,
+    "leftoverProcesses": 0
+  },
+  "network": {
+    "realEmbeddingAccess": true,
+    "tunnelSmokeDone": true,
+    "healthStatus": 200,
+    "otherNetworkAccess": false
+  },
+  "gitWriteOperations": false
+}

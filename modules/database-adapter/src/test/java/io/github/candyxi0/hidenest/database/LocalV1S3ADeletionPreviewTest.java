@@ -102,7 +102,7 @@ class LocalV1S3ADeletionPreviewTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(18, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, password)
+        assertEquals(19, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, password)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load()
                 .migrate().migrationsExecuted);
         var raw = new DriverManagerDataSource(postgres.getJdbcUrl(), USER, password);
@@ -149,7 +149,7 @@ class LocalV1S3ADeletionPreviewTest {
         assertEquals(10, v10.migrate().migrationsExecuted);
         var v15 = Flyway.configure().dataSource(databaseUrl, USER, dbPassword)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load();
-        assertEquals(8, v15.migrate().migrationsExecuted);
+        assertEquals(9, v15.migrate().migrationsExecuted);
         assertEquals(0, v15.migrate().migrationsExecuted);
     }
 

@@ -8,6 +8,7 @@ import io.github.candyxi0.hidenest.runtime.domain.Checkpoint;
 import io.github.candyxi0.hidenest.runtime.domain.CloseoutRun;
 import io.github.candyxi0.hidenest.runtime.domain.ConsumerEffect;
 import io.github.candyxi0.hidenest.runtime.domain.ContextDelivery;
+import io.github.candyxi0.hidenest.runtime.domain.ContextPackDeliveryItem;
 import io.github.candyxi0.hidenest.runtime.domain.ModelRun;
 import io.github.candyxi0.hidenest.runtime.domain.RetrievalTrace;
 import io.github.candyxi0.hidenest.runtime.domain.WorkArtifact;
@@ -193,6 +194,28 @@ public class JooqRuntimeQueryAdapter implements RuntimeQueryPort {
                 r.getPurpose(), r.getPolicyRevisionSetHash(), r.getManifestHash(),
                 r.getDeliveredAt(), r.getExpiresAt(),
                 r.getInvalidatedAt(), r.getInvalidationReason());
+    }
+
+    @Override
+    public List<ContextPackDeliveryItem> findContextPackDeliveryItemsByDeliveryId(UUID deliveryId) {
+        if (deliveryId == null) {
+            return List.of();
+        }
+        var rows = dsl.fetch(
+                "SELECT delivery_id, ordinal, memory_revision_id, policy_revision_no, score "
+                        + "FROM runtime.context_pack_delivery_item "
+                        + "WHERE delivery_id = ?::uuid ORDER BY ordinal ASC",
+                deliveryId);
+        List<ContextPackDeliveryItem> result = new ArrayList<>(rows.size());
+        for (var row : rows) {
+            result.add(new ContextPackDeliveryItem(
+                    row.get(0, UUID.class),
+                    row.get(1, Long.class),
+                    row.get(2, UUID.class),
+                    row.get(3, Long.class),
+                    row.get(4, Double.class)));
+        }
+        return result;
     }
 
     @Override

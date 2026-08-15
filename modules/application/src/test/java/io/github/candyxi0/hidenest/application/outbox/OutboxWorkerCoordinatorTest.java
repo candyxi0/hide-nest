@@ -253,6 +253,7 @@ class OutboxWorkerCoordinatorTest {
         @Override public boolean transitionModelRun(UUID m, String es, String ns, byte[] omh, OffsetDateTime ta, String fc) { return true; }
         @Override public void insertRetrievalTrace(RetrievalTrace t) {}
         @Override public void insertContextDelivery(ContextDelivery d) {}
+        @Override public void insertContextPackDeliveryItems(List<ContextPackDeliveryItem> items) {}
         @Override public boolean invalidateContextDelivery(UUID d, OffsetDateTime ia, String ir) { return true; }
         @Override public void insertConsumerEffect(ConsumerEffect e) {}
         @Override public List<UUID> purgeExpiredWorkArtifacts(OffsetDateTime cutoff, int batchSize) { return List.of(); }

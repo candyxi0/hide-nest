@@ -1,6 +1,7 @@
 package io.github.candyxi0.hidenest.api;
 
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1CloseoutException;
+import io.github.candyxi0.hidenest.application.coordinator.LocalV1ContextPackException;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1DeletionException;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1S2BException;
 import io.github.candyxi0.hidenest.contracts.model.FailureCode;
@@ -105,6 +106,62 @@ public final class LocalV1ExceptionHandler {
                     ResultCategory.FAILED,
                     FailureCode.REQUEST_SCHEMA_INVALID,
                     "本机关窗请求不符合契约约束",
+                    false);
+            default -> integrityFailure(request);
+        };
+    }
+
+    @ExceptionHandler(LocalV1ContextPackException.class)
+    ResponseEntity<ProblemDetail> contextPack(LocalV1ContextPackException exception, HttpServletRequest request) {
+        return switch (exception.code()) {
+            case IDEMPOTENCY_KEY_REQUIRED -> problem(
+                    request,
+                    HttpStatus.BAD_REQUEST,
+                    ResultCategory.FAILED,
+                    FailureCode.IDEMPOTENCY_KEY_REQUIRED,
+                    "本机上下文包请求缺少幂等键",
+                    false);
+            case IDEMPOTENCY_KEY_REUSED -> problem(
+                    request,
+                    HttpStatus.CONFLICT,
+                    ResultCategory.FAILED,
+                    FailureCode.IDEMPOTENCY_KEY_REUSED,
+                    "本机上下文包幂等键已被不同请求复用",
+                    false);
+            case REQUEST_SCHEMA_INVALID -> problem(
+                    request,
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    ResultCategory.FAILED,
+                    FailureCode.REQUEST_SCHEMA_INVALID,
+                    "本机上下文包请求不符合契约约束",
+                    false);
+            case EMBEDDING_UNAVAILABLE -> problem(
+                    request,
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    ResultCategory.FAILED,
+                    FailureCode.MODEL_PROVIDER_UNAVAILABLE,
+                    "本机嵌入模型当前不可用",
+                    true);
+            case CONTEXT_PACK_INVALIDATED -> problem(
+                    request,
+                    HttpStatus.CONFLICT,
+                    ResultCategory.STALE,
+                    FailureCode.CONTEXT_PACK_INVALIDATED,
+                    "本机上下文包已被撤销",
+                    false);
+            case CONTEXT_PACK_EXPIRED -> problem(
+                    request,
+                    HttpStatus.GONE,
+                    ResultCategory.STALE,
+                    FailureCode.CONTEXT_PACK_EXPIRED,
+                    "本机上下文包已过期",
+                    false);
+            case CONTEXT_PACK_STALE -> problem(
+                    request,
+                    HttpStatus.CONFLICT,
+                    ResultCategory.STALE,
+                    FailureCode.POLICY_REVISION_STALE,
+                    "本机上下文包已因治理变化失效",
                     false);
             default -> integrityFailure(request);
         };

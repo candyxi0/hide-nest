@@ -108,6 +108,17 @@ public class JooqMemoryReadAdapter implements MemoryReadPort {
     }
 
     @Override
+    public MemoryRevision findMemoryRevisionById(UUID memoryRevisionId) {
+        if (memoryRevisionId == null) {
+            return null;
+        }
+        var revision = dsl.selectFrom(MEMORY_REVISION)
+                .where(MEMORY_REVISION.MEMORY_REVISION_ID.eq(memoryRevisionId))
+                .fetchOne();
+        return revision == null ? null : toMemoryRevision(revision);
+    }
+
+    @Override
     public List<MemoryRelation> findRelationsByFromRevisionId(UUID revisionId) {
         if (revisionId == null) {
             return List.of();

@@ -7,6 +7,7 @@ import io.github.candyxi0.hidenest.runtime.domain.ClaimedOutboxEvent;
 import io.github.candyxi0.hidenest.runtime.domain.CloseoutRun;
 import io.github.candyxi0.hidenest.runtime.domain.ConsumerEffect;
 import io.github.candyxi0.hidenest.runtime.domain.ContextDelivery;
+import io.github.candyxi0.hidenest.runtime.domain.ContextPackDeliveryItem;
 import io.github.candyxi0.hidenest.runtime.domain.IdempotencyReceipt;
 import io.github.candyxi0.hidenest.runtime.domain.ModelRun;
 import io.github.candyxi0.hidenest.runtime.domain.OutboxEvent;
@@ -87,6 +88,9 @@ public interface RuntimeTransactionPort {
 
     /** Insert a context delivery. */
     void insertContextDelivery(ContextDelivery delivery);
+
+    /** Insert context pack delivery items (immutable snapshot facts). */
+    void insertContextPackDeliveryItems(List<ContextPackDeliveryItem> items);
 
     /**
      * Invalidate a context delivery (one-way). Returns true iff exactly one row changed.

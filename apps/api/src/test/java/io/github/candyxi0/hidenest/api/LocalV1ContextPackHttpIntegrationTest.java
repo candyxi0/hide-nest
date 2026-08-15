@@ -1,6 +1,7 @@
 package io.github.candyxi0.hidenest.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpServer;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1CloseoutCanonicalizer;
@@ -53,11 +54,10 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * HTTP-level assembly proof: the closeout controller and run-status controller are wired through the
- * vector projection coordinator, with the embedding adapter base URL bound only to
- * {@code HIDE_NEST_EMBEDDING_BASE_URL}.
+ * HTTP-level assembly proof for {@code POST /v1/context-packs}: bearer gate, exact cosine ranking,
+ * idempotent replay and pre-embedding request rejection.
  */
-class LocalV1CloseoutVectorProjectionHttpIntegrationTest {
+class LocalV1ContextPackHttpIntegrationTest {
 
     private static final String IMAGE =
             "pgvector/pgvector@sha256:2ac2c62ac8f030b414b19ea633a6d1d4d37c03abe52ce91887a4e5b4fbb5c73c";
@@ -106,12 +106,16 @@ class LocalV1CloseoutVectorProjectionHttpIntegrationTest {
         configuration.setSQLDialect(SQLDialect.POSTGRES);
         configuration.setDataSource(new TransactionAwareDataSourceProxy(raw));
         dsl = new DefaultDSLContext(configuration);
-        payloadRoot = Files.createTempDirectory("local-v1-closeout-vector-http-");
+        payloadRoot = Files.createTempDirectory("local-v1-context-pack-http-");
 
         embeddingServer = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
         embeddingServer.createContext("/embed", exchange -> {
+            byte[] body = exchange.getRequestBody().readAllBytes();
+            JsonNode root = JSON.readTree(body);
+            String text = root.path("texts").get(0).asText();
+            String vector = text.contains("颜色B") ? basisLiteral(1) : basisLiteral(0);
             String response = "{\"model\":\"" + MODEL + "\",\"dimension\":" + DIMENSION
-                    + ",\"vectors\":[" + unitVectorLiteral() + "]}";
+                    + ",\"vectors\":[" + vector + "]}";
             byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, bytes.length);
@@ -136,9 +140,9 @@ class LocalV1CloseoutVectorProjectionHttpIntegrationTest {
         if (postgres != null) postgres.stop();
         if (payloadRoot != null && Files.exists(payloadRoot)) {
             try (var paths = Files.walk(payloadRoot)) {
-                paths.sorted(Comparator.reverseOrder()).forEach(path -> {
+                paths.sorted(Comparator.reverseOrder()).forEach(p -> {
                     try {
-                        Files.deleteIfExists(path);
+                        Files.deleteIfExists(p);
                     } catch (Exception ignored) {
                     }
                 });
@@ -147,44 +151,81 @@ class LocalV1CloseoutVectorProjectionHttpIntegrationTest {
     }
 
     @Test
-    void submitAndRunStatusReturnIndexReady() throws Exception {
-        Built built = build("http-index");
-        UUID submissionId = built.submission().submissionId();
-        UUID memoryId = deterministicId("memory:", submissionId);
+    void createReturnsAFirstWithHigherScore() throws Exception {
+        UUID memoryA = submit("颜色A");
+        UUID memoryB = submit("颜色B");
 
-        Response response = post("/v1/closeout-submissions", built.json(), TOKEN, CAPABILITY);
-        assertEquals(202, response.status());
-        JsonNode receipt = JSON.readTree(response.body());
-        assertEquals(submissionId.toString(), receipt.get("runId").asText());
-        assertEquals("INDEX_READY", receipt.get("phase").asText());
-
-        UUID revisionId = dsl.fetchOne(
-                        "SELECT current_revision_id FROM memory.memory_record WHERE memory_id=?::uuid", memoryId)
-                .get("current_revision_id", UUID.class);
-        assertEquals(1L, countRows(
-                "SELECT 1 FROM memory.memory_revision_embedding WHERE memory_revision_id=?::uuid", revisionId));
-
-        Response status = get("/v1/runs/" + submissionId, TOKEN);
-        assertEquals(200, status.status());
-        assertEquals("INDEX_READY", JSON.readTree(status.body()).get("phase").asText());
+        Response response = post("/v1/context-packs", contextPackBody("她喜欢什么颜色？"), "cp-http-1");
+        assertEquals(200, response.status());
+        JsonNode body = JSON.readTree(response.body());
+        assertEquals("SUCCEEDED", body.get("resultCategory").asText());
+        JsonNode memories = body.get("memories");
+        assertTrue(memories.size() >= 1);
+        double firstScore = memories.get(0).get("score").asDouble();
+        assertEquals(1.0, firstScore, 1e-6);
+        for (JsonNode m : memories) {
+            assertTrue(firstScore >= m.get("score").asDouble(), "memories must be in descending score order");
+        }
+        boolean deliveredA = false;
+        for (JsonNode m : memories) {
+            if (memoryA.toString().equals(m.get("memoryId").asText())) {
+                deliveredA = true;
+                break;
+            }
+        }
+        assertTrue(deliveredA, "A must be delivered");
+        assertEquals(memories.size(), body.get("policyRevisionSet").size());
     }
 
     @Test
-    void replayKeepsSingleVectorFactAndIndexReady() throws Exception {
-        Built built = build("http-replay");
-        UUID submissionId = built.submission().submissionId();
-        UUID memoryId = deterministicId("memory:", submissionId);
+    void replayReturnsIdenticalResponse() throws Exception {
+        submit("颜色A");
+        String requestBody = contextPackBody("她喜欢什么颜色？");
 
-        assertEquals(202, post("/v1/closeout-submissions", built.json(), TOKEN, CAPABILITY).status());
-        Response replay = post("/v1/closeout-submissions", built.json(), TOKEN, CAPABILITY);
-        assertEquals(202, replay.status());
-        assertEquals("INDEX_READY", JSON.readTree(replay.body()).get("phase").asText());
+        Response first = post("/v1/context-packs", requestBody, "cp-http-replay");
+        Response replay = post("/v1/context-packs", requestBody, "cp-http-replay");
 
-        UUID revisionId = dsl.fetchOne(
-                        "SELECT current_revision_id FROM memory.memory_record WHERE memory_id=?::uuid", memoryId)
-                .get("current_revision_id", UUID.class);
-        assertEquals(1L, countRows(
-                "SELECT 1 FROM memory.memory_revision_embedding WHERE memory_revision_id=?::uuid", revisionId));
+        assertEquals(200, first.status());
+        assertEquals(200, replay.status());
+        JsonNode a = JSON.readTree(first.body());
+        JsonNode b = JSON.readTree(replay.body());
+        assertEquals(a.get("requestId").asText(), b.get("requestId").asText());
+        assertEquals(a.get("deliveryId").asText(), b.get("deliveryId").asText());
+        assertEquals(a.get("issuedAt").asText(), b.get("issuedAt").asText());
+        assertEquals(a.get("expiresAt").asText(), b.get("expiresAt").asText());
+        assertEquals(a.get("memories"), b.get("memories"));
+    }
+
+    @Test
+    void differentValueConflicts() throws Exception {
+        submit("颜色A");
+        String key = "cp-http-conflict";
+        assertEquals(200, post("/v1/context-packs", contextPackBody("她喜欢什么颜色？"), key).status());
+        Response conflict = post("/v1/context-packs", contextPackBody("另一个完全不同的查询"), key);
+        assertEquals(409, conflict.status());
+    }
+
+    @Test
+    void validationRejectsBeforeEmbedding() throws Exception {
+        assertEquals(400, post("/v1/context-packs", contextPackBody("查询"), null).status());
+
+        assertEquals(422, post("/v1/context-packs",
+                "{\"threadId\":\"not-a-uuid\",\"turnId\":\"" + UUID.randomUUID()
+                        + "\",\"purpose\":\"p\",\"query\":\"查询\"}", "cp-http-invalid-uuid").status());
+
+        assertEquals(422, post("/v1/context-packs",
+                "{\"threadId\":\"" + UUID.randomUUID() + "\",\"turnId\":\"" + UUID.randomUUID()
+                        + "\",\"purpose\":\"p\",\"query\":\"查询\",\"unknownField\":true}", "cp-http-unknown").status());
+
+        assertEquals(422, post("/v1/context-packs",
+                "{\"threadId\":\"" + UUID.randomUUID() + "\",\"turnId\":\"" + UUID.randomUUID()
+                        + "\",\"purpose\":\"p\",\"query\":\"   \"}", "cp-http-blank").status());
+    }
+
+    @Test
+    void deepSearchIsNotImplemented() throws Exception {
+        Response response = post("/v1/context-packs/deep-search", contextPackBody("查询"), "cp-http-deep");
+        assertTrue(response.status() == 403 || response.status() == 404, "deep-search must not be implemented");
     }
 
     // ── helpers ───────────────────────────────────────────────────────────
@@ -206,6 +247,15 @@ class LocalV1CloseoutVectorProjectionHttpIntegrationTest {
         return application.run();
     }
 
+    private UUID submit(String marker) throws Exception {
+        Built built = build(marker);
+        UUID submissionId = built.submission().submissionId();
+        Response response = post(
+                "/v1/closeout-submissions", built.json(), submissionId.toString(), CAPABILITY);
+        assertEquals(202, response.status());
+        return deterministicId("memory:", submissionId);
+    }
+
     private static Built build(String marker) {
         UUID submissionId = UUID.randomUUID();
         UUID threadId = UUID.randomUUID();
@@ -217,24 +267,22 @@ class LocalV1CloseoutVectorProjectionHttpIntegrationTest {
         UUID msg2Unit = deterministicId("msg2:", submissionId);
         UUID actor1 = deterministicId("a1:", submissionId);
         UUID actor2 = deterministicId("a2:", submissionId);
-        UUID perspectiveActor = actor2;
         UUID anchor1 = deterministicId("anchor1:", submissionId);
         String msg1 = "协作者：只保存必要证据";
         String msg2 = "小林：已确认本版";
 
         EvidenceMessage m1 = new EvidenceMessage(
-                msg1Unit, actor1, 1L, "unit-" + marker + "-1",
+                msg1Unit, actor1, 1L, "unit-1",
                 OffsetDateTime.parse("2026-08-12T09:30:00Z"), msg1, sha256Hex(msg1));
         EvidenceMessage m2 = new EvidenceMessage(
-                msg2Unit, actor2, 2L, "unit-" + marker + "-2",
+                msg2Unit, actor2, 2L, "unit-2",
                 OffsetDateTime.parse("2026-08-12T09:30:01Z"), msg2, sha256Hex(msg2));
         List<EvidenceMessage> messages = List.of(m1, m2);
         String manifestHash = LocalV1CloseoutCanonicalizer.threadManifestHash(
                 new ThreadReaderManifest("local-v1-synthetic-v1", 1L, 2L, true, "", messages));
-
         ThreadReaderManifest manifest =
                 new ThreadReaderManifest("local-v1-synthetic-v1", 1L, 2L, true, manifestHash, messages);
-        HideSelection hideSelection = new HideSelection(perspectiveActor, "INTERPRETATION", bodyText, bodyHash);
+        HideSelection hideSelection = new HideSelection(actor2, "INTERPRETATION", bodyText, bodyHash);
         UserConfirmation placeholder = new UserConfirmation("CONFIRM", "", confirmationUnit);
         List<SourceAnchor> anchors = List.of(new SourceAnchor(anchor1, List.of(
                 new AnchorUnit(msg1Unit, 0L, (long) msg1.codePointCount(0, msg1.length()), 1L),
@@ -253,23 +301,51 @@ class LocalV1CloseoutVectorProjectionHttpIntegrationTest {
         return new Built(submission, toJson(submission));
     }
 
+    private static String contextPackBody(String query) {
+        return "{\"threadId\":\"" + UUID.randomUUID() + "\",\"turnId\":\"" + UUID.randomUUID()
+                + "\",\"purpose\":\"RECALL\",\"query\":\"" + query + "\"}";
+    }
+
+    private static Response post(String path, String body, String idempotencyKey) throws Exception {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(base.resolve(path))
+                .timeout(Duration.ofSeconds(20))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + TOKEN)
+                .POST(HttpRequest.BodyPublishers.ofString(body));
+        if (idempotencyKey != null) {
+            builder.header("Idempotency-Key", idempotencyKey);
+        }
+        HttpResponse<String> response = HTTP.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        return new Response(response.statusCode(), response.body());
+    }
+
+    private static Response post(String path, String body, String idempotencyKey, String capability)
+            throws Exception {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(base.resolve(path))
+                .timeout(Duration.ofSeconds(20))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + TOKEN)
+                .header("X-Action-Capability", capability)
+                .header("Idempotency-Key", idempotencyKey)
+                .POST(HttpRequest.BodyPublishers.ofString(body));
+        HttpResponse<String> response = HTTP.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        return new Response(response.statusCode(), response.body());
+    }
+
     private static String toJson(LocalV1CloseoutSubmission s) {
         ObjectNode root = JSON.createObjectNode();
         root.put("submissionId", s.submissionId().toString());
         root.put("threadId", s.threadId().toString());
         root.put("confirmationProof", s.confirmationProof());
-
         ObjectNode hs = root.putObject("hideSelection");
         hs.put("perspectiveActorId", s.hideSelection().perspectiveActorId().toString());
         hs.put("memoryType", s.hideSelection().memoryType());
         hs.put("bodyText", s.hideSelection().bodyText());
         hs.put("bodyHash", s.hideSelection().bodyHash());
-
         ObjectNode uc = root.putObject("userConfirmation");
         uc.put("decision", s.userConfirmation().decision());
         uc.put("reviewManifestHash", s.userConfirmation().reviewManifestHash());
         uc.put("confirmationSourceUnitId", s.userConfirmation().confirmationSourceUnitId().toString());
-
         ArrayNode anchors = root.putArray("sourceAnchors");
         for (SourceAnchor a : s.sourceAnchors()) {
             ObjectNode an = anchors.addObject();
@@ -291,7 +367,6 @@ class LocalV1CloseoutVectorProjectionHttpIntegrationTest {
                 un.put("ordinal", u.ordinal());
             }
         }
-
         ObjectNode manifest = root.putObject("threadReaderManifest");
         manifest.put("schemaVersion", s.threadReaderManifest().schemaVersion());
         manifest.put("fromOrdinal", s.threadReaderManifest().fromOrdinal());
@@ -312,35 +387,14 @@ class LocalV1CloseoutVectorProjectionHttpIntegrationTest {
         return root.toString();
     }
 
-    private static Response post(String path, String body, String token, String capability) throws Exception {
-        HttpRequest.Builder builder = HttpRequest.newBuilder(base.resolve(path))
-                .timeout(Duration.ofSeconds(20))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + token)
-                .header("X-Action-Capability", capability)
-                .header("Idempotency-Key", JSON.readTree(body).get("submissionId").asText())
-                .POST(HttpRequest.BodyPublishers.ofString(body));
-        HttpResponse<String> response = HTTP.send(builder.build(), HttpResponse.BodyHandlers.ofString());
-        return new Response(response.statusCode(), response.body());
-    }
-
-    private static Response get(String path, String token) throws Exception {
-        HttpRequest.Builder builder = HttpRequest.newBuilder(base.resolve(path))
-                .timeout(Duration.ofSeconds(20))
-                .header("Authorization", "Bearer " + token)
-                .GET();
-        HttpResponse<String> response = HTTP.send(builder.build(), HttpResponse.BodyHandlers.ofString());
-        return new Response(response.statusCode(), response.body());
-    }
-
-    private static String unitVectorLiteral() {
+    private static String basisLiteral(int index) {
         StringBuilder sb = new StringBuilder(DIMENSION * 12);
         sb.append('[');
         for (int i = 0; i < DIMENSION; i++) {
             if (i > 0) {
                 sb.append(',');
             }
-            sb.append(i == 0 ? 1.0 : 0.0);
+            sb.append(i == index ? 1.0 : 0.0);
         }
         sb.append(']');
         return sb.toString();
@@ -348,10 +402,6 @@ class LocalV1CloseoutVectorProjectionHttpIntegrationTest {
 
     private static UUID deterministicId(String label, UUID submissionId) {
         return UUID.nameUUIDFromBytes((label + submissionId).getBytes(StandardCharsets.UTF_8));
-    }
-
-    private static long countRows(String sql, Object... binds) {
-        return dsl.resultQuery(sql, binds).fetch().size();
     }
 
     private static String sha256Hex(String value) {

@@ -30,6 +30,7 @@ public final class LocalV1SyntheticReadGate extends OncePerRequestFilter {
             Pattern.compile("^/v1/deletion-previews(?:/[0-9a-fA-F-]{36}/confirm)?$");
     private static final Pattern DELETION_RUN_PATH = Pattern.compile("^/v1/deletion-runs/[0-9a-fA-F-]{36}$");
     private static final Pattern FIXTURE_PATH = Pattern.compile("^/v1/deletion-fixtures$");
+    private static final Pattern CONTEXT_PACK_PATH = Pattern.compile("^/v1/context-packs$");
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final byte[] expectedToken;
@@ -75,7 +76,10 @@ public final class LocalV1SyntheticReadGate extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
-        if (!"GET".equals(request.getMethod()) || !ALLOWED_PATH.matcher(path).matches()) {
+        boolean contextPackWrite =
+                "POST".equals(request.getMethod()) && CONTEXT_PACK_PATH.matcher(path).matches();
+        boolean readAllowed = "GET".equals(request.getMethod()) && ALLOWED_PATH.matcher(path).matches();
+        if (!contextPackWrite && !readAllowed) {
             writeProblem(response, requestId, 403, FailureCode.ACCESS_DENIED, "此本机只读入口不允许该请求");
             return;
         }

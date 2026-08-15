@@ -6,6 +6,7 @@ import io.github.candyxi0.hidenest.runtime.domain.Checkpoint;
 import io.github.candyxi0.hidenest.runtime.domain.CloseoutRun;
 import io.github.candyxi0.hidenest.runtime.domain.ConsumerEffect;
 import io.github.candyxi0.hidenest.runtime.domain.ContextDelivery;
+import io.github.candyxi0.hidenest.runtime.domain.ContextPackDeliveryItem;
 import io.github.candyxi0.hidenest.runtime.domain.ModelRun;
 import io.github.candyxi0.hidenest.runtime.domain.RetrievalTrace;
 import io.github.candyxi0.hidenest.runtime.domain.WorkArtifact;
@@ -50,6 +51,9 @@ public interface RuntimeQueryPort {
 
     /** Find context delivery by primary key. */
     ContextDelivery findContextDeliveryById(UUID deliveryId);
+
+    /** Find context pack delivery items by delivery id, ordered by ordinal ascending. */
+    List<ContextPackDeliveryItem> findContextPackDeliveryItemsByDeliveryId(UUID deliveryId);
 
     /** Check if a consumer effect exists. */
     boolean existsConsumerEffect(String consumerCode, UUID eventId, String effectKey);

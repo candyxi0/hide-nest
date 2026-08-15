@@ -1123,6 +1123,11 @@
         "source": "S04-3.2"
       },
       {
+        "name": "ContextPackMemory",
+        "type": "response",
+        "source": "S04-3.2"
+      },
+      {
         "name": "DeepSearchRequest",
         "type": "request",
         "source": "S04-3.2"
@@ -1534,7 +1539,7 @@
         }
       }
     ],
-    "totalSchemaCount": 48
+    "totalSchemaCount": 49
   },
   "failureCodes": [
     {
@@ -2675,10 +2680,10 @@
     "remoteApiOperations": 30,
     "localExcludedOperations": 3,
     "privateExcludedEndpoints": 2,
-    "apiSchemas": 42,
+    "apiSchemas": 43,
     "sharedEnums": 9,
     "eventSchemas": 4,
-    "totalSchemaCount": 55,
+    "totalSchemaCount": 56,
     "failureCodes": 50,
     "asyncStages": 5,
     "eventTypes": 12,

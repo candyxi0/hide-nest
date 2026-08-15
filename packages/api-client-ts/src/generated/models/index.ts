@@ -7,6 +7,7 @@ export * from './CloseoutReceipt.js';
 export * from './CloseoutSourceAnchorSubmission.js';
 export * from './CloseoutSubmissionRequest.js';
 export * from './ComponentHealth.js';
+export * from './ContextPackMemory.js';
 export * from './ContextPackRequest.js';
 export * from './ContextPackResponse.js';
 export * from './CreateSessionRequest.js';

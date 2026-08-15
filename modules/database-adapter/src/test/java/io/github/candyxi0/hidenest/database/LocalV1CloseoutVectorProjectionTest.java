@@ -134,7 +134,7 @@ class LocalV1CloseoutVectorProjectionTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
         assertEquals(
-                18,
+                19,
                 Flyway.configure()
                         .dataSource(postgres.getJdbcUrl(), USER, password)
                         .defaultSchema("public")

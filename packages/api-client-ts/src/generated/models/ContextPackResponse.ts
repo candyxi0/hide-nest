@@ -20,6 +20,13 @@ import {
     ResultCategoryToJSON,
     ResultCategoryToJSONTyped,
 } from './ResultCategory.js';
+import type { ContextPackMemory } from './ContextPackMemory.js';
+import {
+    ContextPackMemoryFromJSON,
+    ContextPackMemoryFromJSONTyped,
+    ContextPackMemoryToJSON,
+    ContextPackMemoryToJSONTyped,
+} from './ContextPackMemory.js';
 
 /**
  * 
@@ -89,10 +96,10 @@ export interface ContextPackResponse {
     budgetLimited: boolean;
     /**
      * 
-     * @type {Array<object>}
+     * @type {Array<ContextPackMemory>}
      * @memberof ContextPackResponse
      */
-    memories?: Array<object>;
+    memories?: Array<ContextPackMemory>;
 }
 
 
@@ -134,7 +141,7 @@ export function ContextPackResponseFromJSONTyped(json: any, ignoreDiscriminator:
         'issuedAt': (new Date(json['issuedAt'])),
         'expiresAt': (new Date(json['expiresAt'])),
         'budgetLimited': json['budgetLimited'],
-        'memories': json['memories'] == null ? undefined : json['memories'],
+        'memories': json['memories'] == null ? undefined : ((json['memories'] as Array<any>).map(ContextPackMemoryFromJSON)),
     };
 }
 
@@ -159,7 +166,7 @@ export function ContextPackResponseToJSONTyped(value?: ContextPackResponse | nul
         'issuedAt': value['issuedAt'].toISOString(),
         'expiresAt': value['expiresAt'].toISOString(),
         'budgetLimited': value['budgetLimited'],
-        'memories': value['memories'],
+        'memories': value['memories'] == null ? undefined : ((value['memories'] as Array<any>).map(ContextPackMemoryToJSON)),
     };
 }
 

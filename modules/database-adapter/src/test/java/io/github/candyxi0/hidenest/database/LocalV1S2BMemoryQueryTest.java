@@ -102,7 +102,7 @@ class LocalV1S2BMemoryQueryTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(18, Flyway.configure()
+        assertEquals(19, Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), USER, password)
                 .defaultSchema("public")
                 .locations("classpath:db/migration")
@@ -620,6 +620,11 @@ class LocalV1S2BMemoryQueryTest {
 
         @Override
         public MemoryRevision findCurrentRevisionByMemoryId(UUID memoryId) {
+            return revision;
+        }
+
+        @Override
+        public MemoryRevision findMemoryRevisionById(UUID memoryRevisionId) {
             return revision;
         }
 

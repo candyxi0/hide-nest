@@ -9,6 +9,7 @@ import io.github.candyxi0.hidenest.runtime.domain.ClaimedOutboxEvent;
 import io.github.candyxi0.hidenest.runtime.domain.CloseoutRun;
 import io.github.candyxi0.hidenest.runtime.domain.ConsumerEffect;
 import io.github.candyxi0.hidenest.runtime.domain.ContextDelivery;
+import io.github.candyxi0.hidenest.runtime.domain.ContextPackDeliveryItem;
 import io.github.candyxi0.hidenest.runtime.domain.IdempotencyReceipt;
 import io.github.candyxi0.hidenest.runtime.domain.ModelRun;
 import io.github.candyxi0.hidenest.runtime.domain.OutboxEvent;
@@ -277,6 +278,24 @@ public class JooqRuntimeTransactionAdapter implements RuntimeTransactionPort {
                 .set(CONTEXT_DELIVERY.INVALIDATED_AT, delivery.invalidatedAt())
                 .set(CONTEXT_DELIVERY.INVALIDATION_REASON, delivery.invalidationReason())
                 .execute();
+    }
+
+    @Override
+    public void insertContextPackDeliveryItems(List<ContextPackDeliveryItem> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        for (ContextPackDeliveryItem item : items) {
+            dsl.execute(
+                    "INSERT INTO runtime.context_pack_delivery_item ("
+                            + "delivery_id, ordinal, memory_revision_id, policy_revision_no, score) "
+                            + "VALUES (?::uuid, ?::bigint, ?::uuid, ?::bigint, ?::double precision)",
+                    item.deliveryId(),
+                    item.ordinal(),
+                    item.memoryRevisionId(),
+                    item.policyRevisionNo(),
+                    item.score());
+        }
     }
 
     @Override

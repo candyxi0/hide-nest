@@ -855,8 +855,40 @@ components:
         memories:
           type: array
           items:
-            type: object
-            additionalProperties: false
+            $ref: "#/components/schemas/ContextPackMemory"
+      additionalProperties: false
+
+    ContextPackMemory:
+      type: object
+      required:
+        - memoryId
+        - memoryRevisionId
+        - revisionNo
+        - policyRevisionNo
+        - memoryType
+        - bodyText
+        - score
+      properties:
+        memoryId:
+          type: string
+          format: uuid
+        memoryRevisionId:
+          type: string
+          format: uuid
+        revisionNo:
+          type: integer
+          format: int64
+          minimum: 1
+        policyRevisionNo:
+          type: integer
+          format: int64
+          minimum: 1
+        memoryType:
+          $ref: "#/components/schemas/MemoryType"
+        bodyText:
+          type: string
+        score:
+          type: number
       additionalProperties: false
 
     DeepSearchRequest:

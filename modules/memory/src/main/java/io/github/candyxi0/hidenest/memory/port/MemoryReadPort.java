@@ -19,6 +19,9 @@ public interface MemoryReadPort {
     /** Follow memory_record.current_revision_id; never infer a revision with MAX(revision_no). */
     MemoryRevision findCurrentRevisionByMemoryId(UUID memoryId);
 
+    /** Find an immutable revision by primary key, regardless of the current pointer. */
+    MemoryRevision findMemoryRevisionById(UUID memoryRevisionId);
+
     /** Find relations originating from the supplied current revision. */
     List<MemoryRelation> findRelationsByFromRevisionId(UUID revisionId);
 
