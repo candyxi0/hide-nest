@@ -7,6 +7,7 @@ package io.github.candyxi0.hidenest.database.generated.runtime.tables;
 import io.github.candyxi0.hidenest.database.generated.runtime.Keys;
 import io.github.candyxi0.hidenest.database.generated.runtime.Runtime;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.CloseoutRun.CloseoutRunPath;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.DeletionRun.DeletionRunPath;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.ModelRun.ModelRunPath;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.OutboxEvent.OutboxEventPath;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.FailureCodeRegistryRecord;
@@ -167,6 +168,19 @@ public class FailureCodeRegistry extends TableImpl<FailureCodeRegistryRecord> {
             _closeoutRun = new CloseoutRunPath(this, null, Keys.CLOSEOUT_RUN__CLOSEOUT_RUN_FAILURE_CODE_FK.getInverseKey());
 
         return _closeoutRun;
+    }
+
+    private transient DeletionRunPath _deletionRun;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>runtime.deletion_run</code> table
+     */
+    public DeletionRunPath deletionRun() {
+        if (_deletionRun == null)
+            _deletionRun = new DeletionRunPath(this, null, Keys.DELETION_RUN__DELETION_RUN_FAILURE_CODE_FK.getInverseKey());
+
+        return _deletionRun;
     }
 
     private transient ModelRunPath _modelRun;

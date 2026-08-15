@@ -7,7 +7,16 @@ package io.github.candyxi0.hidenest.database.generated.runtime;
 import io.github.candyxi0.hidenest.database.generated.runtime.routines.ValidChangeEventManifest;
 import io.github.candyxi0.hidenest.database.generated.runtime.routines.ValidOutboxManifest;
 import io.github.candyxi0.hidenest.database.generated.runtime.routines.ValidReceiptManifest;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.CompleteDeletionRun;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ExecuteConfirmedDeletionDatabasePhase;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.RecordDeletionFileFailure;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.SettleDeletionPayloadTask;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.CompleteDeletionRunRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.ExecuteConfirmedDeletionDatabasePhaseRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.RecordDeletionFileFailureRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.SettleDeletionPayloadTaskRecord;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import javax.annotation.processing.Generated;
@@ -15,6 +24,7 @@ import javax.annotation.processing.Generated;
 import org.jooq.Configuration;
 import org.jooq.Field;
 import org.jooq.JSONB;
+import org.jooq.Result;
 
 
 /**
@@ -171,5 +181,185 @@ public class Routines {
         f.setCandidate(candidate);
 
         return f.asField();
+    }
+
+    /**
+     * Call <code>runtime.complete_deletion_run</code>.
+     */
+    public static Result<CompleteDeletionRunRecord> completeDeletionRun(
+          Configuration configuration
+        , UUID pRunId
+        , OffsetDateTime pCompletedAt
+    ) {
+        return configuration.dsl().selectFrom(io.github.candyxi0.hidenest.database.generated.runtime.tables.CompleteDeletionRun.COMPLETE_DELETION_RUN.call(
+              pRunId
+            , pCompletedAt
+        )).fetch();
+    }
+
+    /**
+     * Get <code>runtime.complete_deletion_run</code> as a table.
+     */
+    public static CompleteDeletionRun completeDeletionRun(
+          UUID pRunId
+        , OffsetDateTime pCompletedAt
+    ) {
+        return io.github.candyxi0.hidenest.database.generated.runtime.tables.CompleteDeletionRun.COMPLETE_DELETION_RUN.call(
+            pRunId,
+            pCompletedAt
+        );
+    }
+
+    /**
+     * Get <code>runtime.complete_deletion_run</code> as a table.
+     */
+    public static CompleteDeletionRun completeDeletionRun(
+          Field<UUID> pRunId
+        , Field<OffsetDateTime> pCompletedAt
+    ) {
+        return io.github.candyxi0.hidenest.database.generated.runtime.tables.CompleteDeletionRun.COMPLETE_DELETION_RUN.call(
+            pRunId,
+            pCompletedAt
+        );
+    }
+
+    /**
+     * Call <code>runtime.execute_confirmed_deletion_database_phase</code>.
+     */
+    public static Result<ExecuteConfirmedDeletionDatabasePhaseRecord> executeConfirmedDeletionDatabasePhase(
+          Configuration configuration
+        , UUID pRunId
+        , UUID pClosureId
+        , OffsetDateTime pExecutedAt
+    ) {
+        return configuration.dsl().selectFrom(io.github.candyxi0.hidenest.database.generated.runtime.tables.ExecuteConfirmedDeletionDatabasePhase.EXECUTE_CONFIRMED_DELETION_DATABASE_PHASE.call(
+              pRunId
+            , pClosureId
+            , pExecutedAt
+        )).fetch();
+    }
+
+    /**
+     * Get <code>runtime.execute_confirmed_deletion_database_phase</code> as a
+     * table.
+     */
+    public static ExecuteConfirmedDeletionDatabasePhase executeConfirmedDeletionDatabasePhase(
+          UUID pRunId
+        , UUID pClosureId
+        , OffsetDateTime pExecutedAt
+    ) {
+        return io.github.candyxi0.hidenest.database.generated.runtime.tables.ExecuteConfirmedDeletionDatabasePhase.EXECUTE_CONFIRMED_DELETION_DATABASE_PHASE.call(
+            pRunId,
+            pClosureId,
+            pExecutedAt
+        );
+    }
+
+    /**
+     * Get <code>runtime.execute_confirmed_deletion_database_phase</code> as a
+     * table.
+     */
+    public static ExecuteConfirmedDeletionDatabasePhase executeConfirmedDeletionDatabasePhase(
+          Field<UUID> pRunId
+        , Field<UUID> pClosureId
+        , Field<OffsetDateTime> pExecutedAt
+    ) {
+        return io.github.candyxi0.hidenest.database.generated.runtime.tables.ExecuteConfirmedDeletionDatabasePhase.EXECUTE_CONFIRMED_DELETION_DATABASE_PHASE.call(
+            pRunId,
+            pClosureId,
+            pExecutedAt
+        );
+    }
+
+    /**
+     * Call <code>runtime.record_deletion_file_failure</code>.
+     */
+    public static Result<RecordDeletionFileFailureRecord> recordDeletionFileFailure(
+          Configuration configuration
+        , UUID pRunId
+        , OffsetDateTime pFailedAt
+    ) {
+        return configuration.dsl().selectFrom(io.github.candyxi0.hidenest.database.generated.runtime.tables.RecordDeletionFileFailure.RECORD_DELETION_FILE_FAILURE.call(
+              pRunId
+            , pFailedAt
+        )).fetch();
+    }
+
+    /**
+     * Get <code>runtime.record_deletion_file_failure</code> as a table.
+     */
+    public static RecordDeletionFileFailure recordDeletionFileFailure(
+          UUID pRunId
+        , OffsetDateTime pFailedAt
+    ) {
+        return io.github.candyxi0.hidenest.database.generated.runtime.tables.RecordDeletionFileFailure.RECORD_DELETION_FILE_FAILURE.call(
+            pRunId,
+            pFailedAt
+        );
+    }
+
+    /**
+     * Get <code>runtime.record_deletion_file_failure</code> as a table.
+     */
+    public static RecordDeletionFileFailure recordDeletionFileFailure(
+          Field<UUID> pRunId
+        , Field<OffsetDateTime> pFailedAt
+    ) {
+        return io.github.candyxi0.hidenest.database.generated.runtime.tables.RecordDeletionFileFailure.RECORD_DELETION_FILE_FAILURE.call(
+            pRunId,
+            pFailedAt
+        );
+    }
+
+    /**
+     * Call <code>runtime.settle_deletion_payload_task</code>.
+     */
+    public static Result<SettleDeletionPayloadTaskRecord> settleDeletionPayloadTask(
+          Configuration configuration
+        , UUID pRunId
+        , UUID pPayloadId
+        , String pObjectRef
+        , byte[] pExpectedHash
+    ) {
+        return configuration.dsl().selectFrom(io.github.candyxi0.hidenest.database.generated.runtime.tables.SettleDeletionPayloadTask.SETTLE_DELETION_PAYLOAD_TASK.call(
+              pRunId
+            , pPayloadId
+            , pObjectRef
+            , pExpectedHash
+        )).fetch();
+    }
+
+    /**
+     * Get <code>runtime.settle_deletion_payload_task</code> as a table.
+     */
+    public static SettleDeletionPayloadTask settleDeletionPayloadTask(
+          UUID pRunId
+        , UUID pPayloadId
+        , String pObjectRef
+        , byte[] pExpectedHash
+    ) {
+        return io.github.candyxi0.hidenest.database.generated.runtime.tables.SettleDeletionPayloadTask.SETTLE_DELETION_PAYLOAD_TASK.call(
+            pRunId,
+            pPayloadId,
+            pObjectRef,
+            pExpectedHash
+        );
+    }
+
+    /**
+     * Get <code>runtime.settle_deletion_payload_task</code> as a table.
+     */
+    public static SettleDeletionPayloadTask settleDeletionPayloadTask(
+          Field<UUID> pRunId
+        , Field<UUID> pPayloadId
+        , Field<String> pObjectRef
+        , Field<byte[]> pExpectedHash
+    ) {
+        return io.github.candyxi0.hidenest.database.generated.runtime.tables.SettleDeletionPayloadTask.SETTLE_DELETION_PAYLOAD_TASK.call(
+            pRunId,
+            pPayloadId,
+            pObjectRef,
+            pExpectedHash
+        );
     }
 }

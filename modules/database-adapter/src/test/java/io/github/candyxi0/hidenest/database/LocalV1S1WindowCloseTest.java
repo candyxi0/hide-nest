@@ -73,7 +73,7 @@ class LocalV1S1WindowCloseTest {
                 .defaultSchema("public").locations("classpath:db/migration")
                 .cleanDisabled(true).baselineOnMigrate(false)
                 .outOfOrder(false).validateMigrationNaming(true).load();
-        assertEquals(17, fw.migrate().migrationsExecuted);
+        assertEquals(18, fw.migrate().migrationsExecuted);
         var rds = new DriverManagerDataSource(pg.getJdbcUrl(), U, PW);
         DataSource pds = new TransactionAwareDataSourceProxy(rds);
         var tx = new TransactionTemplate(new DataSourceTransactionManager(rds));

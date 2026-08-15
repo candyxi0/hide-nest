@@ -11,6 +11,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.tables.ActorRef.Act
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision.DecisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRecord.MemoryRecordPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation.MemoryRelationPath;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevisionEmbedding.MemoryRevisionEmbeddingPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ProposalRevision.ProposalRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.MemoryRevisionRecord;
 
@@ -285,6 +286,19 @@ public class MemoryRevision extends TableImpl<MemoryRevisionRecord> {
             _memoryRelationToRevisionFk = new MemoryRelationPath(this, null, Keys.MEMORY_RELATION__MEMORY_RELATION_TO_REVISION_FK.getInverseKey());
 
         return _memoryRelationToRevisionFk;
+    }
+
+    private transient MemoryRevisionEmbeddingPath _memoryRevisionEmbedding;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>memory.memory_revision_embedding</code> table
+     */
+    public MemoryRevisionEmbeddingPath memoryRevisionEmbedding() {
+        if (_memoryRevisionEmbedding == null)
+            _memoryRevisionEmbedding = new MemoryRevisionEmbeddingPath(this, null, Keys.MEMORY_REVISION_EMBEDDING__MEMORY_REVISION_EMBEDDING_REVISION_FK.getInverseKey());
+
+        return _memoryRevisionEmbedding;
     }
 
     private transient ProposalRevisionPath _proposalRevision;

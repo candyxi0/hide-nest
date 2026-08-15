@@ -84,7 +84,7 @@ class DatabaseSliceBContractTest {
                 .validateMigrationNaming(true)
                 .load();
         MigrateResult result = flyway.migrate();
-        assertEquals(17, result.migrationsExecuted);
+        assertEquals(18, result.migrationsExecuted);
     }
 
     @AfterAll
@@ -105,7 +105,7 @@ class DatabaseSliceBContractTest {
         MigrateResult repeated = flyway.migrate();
         assertEquals(0, repeated.migrationsExecuted);
         assertEquals(before, catalogFingerprint());
-        assertEquals(17, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(18, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
     }
 
     @Test
@@ -140,7 +140,7 @@ class DatabaseSliceBContractTest {
 
     @Test
     @Order(3)
-    @DisplayName("CoreDatabaseInventoryIT: four schemas and thirty-seven approved tables")
+    @DisplayName("CoreDatabaseInventoryIT: four schemas and thirty-eight approved tables")
     void coreDatabaseInventoryIT() throws SQLException {
         assertEquals(
                 Set.of("evidence", "memory", "runtime", "security"),
@@ -157,6 +157,7 @@ class DatabaseSliceBContractTest {
                         "memory.actor_ref",
                         "memory.memory_record",
                         "memory.memory_revision",
+                        "memory.memory_revision_embedding",
                         "memory.proposal",
                         "memory.proposal_revision",
                         "memory.review_session",
@@ -203,7 +204,7 @@ class DatabaseSliceBContractTest {
                 scalarLong("SELECT count(*) FROM information_schema.columns "
                         + "WHERE table_schema IN ('memory','runtime') AND data_type='character varying'"));
         assertEquals(
-                0,
+                1,
                 scalarLong("SELECT count(*) FROM information_schema.columns "
                         + "WHERE table_schema IN ('evidence','memory','runtime','security') "
                         + "AND udt_name='vector'"));
@@ -230,15 +231,21 @@ class DatabaseSliceBContractTest {
 
     @Test
     @Order(5)
-    @DisplayName("ForeignKeyDeletePolicyIT: every foreign key is explicit NO ACTION")
+    @DisplayName("ForeignKeyDeletePolicyIT: every business FK is NO ACTION; only the embedding FK is CASCADE")
     void foreignKeyDeletePolicyIT() throws SQLException {
         long count = scalarLong("SELECT count(*) FROM information_schema.referential_constraints "
                 + "WHERE constraint_schema IN ('memory','runtime')");
-        assertTrue(count >= 20);
+        assertTrue(count >= 21);
         assertEquals(
-                count,
+                count - 1,
                 scalarLong("SELECT count(*) FROM information_schema.referential_constraints "
                         + "WHERE constraint_schema IN ('memory','runtime') AND delete_rule='NO ACTION'"));
+        assertEquals(
+                1,
+                scalarLong("SELECT count(*) FROM information_schema.referential_constraints "
+                        + "WHERE constraint_schema='memory' "
+                        + "AND constraint_name='memory_revision_embedding_revision_fk' "
+                        + "AND delete_rule='CASCADE'"));
     }
 
     @Test
@@ -371,7 +378,7 @@ class DatabaseSliceBContractTest {
     @DisplayName("DatabasePrivilegeIT: migrator ownership and runtime least privilege")
     void databasePrivilegeIT() throws SQLException {
         assertEquals(
-                37,
+                38,
                 scalarLong("SELECT count(*) FROM pg_catalog.pg_tables "
                         + "WHERE schemaname IN ('evidence','memory','runtime','security') "
                         + "AND tableowner='hide_nest_migrator'"));
@@ -1464,7 +1471,7 @@ class DatabaseSliceBContractTest {
     @Order(44)
     @DisplayName("V013: migration history = 13, repeat migrate executes 0")
     void v010MigrationHistoryAndRepeat() {
-        assertEquals(17, flyway.info().applied().length, "history must be 17");
+        assertEquals(18, flyway.info().applied().length, "history must be 18");
         MigrateResult repeat = flyway.migrate();
         assertEquals(0, repeat.migrationsExecuted, "repeat migrate must execute 0");
     }

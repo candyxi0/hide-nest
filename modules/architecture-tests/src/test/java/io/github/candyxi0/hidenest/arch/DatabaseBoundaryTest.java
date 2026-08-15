@@ -9,10 +9,13 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
 import io.github.candyxi0.hidenest.application.ApplicationForbiddenDependencyFixture;
+import io.github.candyxi0.hidenest.application.ApplicationForbiddenEmbeddingFixture;
 import io.github.candyxi0.hidenest.application.ApplicationForbiddenGeneratedTypeFixture;
 import io.github.candyxi0.hidenest.application.ApplicationForbiddenReactiveFixture;
 import io.github.candyxi0.hidenest.database.DatabaseForbiddenApplicationFixture;
 import io.github.candyxi0.hidenest.evidence.EvidenceForbiddenDatabaseFixture;
+import io.github.candyxi0.hidenest.memory.MemoryForbiddenHttpFixture;
+import io.github.candyxi0.hidenest.memory.MemoryForbiddenJacksonFixture;
 import org.junit.jupiter.api.Test;
 
 /** Executable architecture gates for the L1R application and database boundaries. */
@@ -28,6 +31,7 @@ class DatabaseBoundaryTest {
     private static final String API = ROOT + "api..";
     private static final String WORKER = ROOT + "worker..";
     private static final String PAYLOAD = ROOT + "payload..";
+    private static final String EMBEDDING = ROOT + "embedding..";
 
     static ArchRule domainBoundaryRule() {
         return noClasses()
@@ -44,7 +48,13 @@ class DatabaseBoundaryTest {
                         "org.springframework..",
                         "org.jooq..",
                         "org.flywaydb..",
-                        "java.sql..");
+                        "java.sql..",
+                        "java.net.http..",
+                        "jakarta.servlet..",
+                        "jakarta.ws.rs..",
+                        "org.apache.http..",
+                        "okhttp3..",
+                        "com.fasterxml.jackson..");
     }
 
     static ArchRule applicationBoundaryRule() {
@@ -57,6 +67,8 @@ class DatabaseBoundaryTest {
                         DATABASE,
                         API,
                         WORKER,
+                        PAYLOAD,
+                        EMBEDDING,
                         "org.springframework..",
                         "org.jooq..",
                         "org.flywaydb..",
@@ -165,5 +177,26 @@ class DatabaseBoundaryTest {
 
         assertThrows(AssertionError.class, () -> projectClassesMustNotUseReactiveDatabaseApisRule()
                 .check(fixture));
+    }
+
+    @Test
+    void embeddingFixtureIsRejectedByTheFormalApplicationRule() {
+        JavaClasses fixture = new ClassFileImporter().importClasses(ApplicationForbiddenEmbeddingFixture.class);
+
+        assertThrows(AssertionError.class, () -> applicationBoundaryRule().check(fixture));
+    }
+
+    @Test
+    void httpFixtureIsRejectedByTheFormalDomainRule() {
+        JavaClasses fixture = new ClassFileImporter().importClasses(MemoryForbiddenHttpFixture.class);
+
+        assertThrows(AssertionError.class, () -> domainBoundaryRule().check(fixture));
+    }
+
+    @Test
+    void jacksonFixtureIsRejectedByTheFormalDomainRule() {
+        JavaClasses fixture = new ClassFileImporter().importClasses(MemoryForbiddenJacksonFixture.class);
+
+        assertThrows(AssertionError.class, () -> domainBoundaryRule().check(fixture));
     }
 }

@@ -10,12 +10,14 @@ import io.github.candyxi0.hidenest.database.generated.memory.Memory;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicyRevision.AccessPolicyRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ActorRef.ActorRefPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent.ChangeEventPath;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionClosure.DeletionClosurePath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionFence.DeletionFencePath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation.MemoryRelationPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevision.MemoryRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ProposalRevision.ProposalRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ReviewSession.ReviewSessionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.DecisionRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.DeletionRun.DeletionRunPath;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -294,6 +296,19 @@ public class Decision extends TableImpl<DecisionRecord> {
         return _changeEvent;
     }
 
+    private transient DeletionClosurePath _deletionClosure;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>memory.deletion_closure</code> table
+     */
+    public DeletionClosurePath deletionClosure() {
+        if (_deletionClosure == null)
+            _deletionClosure = new DeletionClosurePath(this, null, Keys.DELETION_CLOSURE__DELETION_CLOSURE_CONFIRMED_DECISION_FK.getInverseKey());
+
+        return _deletionClosure;
+    }
+
     private transient DeletionFencePath _deletionFence;
 
     /**
@@ -331,6 +346,19 @@ public class Decision extends TableImpl<DecisionRecord> {
             _memoryRevision = new MemoryRevisionPath(this, null, Keys.MEMORY_REVISION__MEMORY_REVISION_DECISION_FK.getInverseKey());
 
         return _memoryRevision;
+    }
+
+    private transient DeletionRunPath _deletionRun;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>runtime.deletion_run</code> table
+     */
+    public DeletionRunPath deletionRun() {
+        if (_deletionRun == null)
+            _deletionRun = new DeletionRunPath(this, null, io.github.candyxi0.hidenest.database.generated.runtime.Keys.DELETION_RUN__DELETION_RUN_DECISION_FK.getInverseKey());
+
+        return _deletionRun;
     }
 
     @Override

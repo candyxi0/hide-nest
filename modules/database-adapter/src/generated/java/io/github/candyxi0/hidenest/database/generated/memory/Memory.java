@@ -17,6 +17,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionFenc
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevision;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevisionEmbedding;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Proposal;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ProposalRevision;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ReviewMember;
@@ -113,6 +114,11 @@ public class Memory extends SchemaImpl {
     public final MemoryRevision MEMORY_REVISION = MemoryRevision.MEMORY_REVISION;
 
     /**
+     * The table <code>memory.memory_revision_embedding</code>.
+     */
+    public final MemoryRevisionEmbedding MEMORY_REVISION_EMBEDDING = MemoryRevisionEmbedding.MEMORY_REVISION_EMBEDDING;
+
+    /**
      * The table <code>memory.proposal</code>.
      */
     public final Proposal PROPOSAL = Proposal.PROPOSAL;
@@ -160,6 +166,7 @@ public class Memory extends SchemaImpl {
             MemoryRecord.MEMORY_RECORD,
             MemoryRelation.MEMORY_RELATION,
             MemoryRevision.MEMORY_REVISION,
+            MemoryRevisionEmbedding.MEMORY_REVISION_EMBEDDING,
             Proposal.PROPOSAL,
             ProposalRevision.PROPOSAL_REVISION,
             ReviewMember.REVIEW_MEMBER,

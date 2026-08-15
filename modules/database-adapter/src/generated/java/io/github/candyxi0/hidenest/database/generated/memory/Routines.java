@@ -5,6 +5,9 @@ package io.github.candyxi0.hidenest.database.generated.memory;
 
 
 import io.github.candyxi0.hidenest.database.generated.memory.routines.DeletionFenceExists;
+import io.github.candyxi0.hidenest.database.generated.memory.routines.IsErasureMarkerActiveFor;
+import io.github.candyxi0.hidenest.database.generated.memory.routines.RejectIfRelationEndpointFencedChecked;
+import io.github.candyxi0.hidenest.database.generated.memory.routines.RejectIfRevisionFencedChecked;
 import io.github.candyxi0.hidenest.database.generated.memory.routines.RequireGovernedOutbox;
 
 import java.util.UUID;
@@ -75,6 +78,86 @@ public class Routines {
         f.setPTargetRevisionRef(pTargetRevisionRef);
 
         return f.asField();
+    }
+
+    /**
+     * Call <code>memory.is_erasure_marker_active_for</code>
+     */
+    public static Boolean isErasureMarkerActiveFor(
+          Configuration configuration
+        , String pTargetKind
+        , UUID pTargetId
+        , Long pTargetRevisionRef
+    ) {
+        IsErasureMarkerActiveFor f = new IsErasureMarkerActiveFor();
+        f.setPTargetKind(pTargetKind);
+        f.setPTargetId(pTargetId);
+        f.setPTargetRevisionRef(pTargetRevisionRef);
+
+        f.execute(configuration);
+        return f.getReturnValue();
+    }
+
+    /**
+     * Get <code>memory.is_erasure_marker_active_for</code> as a field.
+     */
+    public static Field<Boolean> isErasureMarkerActiveFor(
+          String pTargetKind
+        , UUID pTargetId
+        , Long pTargetRevisionRef
+    ) {
+        IsErasureMarkerActiveFor f = new IsErasureMarkerActiveFor();
+        f.setPTargetKind(pTargetKind);
+        f.setPTargetId(pTargetId);
+        f.setPTargetRevisionRef(pTargetRevisionRef);
+
+        return f.asField();
+    }
+
+    /**
+     * Get <code>memory.is_erasure_marker_active_for</code> as a field.
+     */
+    public static Field<Boolean> isErasureMarkerActiveFor(
+          Field<String> pTargetKind
+        , Field<UUID> pTargetId
+        , Field<Long> pTargetRevisionRef
+    ) {
+        IsErasureMarkerActiveFor f = new IsErasureMarkerActiveFor();
+        f.setPTargetKind(pTargetKind);
+        f.setPTargetId(pTargetId);
+        f.setPTargetRevisionRef(pTargetRevisionRef);
+
+        return f.asField();
+    }
+
+    /**
+     * Call <code>memory.reject_if_relation_endpoint_fenced_checked</code>
+     */
+    public static void rejectIfRelationEndpointFencedChecked(
+          Configuration configuration
+        , UUID checkedFromRevisionId
+        , UUID checkedToRevisionId
+        , UUID checkedToAnchorId
+    ) {
+        RejectIfRelationEndpointFencedChecked p = new RejectIfRelationEndpointFencedChecked();
+        p.setCheckedFromRevisionId(checkedFromRevisionId);
+        p.setCheckedToRevisionId(checkedToRevisionId);
+        p.setCheckedToAnchorId(checkedToAnchorId);
+
+        p.execute(configuration);
+    }
+
+    /**
+     * Call <code>memory.reject_if_revision_fenced_checked</code>
+     */
+    public static void rejectIfRevisionFencedChecked(
+          Configuration configuration
+        , UUID checkedRevisionId
+    ) {
+        RejectIfRevisionFencedChecked p = new RejectIfRevisionFencedChecked();
+        p.setCheckedRevisionId(checkedRevisionId);
+
+        p.execute(configuration);
     }
 
     /**

@@ -101,7 +101,7 @@ class LocalV1S3C1ADatabaseErasureTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(17, Flyway.configure().dataSource(jdbcUrl, USER, password)
+        assertEquals(18, Flyway.configure().dataSource(jdbcUrl, USER, password)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load()
                 .migrate().migrationsExecuted);
         var raw = new DriverManagerDataSource(jdbcUrl, USER, password);
@@ -148,7 +148,7 @@ class LocalV1S3C1ADatabaseErasureTest {
     @DisplayName("1. V014 empty 14, upgrade 13→14 1, repeat 0; generated A/B/tracked consistent")
     void migrationCounts() throws Exception {
         // Clean migration on a fresh database: 16
-        assertEquals(17, count("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(18, count("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
 
         // Upgrade from V013 to V015 on separate container
         String upgradePassword = UUID.randomUUID().toString();
@@ -171,7 +171,7 @@ class LocalV1S3C1ADatabaseErasureTest {
             var fw15 = Flyway.configure().dataSource(upgradeContainer.getJdbcUrl(), USER, upgradePassword)
                     .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true)
                     .load();
-            assertEquals(4, fw15.migrate().migrationsExecuted);
+            assertEquals(5, fw15.migrate().migrationsExecuted);
             // Repeat: 0
             assertEquals(0, fw15.migrate().migrationsExecuted);
         } finally {

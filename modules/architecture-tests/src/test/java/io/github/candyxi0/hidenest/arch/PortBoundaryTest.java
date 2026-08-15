@@ -14,10 +14,14 @@ import io.github.candyxi0.hidenest.database.adapter.JooqEvidenceReferenceAdapter
 import io.github.candyxi0.hidenest.database.adapter.JooqMemoryGovernanceAdapter;
 import io.github.candyxi0.hidenest.database.adapter.JooqRuntimeQueryAdapter;
 import io.github.candyxi0.hidenest.database.adapter.JooqRuntimeTransactionAdapter;
+import io.github.candyxi0.hidenest.database.adapter.JooqVectorStoreAdapter;
+import io.github.candyxi0.hidenest.embedding.HttpEmbeddingProviderAdapter;
 import io.github.candyxi0.hidenest.evidence.EvidencePortForbiddenGeneratedTypeFixture;
 import io.github.candyxi0.hidenest.evidence.port.EvidenceReferencePort;
 import io.github.candyxi0.hidenest.memory.MemoryPortForbiddenGeneratedTypeFixture;
+import io.github.candyxi0.hidenest.memory.port.EmbeddingProviderPort;
 import io.github.candyxi0.hidenest.memory.port.MemoryGovernancePort;
+import io.github.candyxi0.hidenest.memory.port.MemoryVectorStorePort;
 import io.github.candyxi0.hidenest.runtime.RuntimePortForbiddenGeneratedTypeFixture;
 import io.github.candyxi0.hidenest.runtime.port.RuntimeQueryPort;
 import io.github.candyxi0.hidenest.runtime.port.RuntimeTransactionPort;
@@ -291,6 +295,36 @@ class PortBoundaryTest {
         extra.removeAll(portAbstract);
         assertTrue(portAbstract.equals(adapterMethodKeys),
                 "JooqRuntimeQueryAdapter override mismatch. Port-only(missing from adapter): "
+                        + missing + " Adapter-only(extra beyond port): " + extra);
+    }
+
+    @Test
+    void vectorStoreAdapterOverridesMustExactlyMatchPortAbstractMethods() {
+        java.util.Set<String> portAbstract = abstractMethodKeys(MemoryVectorStorePort.class);
+
+        java.util.Set<String> adapterMethodKeys = allPublicMethodKeys(JooqVectorStoreAdapter.class);
+
+        java.util.Set<String> missing = new java.util.HashSet<>(portAbstract);
+        missing.removeAll(adapterMethodKeys);
+        java.util.Set<String> extra = new java.util.HashSet<>(adapterMethodKeys);
+        extra.removeAll(portAbstract);
+        assertTrue(portAbstract.equals(adapterMethodKeys),
+                "JooqVectorStoreAdapter override mismatch. Port-only(missing from adapter): "
+                        + missing + " Adapter-only(extra beyond port): " + extra);
+    }
+
+    @Test
+    void embeddingAdapterOverridesMustExactlyMatchPortAbstractMethods() {
+        java.util.Set<String> portAbstract = abstractMethodKeys(EmbeddingProviderPort.class);
+
+        java.util.Set<String> adapterMethodKeys = allPublicMethodKeys(HttpEmbeddingProviderAdapter.class);
+
+        java.util.Set<String> missing = new java.util.HashSet<>(portAbstract);
+        missing.removeAll(adapterMethodKeys);
+        java.util.Set<String> extra = new java.util.HashSet<>(adapterMethodKeys);
+        extra.removeAll(portAbstract);
+        assertTrue(portAbstract.equals(adapterMethodKeys),
+                "HttpEmbeddingProviderAdapter override mismatch. Port-only(missing from adapter): "
                         + missing + " Adapter-only(extra beyond port): " + extra);
     }
 
