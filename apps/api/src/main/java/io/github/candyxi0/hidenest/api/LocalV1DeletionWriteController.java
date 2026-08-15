@@ -2,11 +2,15 @@ package io.github.candyxi0.hidenest.api;
 
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1DeletionCanonicalizer;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1DeletionWriteCoordinator;
+import io.github.candyxi0.hidenest.application.model.LocalV1DeletionEvidenceMessage;
 import io.github.candyxi0.hidenest.application.model.LocalV1DeletionPreviewResult;
 import io.github.candyxi0.hidenest.application.model.LocalV1RunStatus;
+import io.github.candyxi0.hidenest.application.model.LocalV1SharedMemoryReference;
 import io.github.candyxi0.hidenest.contracts.model.AsyncAcceptedResponse;
 import io.github.candyxi0.hidenest.contracts.model.DeletionClosureMember;
+import io.github.candyxi0.hidenest.contracts.model.DeletionEvidenceItem;
 import io.github.candyxi0.hidenest.contracts.model.DeletionPreviewResponse;
+import io.github.candyxi0.hidenest.contracts.model.DeletionSharedMemory;
 import io.github.candyxi0.hidenest.contracts.model.FailureCode;
 import io.github.candyxi0.hidenest.contracts.model.ResultCategory;
 import io.github.candyxi0.hidenest.contracts.model.RunPhase;
@@ -53,13 +57,19 @@ public final class LocalV1DeletionWriteController {
 
         List<DeletionClosureMember> members =
                 result.closureMembers().stream().map(LocalV1DeletionWriteController::toMember).toList();
+        List<DeletionEvidenceItem> evidence =
+                result.evidence().stream().map(LocalV1DeletionWriteController::toEvidenceItem).toList();
+        List<DeletionSharedMemory> sharedMemories =
+                result.sharedMemories().stream().map(LocalV1DeletionWriteController::toSharedMemory).toList();
         DeletionPreviewResponse response = new DeletionPreviewResponse(
                 LocalV1RequestContext.requestId(request),
                 ResultCategory.SUCCEEDED,
                 result.previewId(),
                 Math.toIntExact(result.previewRevision()),
                 LocalV1DeletionCanonicalizer.bytesToHex(result.manifestHash()),
-                members);
+                members,
+                evidence,
+                sharedMemories);
         return ResponseEntity.ok(response);
     }
 
@@ -123,5 +133,16 @@ public final class LocalV1DeletionWriteController {
             model.contentHash(LocalV1DeletionCanonicalizer.bytesToHex(member.contentHash()));
         }
         return model;
+    }
+
+    private static DeletionEvidenceItem toEvidenceItem(LocalV1DeletionEvidenceMessage message) {
+        return new DeletionEvidenceItem(
+                message.anchorId(), Math.toIntExact(message.ordinal()), message.actorId(), message.actorStableRef(),
+                message.displayLabel(), message.occurredAt(), message.bodyText(),
+                message.sharedByMemoryIds());
+    }
+
+    private static DeletionSharedMemory toSharedMemory(LocalV1SharedMemoryReference reference) {
+        return new DeletionSharedMemory(reference.memoryId(), Math.toIntExact(reference.revisionNo()), reference.title());
     }
 }

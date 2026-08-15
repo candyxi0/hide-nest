@@ -11,20 +11,35 @@ function validInput() {
       memoryType: "EVENT",
       bodyText: "小林确认了合成记忆候选",
     },
-    evidenceMessages: [
+    evidenceSegments: [
       {
-        speakerKey: "xiaolin",
-        ordinal: 0,
-        occurredAt: "2026-08-13T12:00:00+08:00",
-        bodyText: "这是证据消息一",
-      },
-      {
-        speakerKey: "hide",
-        ordinal: 1,
-        occurredAt: "2026-08-13T12:01:00+08:00",
-        bodyText: "这是证据消息二",
+        messages: [
+          {
+            speakerKey: "xiaolin",
+            ordinal: 0,
+            occurredAt: "2026-08-13T12:00:00+08:00",
+            bodyText: "这是证据消息一",
+          },
+          {
+            speakerKey: "hide",
+            ordinal: 1,
+            occurredAt: "2026-08-13T12:01:00+08:00",
+            bodyText: "这是证据消息二",
+          },
+        ],
       },
     ],
+  };
+}
+
+function segmentWith(ordinals: number[]) {
+  return {
+    messages: ordinals.map((ordinal) => ({
+      speakerKey: "xiaolin",
+      ordinal,
+      occurredAt: "2026-08-13T12:00:00+08:00",
+      bodyText: `消息-${ordinal}`,
+    })),
   };
 }
 
@@ -33,10 +48,37 @@ function expectRejected(input: unknown) {
 }
 
 describe("validateCloseoutInput", () => {
-  it("accepts a minimal valid input with userConfirmed=true", () => {
+  it("accepts a minimal valid single-segment input with userConfirmed=true", () => {
     const result = validateCloseoutInput(validInput());
     expect(result.userConfirmed).toBe(true);
-    expect(result.evidenceMessages).toHaveLength(2);
+    expect(result.evidenceSegments).toHaveLength(1);
+    expect(result.evidenceSegments[0].messages).toHaveLength(2);
+  });
+
+  it("accepts a single contiguous segment with three messages", () => {
+    const input = validInput();
+    input.evidenceSegments = [segmentWith([0, 1, 2])];
+    const result = validateCloseoutInput(input);
+    expect(result.evidenceSegments).toHaveLength(1);
+    expect(result.evidenceSegments[0].messages.map((m) => m.ordinal)).toEqual([0, 1, 2]);
+  });
+
+  it("accepts two separated segments with an ordinal gap", () => {
+    const input = validInput();
+    input.evidenceSegments = [segmentWith([0, 1]), segmentWith([4, 5])];
+    const result = validateCloseoutInput(input);
+    expect(result.evidenceSegments).toHaveLength(2);
+    expect(result.evidenceSegments[0].messages.map((m) => m.ordinal)).toEqual([0, 1]);
+    expect(result.evidenceSegments[1].messages.map((m) => m.ordinal)).toEqual([4, 5]);
+  });
+
+  it("accepts a single-message segment", () => {
+    const input = validInput();
+    input.evidenceSegments = [segmentWith([7])];
+    const result = validateCloseoutInput(input);
+    expect(result.evidenceSegments).toHaveLength(1);
+    expect(result.evidenceSegments[0].messages).toHaveLength(1);
+    expect(result.evidenceSegments[0].messages[0].ordinal).toBe(7);
   });
 
   it("rejects userConfirmed=false before HTTP", () => {
@@ -53,6 +95,15 @@ describe("validateCloseoutInput", () => {
     expectRejected({ ...validInput(), extraField: "nope" });
   });
 
+  it("rejects old top-level evidenceMessages as an unknown field", () => {
+    const input = validInput() as Record<string, unknown>;
+    delete input.evidenceSegments;
+    (input as Record<string, unknown>).evidenceMessages = [
+      { speakerKey: "xiaolin", ordinal: 0, occurredAt: "2026-08-13T12:00:00+08:00", bodyText: "旧格式" },
+    ];
+    expectRejected(input);
+  });
+
   it("rejects unknown candidate field", () => {
     const input = validInput();
     input.candidate = { ...input.candidate, extra: 1 } as never;
@@ -61,25 +112,70 @@ describe("validateCloseoutInput", () => {
 
   it("rejects unknown evidence message field", () => {
     const input = validInput();
-    input.evidenceMessages[0] = { ...input.evidenceMessages[0], extra: 1 } as never;
+    input.evidenceSegments[0].messages[0] = {
+      ...input.evidenceSegments[0].messages[0],
+      extra: 1,
+    } as never;
     expectRejected(input);
   });
 
-  it("rejects duplicate ordinals", () => {
+  it("rejects unknown evidence segment field", () => {
     const input = validInput();
-    input.evidenceMessages[1].ordinal = 0;
+    input.evidenceSegments[0] = { ...input.evidenceSegments[0], extra: 1 } as never;
     expectRejected(input);
   });
 
-  it("rejects ordinal gap", () => {
+  it("rejects segment-internal duplicate ordinals", () => {
     const input = validInput();
-    input.evidenceMessages[1].ordinal = 2;
+    input.evidenceSegments = [segmentWith([0, 0])];
     expectRejected(input);
   });
 
-  it("rejects descending ordinals", () => {
+  it("rejects segment-internal ordinal gap", () => {
     const input = validInput();
-    input.evidenceMessages[1].ordinal = -1;
+    input.evidenceSegments = [segmentWith([0, 2])];
+    expectRejected(input);
+  });
+
+  it("rejects segment-internal descending ordinals", () => {
+    const input = validInput();
+    input.evidenceSegments = [segmentWith([1, 0])];
+    expectRejected(input);
+  });
+
+  it("rejects cross-segment overlap", () => {
+    const input = validInput();
+    input.evidenceSegments = [segmentWith([0, 1]), segmentWith([1, 2])];
+    expectRejected(input);
+  });
+
+  it("rejects cross-segment descending order", () => {
+    const input = validInput();
+    input.evidenceSegments = [segmentWith([4, 5]), segmentWith([0, 1])];
+    expectRejected(input);
+  });
+
+  it("rejects adjacent pseudo-split segments", () => {
+    const input = validInput();
+    input.evidenceSegments = [segmentWith([0, 1]), segmentWith([2, 3])];
+    expectRejected(input);
+  });
+
+  it("rejects an empty segment", () => {
+    const input = validInput();
+    input.evidenceSegments = [{ messages: [] }] as never;
+    expectRejected(input);
+  });
+
+  it("rejects more than 100 total messages", () => {
+    const input = validInput();
+    input.evidenceSegments = [segmentWith(Array.from({ length: 101 }, (_, i) => i))];
+    expectRejected(input);
+  });
+
+  it("rejects more than 100 segments", () => {
+    const input = validInput();
+    input.evidenceSegments = Array.from({ length: 101 }, (_, i) => segmentWith([i * 2]));
     expectRejected(input);
   });
 
@@ -95,7 +191,7 @@ describe("validateCloseoutInput", () => {
 
   it("rejects control character in speakerKey", () => {
     const input = validInput();
-    input.evidenceMessages[0].speakerKey = "bad\u001fkey";
+    input.evidenceSegments[0].messages[0].speakerKey = "bad\u001fkey";
     expectRejected(input);
   });
 
@@ -105,8 +201,8 @@ describe("validateCloseoutInput", () => {
     expectRejected(input);
   });
 
-  it("rejects empty evidenceMessages", () => {
-    expectRejected({ ...validInput(), evidenceMessages: [] });
+  it("rejects empty evidenceSegments", () => {
+    expectRejected({ ...validInput(), evidenceSegments: [] });
   });
 
   it("rejects candidate bodyText over 16000 code points", () => {
@@ -117,7 +213,7 @@ describe("validateCloseoutInput", () => {
 
   it("rejects evidence bodyText over 1 MiB UTF-8", () => {
     const input = validInput();
-    input.evidenceMessages[0].bodyText = "中".repeat(1024 * 1024);
+    input.evidenceSegments[0].messages[0].bodyText = "中".repeat(1024 * 1024);
     expectRejected(input);
   });
 
@@ -127,7 +223,11 @@ describe("validateCloseoutInput", () => {
       validateCloseoutInput({ ...validInput(), closeoutKey: canary, extra: canary }),
     ).toThrowError(/input contains an unknown field/);
     try {
-      validateCloseoutInput({ ...validInput(), userConfirmed: false, candidate: { ...validInput().candidate, bodyText: canary } });
+      validateCloseoutInput({
+        ...validInput(),
+        userConfirmed: false,
+        candidate: { ...validInput().candidate, bodyText: canary },
+      });
       throw new Error("should have rejected");
     } catch (error) {
       expect(String((error as Error).message)).not.toContain(canary);

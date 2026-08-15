@@ -27,7 +27,8 @@ public final class LocalV1S3B2BDeletionConfirmCoordinator {
     private static final String TARGET_KIND = "DELETION_CLOSURE";
     private static final String ACTOR_ROLE = "HUMAN";
     private static final String AUTHORIZATION_REF = "local-v1-synthetic-deletion-confirm";
-    private static final String AFFECTED = "AFFECTED_PENDING_CHOICE";
+    private static final String DELETE_REQUESTED = "DELETE_REQUESTED";
+    private static final String DELETE_CANDIDATE = "DELETE_CANDIDATE";
 
     private final DeletionConfirmationPort confirmationPort;
     private final MemoryGovernancePort governancePort;
@@ -116,16 +117,18 @@ public final class LocalV1S3B2BDeletionConfirmCoordinator {
                 null, null, TARGET_KIND, request.closureId(), request.previewRevision(),
                 AUTHORIZATION_REF, request.idempotencyKey(), now));
 
-        // Step 10: fence non-AFFECTED members by snapshot ordinal order
+        // Step 10: fence only DELETE_REQUESTED / DELETE_CANDIDATE members by
+        // snapshot ordinal order; RETAIN_SHARED members (retained source objects
+        // and shared-reference memories) are deliberately left unfenced.
         List<DeletionConfirmationPort.Member> ordered = snapshot.members().stream()
                 .sorted(Comparator.comparingLong(DeletionConfirmationPort.Member::ordinal))
                 .toList();
         int fenceCount = 0;
-        int affectedCount = 0;
+        int retainedCount = 0;
         List<DeletionFencePort.FenceDraft> drafts = new ArrayList<>();
         for (DeletionConfirmationPort.Member member : ordered) {
-            if (AFFECTED.equals(member.disposition())) {
-                affectedCount++;
+            if (!isFenceable(member.disposition())) {
+                retainedCount++;
                 continue;
             }
             drafts.add(new DeletionFencePort.FenceDraft(
@@ -151,7 +154,7 @@ public final class LocalV1S3B2BDeletionConfirmCoordinator {
         return new LocalV1S3B2BDeletionConfirmResult(
                 snapshot.closureId(), snapshot.previewRevision(), snapshot.manifestHash(),
                 decisionId, now.withOffsetSameInstant(ZoneOffset.UTC), "CONFIRMED",
-                fenceCount, affectedCount);
+                fenceCount, retainedCount);
     }
 
     // -- idempotent replay ---------------------------------------------------
@@ -178,18 +181,18 @@ public final class LocalV1S3B2BDeletionConfirmCoordinator {
         }
         // Re-derive fence count from current state
         int fenceCount = 0;
-        int affectedCount = 0;
+        int retainedCount = 0;
         for (DeletionConfirmationPort.Member member : snapshot.members()) {
-            if (AFFECTED.equals(member.disposition())) {
-                affectedCount++;
-            } else {
+            if (isFenceable(member.disposition())) {
                 fenceCount++;
+            } else {
+                retainedCount++;
             }
         }
         return new LocalV1S3B2BDeletionConfirmResult(
                 snapshot.closureId(), snapshot.previewRevision(), snapshot.manifestHash(),
                 decision.decisionId(), snapshot.confirmedAt().withOffsetSameInstant(ZoneOffset.UTC),
-                "CONFIRMED", fenceCount, affectedCount);
+                "CONFIRMED", fenceCount, retainedCount);
     }
 
     // -- canonical verification ----------------------------------------------
@@ -249,6 +252,10 @@ public final class LocalV1S3B2BDeletionConfirmCoordinator {
         DeletionPreviewGraph graph = previewPort.lockAndReadGraph(memoryId);
         if (graph == null) throw failure(CanonicalFailureCode.DELETION_PREVIEW_STALE);
         return graph;
+    }
+
+    private static boolean isFenceable(String disposition) {
+        return DELETE_REQUESTED.equals(disposition) || DELETE_CANDIDATE.equals(disposition);
     }
 
     private static void validateRequest(LocalV1S3B2BDeletionConfirmRequest request) {

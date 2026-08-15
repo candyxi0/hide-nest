@@ -54,6 +54,12 @@ export interface MemoryDetail {
     revisionNo: number;
     /**
      * 
+     * @type {number}
+     * @memberof MemoryDetail
+     */
+    currentPolicyRevisionNo: number;
+    /**
+     * 
      * @type {MemoryState}
      * @memberof MemoryDetail
      */
@@ -105,6 +111,7 @@ export function instanceOfMemoryDetail(value: object): value is MemoryDetail {
     if (!('memoryId' in value) || value['memoryId'] === undefined) return false;
     if (!('currentRevisionId' in value) || value['currentRevisionId'] === undefined) return false;
     if (!('revisionNo' in value) || value['revisionNo'] === undefined) return false;
+    if (!('currentPolicyRevisionNo' in value) || value['currentPolicyRevisionNo'] === undefined) return false;
     if (!('state' in value) || value['state'] === undefined) return false;
     if (!('memoryType' in value) || value['memoryType'] === undefined) return false;
     if (!('perspectiveActorId' in value) || value['perspectiveActorId'] === undefined) return false;
@@ -127,6 +134,7 @@ export function MemoryDetailFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'memoryId': json['memoryId'],
         'currentRevisionId': json['currentRevisionId'],
         'revisionNo': json['revisionNo'],
+        'currentPolicyRevisionNo': json['currentPolicyRevisionNo'],
         'state': MemoryStateFromJSON(json['state']),
         'memoryType': MemoryTypeFromJSON(json['memoryType']),
         'perspectiveActorId': json['perspectiveActorId'],
@@ -151,6 +159,7 @@ export function MemoryDetailToJSONTyped(value?: MemoryDetail | null, ignoreDiscr
         'memoryId': value['memoryId'],
         'currentRevisionId': value['currentRevisionId'],
         'revisionNo': value['revisionNo'],
+        'currentPolicyRevisionNo': value['currentPolicyRevisionNo'],
         'state': MemoryStateToJSON(value['state']),
         'memoryType': MemoryTypeToJSON(value['memoryType']),
         'perspectiveActorId': value['perspectiveActorId'],

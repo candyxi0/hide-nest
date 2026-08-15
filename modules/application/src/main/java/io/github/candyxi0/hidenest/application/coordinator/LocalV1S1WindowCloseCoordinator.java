@@ -75,7 +75,9 @@ public class LocalV1S1WindowCloseCoordinator {
                     hideSystemActorId, "SYNTHETIC",
                     "hs-" + hideSystemActorId, "hide", now));
 
-            // R1-01: only insert actor_refs for evidence message actors
+            // R1-01: only insert actor_refs for evidence message actors.
+            // Local V1 is a fixed two-party room: the perspective actor is 小林,
+            // the other participant is hide.
             Set<UUID> seenActors = new HashSet<>();
             for (var msg : request.selectedEvidenceMessages()) {
                 if (seenActors.add(msg.actorId())) {
@@ -83,7 +85,7 @@ public class LocalV1S1WindowCloseCoordinator {
                             msg.actorId(), "SYNTHETIC",
                             "a-" + msg.actorId(),
                             msg.actorId().equals(request.perspectiveActorId())
-                                    ? "小林" : "协作者",
+                                    ? "小林" : "hide",
                             now));
                 }
             }

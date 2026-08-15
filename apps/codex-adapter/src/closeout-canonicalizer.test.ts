@@ -27,18 +27,22 @@ function validInput(): CloseoutInput {
       memoryType: "EVENT",
       bodyText: "小林确认了合成记忆候选",
     },
-    evidenceMessages: [
+    evidenceSegments: [
       {
-        speakerKey: "xiaolin",
-        ordinal: 0,
-        occurredAt: "2026-08-13T12:00:00+08:00",
-        bodyText: "这是证据消息一",
-      },
-      {
-        speakerKey: "hide",
-        ordinal: 1,
-        occurredAt: "2026-08-13T12:01:00+08:00",
-        bodyText: "这是证据消息二",
+        messages: [
+          {
+            speakerKey: "xiaolin",
+            ordinal: 0,
+            occurredAt: "2026-08-13T12:00:00+08:00",
+            bodyText: "这是证据消息一",
+          },
+          {
+            speakerKey: "hide",
+            ordinal: 1,
+            occurredAt: "2026-08-13T12:01:00+08:00",
+            bodyText: "这是证据消息二",
+          },
+        ],
       },
     ],
   };
@@ -75,6 +79,101 @@ describe("buildCloseoutRequest determinism (6.1.2)", () => {
   });
 });
 
+describe("explicit evidence segment → anchor mapping (R4)", () => {
+  function segmented(ordinals: number[]) {
+    return {
+      messages: ordinals.map((ordinal) => ({
+        speakerKey: "xiaolin",
+        ordinal,
+        occurredAt: "2026-08-13T12:00:00+08:00",
+        bodyText: `消息-${ordinal}`,
+      })),
+    };
+  }
+
+  it("maps a single contiguous segment to one anchor with every message as a unit", () => {
+    const input = validInput();
+    input.evidenceSegments = [segmented([0, 1, 2])];
+    const req = buildCloseoutRequest(input);
+    expect(req.sourceAnchors).toHaveLength(1);
+    expect(req.sourceAnchors[0].units.map((u) => u.ordinal)).toEqual([0, 1, 2]);
+    expect(req.threadReaderManifest.continuous).toBe(true);
+    expect(req.threadReaderManifest.fromOrdinal).toBe(0);
+    expect(req.threadReaderManifest.toOrdinal).toBe(2);
+    expect(req.threadReaderManifest.selectedEvidenceMessages.map((m) => m.ordinal)).toEqual([0, 1, 2]);
+  });
+
+  it("maps two separated segments to two anchors and continuous=false", () => {
+    const input = validInput();
+    input.evidenceSegments = [segmented([0, 1]), segmented([4, 5])];
+    const req = buildCloseoutRequest(input);
+    expect(req.sourceAnchors).toHaveLength(2);
+    expect(req.sourceAnchors[0].units.map((u) => u.ordinal)).toEqual([0, 1]);
+    expect(req.sourceAnchors[1].units.map((u) => u.ordinal)).toEqual([4, 5]);
+    expect(req.threadReaderManifest.continuous).toBe(false);
+    expect(req.threadReaderManifest.fromOrdinal).toBe(0);
+    expect(req.threadReaderManifest.toOrdinal).toBe(5);
+    expect(req.threadReaderManifest.selectedEvidenceMessages.map((m) => m.ordinal)).toEqual([0, 1, 4, 5]);
+  });
+
+  it("maps a single-message segment to one anchor with one unit", () => {
+    const input = validInput();
+    input.evidenceSegments = [segmented([7])];
+    const req = buildCloseoutRequest(input);
+    expect(req.sourceAnchors).toHaveLength(1);
+    expect(req.sourceAnchors[0].units).toHaveLength(1);
+    expect(req.sourceAnchors[0].units[0].ordinal).toBe(7);
+    expect(req.threadReaderManifest.continuous).toBe(true);
+  });
+
+  it("derives deterministic, distinct anchor ids from the segment's first ordinal", () => {
+    const input = validInput();
+    input.evidenceSegments = [segmented([0, 1]), segmented([4, 5])];
+    const a = buildCloseoutRequest(input);
+    const b = buildCloseoutRequest(input);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+    expect(a.sourceAnchors[0].anchorId).not.toBe(a.sourceAnchors[1].anchorId);
+    expect(a.sourceAnchors[0].anchorId).not.toBe(a.sourceAnchors[0].units[0].sourceUnitId);
+  });
+
+  it("recomputes manifest/review/proof from real grouped anchors and continuous flag", () => {
+    const input = validInput();
+    input.evidenceSegments = [segmented([0, 1]), segmented([4, 5])];
+    const req = buildCloseoutRequest(input);
+
+    const manifestHash = threadManifestHash({
+      schemaVersion: req.threadReaderManifest.schemaVersion,
+      fromOrdinal: req.threadReaderManifest.fromOrdinal,
+      toOrdinal: req.threadReaderManifest.toOrdinal,
+      continuous: req.threadReaderManifest.continuous,
+      selectedEvidenceMessages: req.threadReaderManifest.selectedEvidenceMessages,
+    });
+    expect(manifestHash).toBe(req.threadReaderManifest.manifestHash);
+
+    const reviewHash = reviewManifestHash({
+      submissionId: req.submissionId,
+      threadId: req.threadId,
+      hideSelection: {
+        perspectiveActorId: req.hideSelection.perspectiveActorId,
+        memoryType: req.hideSelection.memoryType,
+        bodyHash: req.hideSelection.bodyHash,
+      },
+      threadManifestHash: req.threadReaderManifest.manifestHash,
+      sourceAnchors: req.sourceAnchors,
+      userConfirmation: { decision: req.userConfirmation.decision },
+    });
+    expect(reviewHash).toBe(req.userConfirmation.reviewManifestHash);
+
+    const proof = confirmationProof(
+      req.threadId,
+      req.userConfirmation.confirmationSourceUnitId,
+      req.userConfirmation.reviewManifestHash,
+      req.submissionId,
+    );
+    expect(proof).toBe(req.confirmationProof);
+  });
+});
+
 describe("canonical hashes (6.1.3)", () => {
   it("computes a golden UTF-8 sha256 bodyHash for a Chinese+emoji string", () => {
     expect(bodyHash("中文😀")).toBe("e973a1c1b41c5c9f4fbac31fcc311536dfffd003bfb914580455170a599953fa");
@@ -97,7 +196,7 @@ describe("canonical hashes (6.1.3)", () => {
       schemaVersion: req.threadReaderManifest.schemaVersion,
       fromOrdinal: req.threadReaderManifest.fromOrdinal,
       toOrdinal: req.threadReaderManifest.toOrdinal,
-      continuous: true,
+      continuous: req.threadReaderManifest.continuous,
       selectedEvidenceMessages: req.threadReaderManifest.selectedEvidenceMessages,
     });
     expect(manifestHash).toBe(req.threadReaderManifest.manifestHash);
@@ -129,8 +228,8 @@ describe("canonical hashes (6.1.3)", () => {
 describe("code point anchor boundary (6.1.3)", () => {
   it("covers full code points with a half-open interval [0, n)", () => {
     const input = validInput();
-    input.evidenceMessages = [
-      { speakerKey: "xiaolin", ordinal: 0, occurredAt: "2026-08-13T12:00:00Z", bodyText: "a😀b" },
+    input.evidenceSegments = [
+      { messages: [{ speakerKey: "xiaolin", ordinal: 0, occurredAt: "2026-08-13T12:00:00Z", bodyText: "a😀b" }] },
     ];
     const req = buildCloseoutRequest(input);
     expect(codePointCount("a😀b")).toBe(3);

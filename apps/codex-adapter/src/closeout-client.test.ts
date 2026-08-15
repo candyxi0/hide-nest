@@ -25,12 +25,16 @@ function makeRequest(): CloseoutRequest {
       memoryType: "EVENT",
       bodyText: `${BODY_CANARY}确认了合成记忆候选`,
     },
-    evidenceMessages: [
+    evidenceSegments: [
       {
-        speakerKey: "xiaolin",
-        ordinal: 0,
-        occurredAt: "2026-08-13T12:00:00+08:00",
-        bodyText: `${EVIDENCE_CANARY}一`,
+        messages: [
+          {
+            speakerKey: "xiaolin",
+            ordinal: 0,
+            occurredAt: "2026-08-13T12:00:00+08:00",
+            bodyText: `${EVIDENCE_CANARY}一`,
+          },
+        ],
       },
     ],
   });

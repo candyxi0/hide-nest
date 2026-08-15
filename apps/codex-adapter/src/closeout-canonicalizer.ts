@@ -39,6 +39,11 @@ export interface EvidenceMessageInput {
   bodyText: string;
 }
 
+/** One explicit evidence segment: a contiguous run of messages that maps to a single source anchor. */
+export interface EvidenceSegmentInput {
+  messages: EvidenceMessageInput[];
+}
+
 export interface CloseoutInput {
   closeoutKey: string;
   threadKey: string;
@@ -48,7 +53,7 @@ export interface CloseoutInput {
     memoryType: MemoryType;
     bodyText: string;
   };
-  evidenceMessages: EvidenceMessageInput[];
+  evidenceSegments: EvidenceSegmentInput[];
 }
 
 /** The wire request shape for `POST /v1/closeout-submissions` (CloseoutSubmissionRequest). */
@@ -79,7 +84,7 @@ export interface CloseoutRequest {
     schemaVersion: typeof SCHEMA_VERSION;
     fromOrdinal: number;
     toOrdinal: number;
-    continuous: true;
+    continuous: boolean;
     manifestHash: string;
     selectedEvidenceMessages: Array<{
       sourceUnitId: string;
@@ -391,44 +396,48 @@ export function buildCloseoutRequest(input: CloseoutInput): CloseoutRequest {
   const submissionId = deriveSubmissionId(input.closeoutKey);
   const threadId = deriveThreadId(input.threadKey);
 
-  const messages = input.evidenceMessages.map((msg) => {
-    const occurredAt = normalizeOccurredAt(msg.occurredAt);
-    return {
-      sourceUnitId: deriveSourceUnitId(input.closeoutKey, msg.ordinal),
-      actorId: deriveActorId(input.threadKey, msg.speakerKey),
-      ordinal: msg.ordinal,
-      externalUnitRef: externalUnitRef(input.threadKey, msg.ordinal),
-      occurredAt,
-      bodyText: msg.bodyText,
-      bodyHash: bodyHash(msg.bodyText),
-    };
-  });
+  // Flatten every segment in input order. Validation guarantees segments are ordinal-ascending and
+  // internally contiguous, so messages[0] is the global minimum and messages[last] the global maximum.
+  const messages = input.evidenceSegments.flatMap((segment) =>
+    segment.messages.map((msg) => {
+      const occurredAt = normalizeOccurredAt(msg.occurredAt);
+      return {
+        sourceUnitId: deriveSourceUnitId(input.closeoutKey, msg.ordinal),
+        actorId: deriveActorId(input.threadKey, msg.speakerKey),
+        ordinal: msg.ordinal,
+        externalUnitRef: externalUnitRef(input.threadKey, msg.ordinal),
+        occurredAt,
+        bodyText: msg.bodyText,
+        bodyHash: bodyHash(msg.bodyText),
+      };
+    }),
+  );
 
   const fromOrdinal = messages[0].ordinal;
   const toOrdinal = messages[messages.length - 1].ordinal;
+  const continuous = input.evidenceSegments.length === 1;
 
   const threadManifest = {
     schemaVersion: SCHEMA_VERSION,
     fromOrdinal,
     toOrdinal,
-    continuous: true,
+    continuous,
     selectedEvidenceMessages: messages,
   };
   const manifestHash = threadManifestHash(threadManifest);
 
-  const sourceAnchors = messages.map((msg) => {
-    const cpCount = codePointCount(msg.bodyText);
-    return {
-      anchorId: deriveAnchorId(input.closeoutKey, msg.ordinal),
-      units: [
-        {
-          sourceUnitId: msg.sourceUnitId,
-          fromOffset: 0,
-          toOffset: cpCount,
-          ordinal: msg.ordinal,
-        },
-      ],
-    };
+  // Each evidence segment maps to exactly one source anchor whose units carry every message in
+  // ordinal order. The anchor id is derived from the segment's first ordinal, so it is deterministic
+  // and replay-stable without ever colliding with a sourceUnitId (distinct "anchor" name label).
+  const sourceAnchors = input.evidenceSegments.map((segment) => {
+    const anchorId = deriveAnchorId(input.closeoutKey, segment.messages[0].ordinal);
+    const units = segment.messages.map((msg) => ({
+      sourceUnitId: deriveSourceUnitId(input.closeoutKey, msg.ordinal),
+      fromOffset: 0,
+      toOffset: codePointCount(msg.bodyText),
+      ordinal: msg.ordinal,
+    }));
+    return { anchorId, units };
   });
 
   const confirmationSourceUnitId = deriveConfirmationSourceUnitId(input.closeoutKey);
@@ -468,7 +477,7 @@ export function buildCloseoutRequest(input: CloseoutInput): CloseoutRequest {
       schemaVersion: SCHEMA_VERSION,
       fromOrdinal,
       toOrdinal,
-      continuous: true,
+      continuous,
       manifestHash,
       selectedEvidenceMessages: messages,
     },

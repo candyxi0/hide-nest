@@ -11,5 +11,6 @@ public record LocalV1S2BEvidenceMessage(
         UUID actorId,
         String actorKind,
         String actorStableRef,
+        String displayLabel,
         OffsetDateTime occurredAt,
         String bodyText) {}

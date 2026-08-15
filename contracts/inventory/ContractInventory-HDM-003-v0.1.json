@@ -1155,8 +1155,8 @@
       {
         "name": "MemoryDetail",
         "type": "model",
-        "source": "Task30A-4.1",
-        "description": "Memory detail response body with exact fields per Local V1 S2B read chain"
+        "source": "Task30A-4.1+Task33B1-A",
+        "description": "Memory detail response body with exact fields per Local V1 S2B read chain; includes currentPolicyRevisionNo (integer int64 minimum 1) read from memory_record.current_policy_revision_no"
       },
       {
         "name": "MemoryEvidenceItem",
@@ -1215,6 +1215,18 @@
         "name": "DeletionClosureMember",
         "type": "model",
         "source": "Task33A-4.1"
+      },
+      {
+        "name": "DeletionEvidenceItem",
+        "type": "model",
+        "source": "Task33B4-4.1",
+        "description": "Human-readable complete-evidence message for deletion preview: anchorId, ordinal, actorStableRef, occurredAt, bodyText, sharedByMemoryIds"
+      },
+      {
+        "name": "DeletionSharedMemory",
+        "type": "model",
+        "source": "Task33B4-4.2",
+        "description": "Shared-evidence memory reference with authorized title: memoryId, revisionNo, title"
       },
       {
         "name": "ExportRequest",

@@ -3,6 +3,8 @@ import {
   codePointCount,
   normalizeOccurredAt,
   type CloseoutInput,
+  type EvidenceMessageInput,
+  type EvidenceSegmentInput,
   type MemoryType,
 } from "./closeout-canonicalizer.js";
 
@@ -18,6 +20,7 @@ export const MAX_THREAD_KEY = 128;
 export const MAX_SPEAKER_KEY = 64;
 export const MAX_BODY_CODE_POINTS = 16000;
 export const MAX_EVIDENCE_MESSAGES = 100;
+export const MAX_EVIDENCE_SEGMENTS = 100;
 export const MAX_EVIDENCE_BYTES = 1024 * 1024; // 1 MiB UTF-8
 
 export class CloseoutInputError extends Error {
@@ -94,7 +97,7 @@ function validateCandidate(candidate: unknown): CloseoutInput["candidate"] {
   };
 }
 
-function validateEvidenceMessage(message: unknown): CloseoutInput["evidenceMessages"][number] {
+function validateEvidenceMessage(message: unknown): EvidenceMessageInput {
   if (!isPlainObject(message)) {
     throw new CloseoutInputError("evidence message must be an object");
   }
@@ -126,6 +129,28 @@ function validateEvidenceMessage(message: unknown): CloseoutInput["evidenceMessa
   };
 }
 
+function validateEvidenceSegment(segment: unknown): EvidenceSegmentInput {
+  if (!isPlainObject(segment)) {
+    throw new CloseoutInputError("evidence segment must be an object");
+  }
+  assertOnlyKeys(segment, ["messages"]);
+  if (!Array.isArray(segment.messages)) {
+    throw new CloseoutInputError("evidence segment messages must be an array");
+  }
+  if (segment.messages.length < 1) {
+    throw new CloseoutInputError("evidence segment must contain at least one message");
+  }
+  const messages = segment.messages.map(validateEvidenceMessage);
+
+  // Within a segment ordinals are strictly ascending, unique and contiguous.
+  for (let i = 1; i < messages.length; i++) {
+    if (messages[i].ordinal !== messages[i - 1].ordinal + 1) {
+      throw new CloseoutInputError("evidence segment ordinals must be strictly ascending and continuous");
+    }
+  }
+  return { messages };
+}
+
 /**
  * Validates raw tool arguments and returns a typed, closed input.
  * Throws {@link CloseoutInputError} with a sanitized message on any violation.
@@ -134,7 +159,7 @@ export function validateCloseoutInput(raw: unknown): CloseoutInput {
   if (!isPlainObject(raw)) {
     throw new CloseoutInputError("input must be an object");
   }
-  assertOnlyKeys(raw, ["closeoutKey", "threadKey", "userConfirmed", "candidate", "evidenceMessages"]);
+  assertOnlyKeys(raw, ["closeoutKey", "threadKey", "userConfirmed", "candidate", "evidenceSegments"]);
 
   assertKeyString(raw.closeoutKey, MAX_CLOSEOUT_KEY, "closeoutKey");
   assertKeyString(raw.threadKey, MAX_THREAD_KEY, "threadKey");
@@ -145,24 +170,43 @@ export function validateCloseoutInput(raw: unknown): CloseoutInput {
 
   const candidate = validateCandidate(raw.candidate);
 
-  if (!Array.isArray(raw.evidenceMessages)) {
-    throw new CloseoutInputError("evidenceMessages must be an array");
+  if (!Array.isArray(raw.evidenceSegments)) {
+    throw new CloseoutInputError("evidenceSegments must be an array");
   }
-  if (raw.evidenceMessages.length < 1 || raw.evidenceMessages.length > MAX_EVIDENCE_MESSAGES) {
-    throw new CloseoutInputError("invalid evidenceMessages length");
+  if (raw.evidenceSegments.length < 1 || raw.evidenceSegments.length > MAX_EVIDENCE_SEGMENTS) {
+    throw new CloseoutInputError("invalid evidenceSegments length");
   }
 
-  const evidenceMessages = raw.evidenceMessages.map(validateEvidenceMessage);
+  const evidenceSegments = raw.evidenceSegments.map(validateEvidenceSegment);
 
-  // Strictly ascending, no duplicates, continuous.
-  for (let i = 1; i < evidenceMessages.length; i++) {
-    if (evidenceMessages[i].ordinal !== evidenceMessages[i - 1].ordinal + 1) {
-      throw new CloseoutInputError("evidenceMessages ordinals must be strictly ascending and continuous");
+  // Total message count across all segments is bounded the same way the old flat list was.
+  let totalMessages = 0;
+  for (const segment of evidenceSegments) {
+    totalMessages += segment.messages.length;
+  }
+  if (totalMessages < 1 || totalMessages > MAX_EVIDENCE_MESSAGES) {
+    throw new CloseoutInputError("invalid total evidence message count");
+  }
+
+  // Segments must be strictly ascending and non-overlapping, and a cross-segment boundary must
+  // contain at least one ordinal gap: two runs that are exactly adjacent are one contiguous segment
+  // and must be merged rather than split.
+  for (let i = 1; i < evidenceSegments.length; i++) {
+    const previous = evidenceSegments[i - 1];
+    const current = evidenceSegments[i];
+    const previousLast = previous.messages[previous.messages.length - 1].ordinal;
+    const currentFirst = current.messages[0].ordinal;
+    if (currentFirst <= previousLast) {
+      throw new CloseoutInputError("evidenceSegments must be strictly ascending and non-overlapping");
+    }
+    if (currentFirst === previousLast + 1) {
+      throw new CloseoutInputError("adjacent evidenceSegments must be merged into one contiguous segment");
     }
   }
 
-  const perspectivePresent = evidenceMessages.some(
-    (msg) => msg.speakerKey === candidate.perspectiveSpeakerKey,
+  // The perspective speaker must appear in at least one evidence message across all segments.
+  const perspectivePresent = evidenceSegments.some((segment) =>
+    segment.messages.some((msg) => msg.speakerKey === candidate.perspectiveSpeakerKey),
   );
   if (!perspectivePresent) {
     throw new CloseoutInputError("perspectiveSpeakerKey must appear in at least one evidence message");
@@ -173,6 +217,6 @@ export function validateCloseoutInput(raw: unknown): CloseoutInput {
     threadKey: raw.threadKey,
     userConfirmed: true,
     candidate,
-    evidenceMessages,
+    evidenceSegments,
   };
 }

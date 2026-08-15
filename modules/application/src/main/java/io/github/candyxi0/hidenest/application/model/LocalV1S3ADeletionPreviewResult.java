@@ -17,13 +17,14 @@ public record LocalV1S3ADeletionPreviewResult(
         List<UUID> deleteCandidateMemoryIds,
         long payloadCount,
         long payloadBytes,
-        List<LocalV1S3AAffectedMemory> affectedMemories,
-        boolean requiresUserChoice) {
+        List<LocalV1DeletionEvidenceMessage> evidence,
+        List<LocalV1SharedMemoryReference> sharedMemories) {
 
     public LocalV1S3ADeletionPreviewResult {
         manifestHash = manifestHash.clone();
         deleteCandidateMemoryIds = List.copyOf(deleteCandidateMemoryIds);
-        affectedMemories = List.copyOf(affectedMemories);
+        evidence = List.copyOf(evidence);
+        sharedMemories = List.copyOf(sharedMemories);
     }
 
     @Override

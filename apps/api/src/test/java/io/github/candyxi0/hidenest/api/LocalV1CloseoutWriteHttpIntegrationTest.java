@@ -94,7 +94,7 @@ class LocalV1CloseoutWriteHttpIntegrationTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(16, Flyway.configure()
+        assertEquals(17, Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), USER, password)
                 .defaultSchema("public")
                 .locations("classpath:db/migration")
@@ -197,7 +197,7 @@ class LocalV1CloseoutWriteHttpIntegrationTest {
                 "SELECT 1 FROM memory.memory_revision WHERE memory_id=?::uuid AND revision_no=1", memoryId));
         assertEquals(1, (long) countRows(
                 "SELECT 1 FROM memory.decision WHERE decision_kind='USER_CONFIRM' AND target_id=?::uuid", memoryId));
-        assertEquals(2, (long) countRows(
+        assertEquals(1, (long) countRows(
                 "SELECT 1 FROM memory.memory_relation WHERE from_revision_id=?::uuid AND relation_type='EVIDENCED_BY'",
                 revisionId));
         assertEquals(1, (long) countRows(
@@ -615,6 +615,112 @@ class LocalV1CloseoutWriteHttpIntegrationTest {
         assertEquals(200, get("/v1/memories/" + memoryId, TOKEN).status());
     }
 
+    // ── R4: multi-segment continuous=false is a legal wire shape ──────────
+
+    @Test
+    @Order(17)
+    void multiSegmentContinuousFalseIsAcceptedAndGrouped() throws Exception {
+        Built built = buildMultiSegment("multi-segment");
+        Response response = post("/v1/closeout-submissions", built.json(), TOKEN, CAPABILITY);
+        assertEquals(202, response.status());
+        assertEquals("CANONICAL_COMMITTED", JSON.readTree(response.body()).get("phase").asText());
+
+        UUID memoryId = deterministicId("memory:", built.submission().submissionId());
+        UUID revisionId = dsl.fetchOne(
+                        "SELECT current_revision_id FROM memory.memory_record WHERE memory_id=?::uuid", memoryId)
+                .get("current_revision_id", UUID.class);
+
+        Response evidence = get("/v1/memories/" + memoryId + "/evidence?revisionId=" + revisionId, TOKEN);
+        assertEquals(200, evidence.status());
+        JsonNode items = JSON.readTree(evidence.body()).get("evidenceItems");
+        assertEquals(4, items.size());
+        // Two separated segments must surface as two distinct anchors, not four.
+        List<String> ordinals = new ArrayList<>();
+        List<String> anchorIds = new ArrayList<>();
+        for (JsonNode item : items) {
+            ordinals.add(item.get("ordinal").asText());
+            anchorIds.add(item.get("anchorId").asText());
+        }
+        assertEquals(List.of("1", "2", "5", "6"), ordinals.stream().sorted().toList());
+        assertEquals(2, anchorIds.stream().distinct().count());
+    }
+
+    // ── R4-R1: selected-messages ⇄ anchor-partition exact-partition gate ──
+
+    @Test
+    @Order(18)
+    void partitionAttackMatrixRejectsAllWithZeroWrites() throws Exception {
+        // 1. same source unit in two anchors.
+        UUID id1 = UUID.randomUUID();
+        EvidenceMessage c1m1 = partMsg(id1, "c1m1", 1L, false);
+        EvidenceMessage c1m2 = partMsg(id1, "c1m2", 2L, true);
+        EvidenceMessage c1m3 = partMsg(id1, "c1m3", 4L, false);
+        assertPartitionRejected(buildPartitionRequest(id1, List.of(c1m1, c1m2, c1m3),
+                List.of(anchor(partUnit(c1m1), partUnit(c1m2)), anchor(partUnit(c1m2), partUnit(c1m3))),
+                false, 1L, 4L), "SOURCE_ORDER_INVALID");
+
+        // 2. selected message missing from every anchor.
+        UUID id2 = UUID.randomUUID();
+        EvidenceMessage c2m1 = partMsg(id2, "c2m1", 1L, false);
+        EvidenceMessage c2m2 = partMsg(id2, "c2m2", 2L, true);
+        assertPartitionRejected(buildPartitionRequest(id2, List.of(c2m1, c2m2),
+                List.of(anchor(partUnit(c2m1))), true, 1L, 2L), "SOURCE_ORDER_INVALID");
+
+        // 3. anchor unit ordinal != corresponding selected message ordinal.
+        UUID id3 = UUID.randomUUID();
+        EvidenceMessage c3m1 = partMsg(id3, "c3m1", 1L, false);
+        EvidenceMessage c3m2 = partMsg(id3, "c3m2", 2L, true);
+        assertPartitionRejected(buildPartitionRequest(id3, List.of(c3m1, c3m2),
+                List.of(anchor(partUnit(c3m1), new AnchorUnit(c3m2.sourceUnitId(), 0L, 1L, 3L))),
+                true, 1L, 2L), "SOURCE_ORDER_INVALID");
+
+        // 4. anchor internal ordinal gap.
+        UUID id4 = UUID.randomUUID();
+        EvidenceMessage c4m1 = partMsg(id4, "c4m1", 1L, false);
+        EvidenceMessage c4m2 = partMsg(id4, "c4m2", 2L, true);
+        EvidenceMessage c4m3 = partMsg(id4, "c4m3", 3L, false);
+        assertPartitionRejected(buildPartitionRequest(id4, List.of(c4m1, c4m2, c4m3),
+                List.of(anchor(partUnit(c4m1), partUnit(c4m3))), true, 1L, 3L), "SOURCE_ORDER_INVALID");
+
+        // 5. two adjacent anchors masquerading as two segments.
+        UUID id5 = UUID.randomUUID();
+        EvidenceMessage c5m1 = partMsg(id5, "c5m1", 1L, false);
+        EvidenceMessage c5m2 = partMsg(id5, "c5m2", 2L, true);
+        assertPartitionRejected(buildPartitionRequest(id5, List.of(c5m1, c5m2),
+                List.of(anchor(partUnit(c5m1)), anchor(partUnit(c5m2))), false, 1L, 2L), "SOURCE_ORDER_INVALID");
+
+        // 6. two anchors but continuous=true.
+        UUID id6 = UUID.randomUUID();
+        EvidenceMessage c6m1 = partMsg(id6, "c6m1", 1L, false);
+        EvidenceMessage c6m2 = partMsg(id6, "c6m2", 2L, true);
+        EvidenceMessage c6m3 = partMsg(id6, "c6m3", 4L, false);
+        EvidenceMessage c6m4 = partMsg(id6, "c6m4", 5L, true);
+        assertPartitionRejected(buildPartitionRequest(id6, List.of(c6m1, c6m2, c6m3, c6m4),
+                List.of(anchor(partUnit(c6m1), partUnit(c6m2)), anchor(partUnit(c6m3), partUnit(c6m4))),
+                true, 1L, 5L), "REQUEST_SCHEMA_INVALID");
+
+        // 7. one anchor but continuous=false.
+        UUID id7 = UUID.randomUUID();
+        EvidenceMessage c7m1 = partMsg(id7, "c7m1", 1L, false);
+        EvidenceMessage c7m2 = partMsg(id7, "c7m2", 2L, true);
+        assertPartitionRejected(buildPartitionRequest(id7, List.of(c7m1, c7m2),
+                List.of(anchor(partUnit(c7m1), partUnit(c7m2))), false, 1L, 2L), "REQUEST_SCHEMA_INVALID");
+
+        // 8. manifest fromOrdinal/toOrdinal != true first/last ordinal.
+        UUID id8 = UUID.randomUUID();
+        EvidenceMessage c8m1 = partMsg(id8, "c8m1", 1L, false);
+        EvidenceMessage c8m2 = partMsg(id8, "c8m2", 2L, true);
+        assertPartitionRejected(buildPartitionRequest(id8, List.of(c8m1, c8m2),
+                List.of(anchor(partUnit(c8m1), partUnit(c8m2))), true, 1L, 3L), "SOURCE_RANGE_GAP");
+
+        // 9. selected messages in descending order (hash/proof recomputed).
+        UUID id9 = UUID.randomUUID();
+        EvidenceMessage c9m1 = partMsg(id9, "c9m1", 1L, false);
+        EvidenceMessage c9m2 = partMsg(id9, "c9m2", 2L, true);
+        assertPartitionRejected(buildPartitionRequest(id9, List.of(c9m2, c9m1),
+                List.of(anchor(partUnit(c9m1), partUnit(c9m2))), true, 1L, 2L), "SOURCE_ORDER_INVALID");
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────
 
     private static ConfigurableApplicationContext startApi(String address, String password) {
@@ -654,7 +760,6 @@ class LocalV1CloseoutWriteHttpIntegrationTest {
         UUID actor2 = deterministicId("a2:", submissionId);
         UUID perspectiveActor = actor2; // 小林 is the perspective actor
         UUID anchor1 = deterministicId("anchor1:", submissionId);
-        UUID anchor2 = deterministicId("anchor2:", submissionId);
         String msg1 = "协作者：只保存必要证据";
         String msg2 = "小林：已确认本版";
 
@@ -674,8 +779,7 @@ class LocalV1CloseoutWriteHttpIntegrationTest {
         UserConfirmation placeholder = new UserConfirmation("CONFIRM", "", confirmationUnit);
         List<SourceAnchor> anchors = List.of(
                 new SourceAnchor(anchor1, List.of(
-                        new AnchorUnit(msg1Unit, 0L, (long) msg1.codePointCount(0, msg1.length()), 1L))),
-                new SourceAnchor(anchor2, List.of(
+                        new AnchorUnit(msg1Unit, 0L, (long) msg1.codePointCount(0, msg1.length()), 1L),
                         new AnchorUnit(msg2Unit, 0L, (long) msg2.codePointCount(0, msg2.length()), 2L))));
 
         LocalV1CloseoutSubmission provisional = new LocalV1CloseoutSubmission(
@@ -693,6 +797,113 @@ class LocalV1CloseoutWriteHttpIntegrationTest {
                 manifest,
                 proof);
         return new Built(submission, toJson(submission));
+    }
+
+    private static Built buildMultiSegment(String marker) {
+        UUID submissionId = UUID.randomUUID();
+        UUID threadId = UUID.randomUUID();
+        UUID confirmationUnit = UUID.randomUUID();
+        String bodyText = "合成记忆正文-" + marker;
+        String bodyHash = sha256Hex(bodyText);
+
+        UUID actor1 = deterministicId("a1:", submissionId);
+        UUID actor2 = deterministicId("a2:", submissionId);
+        UUID perspectiveActor = actor2;
+        UUID anchor1 = deterministicId("anchor1:", submissionId);
+        UUID anchor2 = deterministicId("anchor2:", submissionId);
+
+        EvidenceMessage m1 = new EvidenceMessage(deterministicId("m1:", submissionId), actor1, 1L,
+                "unit-" + marker + "-1", OffsetDateTime.parse("2026-08-12T09:30:00Z"), "段一消息一", sha256Hex("段一消息一"));
+        EvidenceMessage m2 = new EvidenceMessage(deterministicId("m2:", submissionId), actor2, 2L,
+                "unit-" + marker + "-2", OffsetDateTime.parse("2026-08-12T09:30:01Z"), "段一消息二", sha256Hex("段一消息二"));
+        EvidenceMessage m3 = new EvidenceMessage(deterministicId("m3:", submissionId), actor1, 5L,
+                "unit-" + marker + "-5", OffsetDateTime.parse("2026-08-12T09:31:00Z"), "段二消息一", sha256Hex("段二消息一"));
+        EvidenceMessage m4 = new EvidenceMessage(deterministicId("m4:", submissionId), actor2, 6L,
+                "unit-" + marker + "-6", OffsetDateTime.parse("2026-08-12T09:31:01Z"), "段二消息二", sha256Hex("段二消息二"));
+        List<EvidenceMessage> messages = List.of(m1, m2, m3, m4);
+        String manifestHash = LocalV1CloseoutCanonicalizer.threadManifestHash(
+                new ThreadReaderManifest("local-v1-synthetic-v1", 1L, 6L, false, "", messages));
+
+        ThreadReaderManifest manifest =
+                new ThreadReaderManifest("local-v1-synthetic-v1", 1L, 6L, false, manifestHash, messages);
+        HideSelection hideSelection = new HideSelection(perspectiveActor, "INTERPRETATION", bodyText, bodyHash);
+        UserConfirmation placeholder = new UserConfirmation("CONFIRM", "", confirmationUnit);
+        List<SourceAnchor> anchors = List.of(
+                new SourceAnchor(anchor1, List.of(
+                        new AnchorUnit(m1.sourceUnitId(), 0L, (long) m1.bodyText().codePointCount(0, m1.bodyText().length()), 1L),
+                        new AnchorUnit(m2.sourceUnitId(), 0L, (long) m2.bodyText().codePointCount(0, m2.bodyText().length()), 2L))),
+                new SourceAnchor(anchor2, List.of(
+                        new AnchorUnit(m3.sourceUnitId(), 0L, (long) m3.bodyText().codePointCount(0, m3.bodyText().length()), 5L),
+                        new AnchorUnit(m4.sourceUnitId(), 0L, (long) m4.bodyText().codePointCount(0, m4.bodyText().length()), 6L))));
+
+        LocalV1CloseoutSubmission provisional = new LocalV1CloseoutSubmission(
+                submissionId, threadId, hideSelection, placeholder, anchors, manifest, "");
+        String reviewManifestHash = LocalV1CloseoutCanonicalizer.reviewManifestHash(provisional);
+        String proof = LocalV1CloseoutCanonicalizer.confirmationProof(
+                threadId, confirmationUnit, reviewManifestHash, submissionId);
+
+        LocalV1CloseoutSubmission submission = new LocalV1CloseoutSubmission(
+                submissionId, threadId, hideSelection,
+                new UserConfirmation("CONFIRM", reviewManifestHash, confirmationUnit),
+                anchors, manifest, proof);
+        return new Built(submission, toJson(submission));
+    }
+
+    private static EvidenceMessage partMsg(UUID submissionId, String label, long ordinal, boolean perspective) {
+        UUID actor = perspective ? deterministicId("a2:", submissionId) : deterministicId("a1:", submissionId);
+        String text = "分-" + label;
+        return new EvidenceMessage(
+                deterministicId(label + ":", submissionId), actor, ordinal, "unit-" + label,
+                OffsetDateTime.parse("2026-08-12T09:30:00Z"), text, sha256Hex(text));
+    }
+
+    private static AnchorUnit partUnit(EvidenceMessage message) {
+        return new AnchorUnit(message.sourceUnitId(), 0L, 1L, message.ordinal());
+    }
+
+    private static SourceAnchor anchor(AnchorUnit... units) {
+        return new SourceAnchor(UUID.randomUUID(), List.of(units));
+    }
+
+    private static Built buildPartitionRequest(
+            UUID submissionId,
+            List<EvidenceMessage> messages,
+            List<SourceAnchor> anchors,
+            boolean continuous,
+            long fromOrdinal,
+            long toOrdinal) {
+        UUID threadId = UUID.randomUUID();
+        UUID confirmationUnit = UUID.randomUUID();
+        UUID perspectiveActor = deterministicId("a2:", submissionId);
+        String bodyText = "合成记忆正文-partition-attack";
+        String bodyHash = sha256Hex(bodyText);
+
+        String manifestHash = LocalV1CloseoutCanonicalizer.threadManifestHash(
+                new ThreadReaderManifest("local-v1-synthetic-v1", fromOrdinal, toOrdinal, continuous, "", messages));
+        ThreadReaderManifest manifest =
+                new ThreadReaderManifest("local-v1-synthetic-v1", fromOrdinal, toOrdinal, continuous, manifestHash, messages);
+        HideSelection hideSelection = new HideSelection(perspectiveActor, "INTERPRETATION", bodyText, bodyHash);
+        UserConfirmation placeholder = new UserConfirmation("CONFIRM", "", confirmationUnit);
+
+        LocalV1CloseoutSubmission provisional = new LocalV1CloseoutSubmission(
+                submissionId, threadId, hideSelection, placeholder, anchors, manifest, "");
+        String reviewManifestHash = LocalV1CloseoutCanonicalizer.reviewManifestHash(provisional);
+        String proof = LocalV1CloseoutCanonicalizer.confirmationProof(
+                threadId, confirmationUnit, reviewManifestHash, submissionId);
+
+        LocalV1CloseoutSubmission submission = new LocalV1CloseoutSubmission(
+                submissionId, threadId, hideSelection,
+                new UserConfirmation("CONFIRM", reviewManifestHash, confirmationUnit),
+                anchors, manifest, proof);
+        return new Built(submission, toJson(submission));
+    }
+
+    private static void assertPartitionRejected(Built built, String failureCode) throws Exception {
+        long memBefore = count("memory.memory_record");
+        long srcBefore = count("evidence.source");
+        assertProblem(post("/v1/closeout-submissions", built.json(), TOKEN, CAPABILITY), 422, failureCode);
+        assertEquals(memBefore, count("memory.memory_record"));
+        assertEquals(srcBefore, count("evidence.source"));
     }
 
     private static String toJson(LocalV1CloseoutSubmission s) {
@@ -799,12 +1010,12 @@ class LocalV1CloseoutWriteHttpIntegrationTest {
                 .get("source_id", UUID.class);
         assertEquals(1, (long) countRows("SELECT 1 FROM evidence.source WHERE source_id=?::uuid", sourceId));
         assertEquals(2, (long) countRows("SELECT 1 FROM evidence.source_unit WHERE source_id=?::uuid", sourceId));
-        assertEquals(2, (long) countRows(
+        assertEquals(1, (long) countRows(
                 "SELECT 1 FROM evidence.source_anchor WHERE source_id=?::uuid", sourceId));
         UUID revisionId = dsl.fetchOne(
                         "SELECT current_revision_id FROM memory.memory_record WHERE memory_id=?::uuid", memoryId)
                 .get("current_revision_id", UUID.class);
-        assertEquals(2, (long) countRows(
+        assertEquals(1, (long) countRows(
                 "SELECT 1 FROM memory.memory_relation WHERE from_revision_id=?::uuid", revisionId));
     }
 

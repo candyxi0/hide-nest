@@ -5,6 +5,7 @@ import static io.github.candyxi0.hidenest.database.generated.evidence.Tables.SOU
 import static io.github.candyxi0.hidenest.database.generated.evidence.Tables.SOURCE_PAYLOAD;
 import static io.github.candyxi0.hidenest.database.generated.evidence.Tables.SOURCE_UNIT;
 import static io.github.candyxi0.hidenest.database.generated.memory.Tables.ACCESS_POLICY;
+import static io.github.candyxi0.hidenest.database.generated.memory.Tables.ACTOR_REF;
 import static io.github.candyxi0.hidenest.database.generated.memory.Tables.ACCESS_POLICY_REVISION;
 import static io.github.candyxi0.hidenest.database.generated.memory.Tables.DELETION_CLOSURE;
 import static io.github.candyxi0.hidenest.database.generated.memory.Tables.DELETION_CLOSURE_MEMBER;
@@ -22,6 +23,8 @@ import io.github.candyxi0.hidenest.memory.domain.MemoryRevision;
 import io.github.candyxi0.hidenest.memory.port.DeletionPreviewPort;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -130,15 +133,20 @@ public final class JooqDeletionPreviewAdapter implements DeletionPreviewPort {
 
         var rootAnchorUnitRows = rootAnchorIds.isEmpty()
                 ? List.<org.jooq.Record>of()
-                : dsl.select(SOURCE_ANCHOR_UNIT.ANCHOR_ID, SOURCE_ANCHOR_UNIT.SOURCE_UNIT_ID)
+                : dsl.select(SOURCE_ANCHOR_UNIT.ANCHOR_ID, SOURCE_ANCHOR_UNIT.SOURCE_UNIT_ID,
+                                SOURCE_ANCHOR_UNIT.ORDINAL)
                         .from(SOURCE_ANCHOR_UNIT)
                         .where(SOURCE_ANCHOR_UNIT.ANCHOR_ID.in(rootAnchorIds))
                         .orderBy(SOURCE_ANCHOR_UNIT.ANCHOR_ID.asc(), SOURCE_ANCHOR_UNIT.ORDINAL.asc())
                         .fetch();
         Map<UUID, List<UUID>> anchorUnits = new LinkedHashMap<>();
+        Map<UUID, Long> unitOrdinals = new LinkedHashMap<>();
+        Map<UUID, UUID> unitAnchorIds = new LinkedHashMap<>();
         for (Record row : rootAnchorUnitRows) {
             anchorUnits.computeIfAbsent(row.get(SOURCE_ANCHOR_UNIT.ANCHOR_ID), ignored -> new ArrayList<>())
                     .add(row.get(SOURCE_ANCHOR_UNIT.SOURCE_UNIT_ID));
+            unitOrdinals.putIfAbsent(row.get(SOURCE_ANCHOR_UNIT.SOURCE_UNIT_ID), row.get(SOURCE_ANCHOR_UNIT.ORDINAL));
+            unitAnchorIds.putIfAbsent(row.get(SOURCE_ANCHOR_UNIT.SOURCE_UNIT_ID), row.get(SOURCE_ANCHOR_UNIT.ANCHOR_ID));
         }
         for (List<UUID> units : anchorUnits.values()) {
             if (new HashSet<>(units).size() != units.size()) {
@@ -151,12 +159,19 @@ public final class JooqDeletionPreviewAdapter implements DeletionPreviewPort {
 
         var sourceUnitRows = rootSourceUnitIds.isEmpty()
                 ? List.<org.jooq.Record>of()
-                : dsl.select(SOURCE_UNIT.SOURCE_UNIT_ID, SOURCE_UNIT.SOURCE_ID)
+                : dsl.select(SOURCE_UNIT.SOURCE_UNIT_ID, SOURCE_UNIT.SOURCE_ID,
+                                SOURCE_UNIT.ACTOR_ID, SOURCE_UNIT.OCCURRED_AT)
                         .from(SOURCE_UNIT)
                         .where(SOURCE_UNIT.SOURCE_UNIT_ID.in(rootSourceUnitIds))
                         .fetch();
         Map<UUID, UUID> unitSources = new LinkedHashMap<>();
-        for (Record row : sourceUnitRows) unitSources.put(row.get(SOURCE_UNIT.SOURCE_UNIT_ID), row.get(SOURCE_UNIT.SOURCE_ID));
+        Map<UUID, UUID> unitActors = new LinkedHashMap<>();
+        Map<UUID, OffsetDateTime> unitOccurredAt = new LinkedHashMap<>();
+        for (Record row : sourceUnitRows) {
+            unitSources.put(row.get(SOURCE_UNIT.SOURCE_UNIT_ID), row.get(SOURCE_UNIT.SOURCE_ID));
+            unitActors.put(row.get(SOURCE_UNIT.SOURCE_UNIT_ID), row.get(SOURCE_UNIT.ACTOR_ID));
+            unitOccurredAt.put(row.get(SOURCE_UNIT.SOURCE_UNIT_ID), row.get(SOURCE_UNIT.OCCURRED_AT));
+        }
         if (unitSources.size() != rootSourceUnitIds.size()) throw new IllegalStateException("source unit missing");
         for (Map.Entry<UUID, List<UUID>> entry : anchorUnits.entrySet()) {
             UUID anchorSource = anchorSources.get(entry.getKey());
@@ -172,13 +187,14 @@ public final class JooqDeletionPreviewAdapter implements DeletionPreviewPort {
                 : dsl.select(SOURCE_PAYLOAD.PAYLOAD_ID, SOURCE_PAYLOAD.SOURCE_UNIT_ID,
                                 SOURCE_PAYLOAD.PAYLOAD_KIND, SOURCE_PAYLOAD.CONTENT_TYPE,
                                 SOURCE_PAYLOAD.STORE_ADAPTER, SOURCE_PAYLOAD.OBJECT_VERSION_REF,
-                                SOURCE_PAYLOAD.RETENTION_CLASS,
+                                SOURCE_PAYLOAD.OBJECT_REF, SOURCE_PAYLOAD.RETENTION_CLASS,
                                 SOURCE_PAYLOAD.SIZE_BYTES, SOURCE_PAYLOAD.CONTENT_HASH)
                         .from(SOURCE_PAYLOAD)
                         .where(SOURCE_PAYLOAD.SOURCE_UNIT_ID.in(rootSourceUnitIds))
                         .orderBy(SOURCE_PAYLOAD.SOURCE_UNIT_ID.asc(), SOURCE_PAYLOAD.PAYLOAD_ID.asc())
                         .fetch();
         Map<UUID, List<DeletionPreviewGraph.Payload>> payloads = new LinkedHashMap<>();
+        Map<UUID, String> payloadObjectRefs = new LinkedHashMap<>();
         for (Record row : payloadRows) {
             payloads.computeIfAbsent(row.get(SOURCE_PAYLOAD.SOURCE_UNIT_ID), ignored -> new ArrayList<>())
                     .add(new DeletionPreviewGraph.Payload(
@@ -187,6 +203,7 @@ public final class JooqDeletionPreviewAdapter implements DeletionPreviewPort {
                             row.get(SOURCE_PAYLOAD.STORE_ADAPTER), row.get(SOURCE_PAYLOAD.OBJECT_VERSION_REF),
                             row.get(SOURCE_PAYLOAD.RETENTION_CLASS),
                             row.get(SOURCE_PAYLOAD.SIZE_BYTES), row.get(SOURCE_PAYLOAD.CONTENT_HASH)));
+            payloadObjectRefs.put(row.get(SOURCE_PAYLOAD.PAYLOAD_ID), row.get(SOURCE_PAYLOAD.OBJECT_REF));
         }
 
         List<DeletionPreviewGraph.Anchor> anchors = new ArrayList<>();
@@ -198,12 +215,47 @@ public final class JooqDeletionPreviewAdapter implements DeletionPreviewPort {
             anchors.add(new DeletionPreviewGraph.Anchor(anchorId, anchorSources.get(anchorId), units));
         }
 
+        // ---- shared / exclusive detection ---------------------------------
+        // Anchors (root or external) that reference a root source unit.
         List<UUID> allSharedAnchorIds = rootSourceUnitIds.isEmpty()
                 ? List.of()
                 : dsl.selectDistinct(SOURCE_ANCHOR_UNIT.ANCHOR_ID)
                         .from(SOURCE_ANCHOR_UNIT)
                         .where(SOURCE_ANCHOR_UNIT.SOURCE_UNIT_ID.in(rootSourceUnitIds))
                         .fetch(SOURCE_ANCHOR_UNIT.ANCHOR_ID);
+
+        // Shared root anchors: a root anchor that an EVIDENCED_BY relation from
+        // a non-root revision also references (A and B reuse the same anchor).
+        Set<UUID> sharedAnchorIds = new LinkedHashSet<>();
+        if (!rootAnchorIds.isEmpty()) {
+            sharedAnchorIds.addAll(dsl.selectDistinct(MEMORY_RELATION.TO_ANCHOR_ID)
+                    .from(MEMORY_RELATION)
+                    .where(MEMORY_RELATION.RELATION_TYPE.eq("EVIDENCED_BY"))
+                    .and(MEMORY_RELATION.TO_ANCHOR_ID.in(rootAnchorIds))
+                    .and(MEMORY_RELATION.FROM_REVISION_ID.notIn(revisionIds))
+                    .fetch(MEMORY_RELATION.TO_ANCHOR_ID));
+        }
+
+        // Shared root units: referenced by a non-root anchor, or under a shared root anchor.
+        Set<UUID> sharedUnitIds = new LinkedHashSet<>();
+        if (!rootSourceUnitIds.isEmpty()) {
+            sharedUnitIds.addAll(dsl.selectDistinct(SOURCE_ANCHOR_UNIT.SOURCE_UNIT_ID)
+                    .from(SOURCE_ANCHOR_UNIT)
+                    .where(SOURCE_ANCHOR_UNIT.SOURCE_UNIT_ID.in(rootSourceUnitIds))
+                    .and(SOURCE_ANCHOR_UNIT.ANCHOR_ID.notIn(rootAnchorIds)
+                            .or(SOURCE_ANCHOR_UNIT.ANCHOR_ID.in(sharedAnchorIds)))
+                    .fetch(SOURCE_ANCHOR_UNIT.SOURCE_UNIT_ID));
+        }
+
+        // Shared payloads: payloads whose source unit is shared.
+        Set<UUID> sharedPayloadIds = new LinkedHashSet<>();
+        for (Map.Entry<UUID, List<DeletionPreviewGraph.Payload>> entry : payloads.entrySet()) {
+            if (sharedUnitIds.contains(entry.getKey())) {
+                for (DeletionPreviewGraph.Payload payload : entry.getValue()) sharedPayloadIds.add(payload.payloadId());
+            }
+        }
+
+        // ---- shared reference memories (memories != root sharing a root payload) ----
         var sharingRelations = allSharedAnchorIds.isEmpty()
                 ? List.<org.jooq.Record>of()
                 : dsl.select(MEMORY_RELATION.FROM_REVISION_ID, MEMORY_RELATION.TO_ANCHOR_ID)
@@ -211,21 +263,17 @@ public final class JooqDeletionPreviewAdapter implements DeletionPreviewPort {
                         .where(MEMORY_RELATION.RELATION_TYPE.eq("EVIDENCED_BY"))
                         .and(MEMORY_RELATION.TO_ANCHOR_ID.in(allSharedAnchorIds))
                         .fetch();
+        Map<UUID, List<UUID>> allAnchorUnits = new HashMap<>();
+        if (!allSharedAnchorIds.isEmpty()) {
+            var allUnitRows = dsl.select(SOURCE_ANCHOR_UNIT.ANCHOR_ID, SOURCE_ANCHOR_UNIT.SOURCE_UNIT_ID)
+                    .from(SOURCE_ANCHOR_UNIT).where(SOURCE_ANCHOR_UNIT.ANCHOR_ID.in(allSharedAnchorIds)).fetch();
+            for (Record row : allUnitRows) {
+                allAnchorUnits.computeIfAbsent(row.get(SOURCE_ANCHOR_UNIT.ANCHOR_ID), ignored -> new ArrayList<>())
+                        .add(row.get(SOURCE_ANCHOR_UNIT.SOURCE_UNIT_ID));
+            }
+        }
         Set<UUID> sharingRevisionIds = new LinkedHashSet<>();
         Map<UUID, Set<UUID>> revisionToPayloads = new HashMap<>();
-        Map<UUID, Set<UUID>> memoryToPayloads = new HashMap<>();
-        Map<UUID, UUID> allAnchorToSource = new HashMap<>(anchorSources);
-        var allAnchorSources = allSharedAnchorIds.isEmpty()
-                ? List.<org.jooq.Record>of()
-                : dsl.select(SOURCE_ANCHOR.ANCHOR_ID, SOURCE_ANCHOR.SOURCE_ID)
-                        .from(SOURCE_ANCHOR).where(SOURCE_ANCHOR.ANCHOR_ID.in(allSharedAnchorIds)).fetch();
-        for (Record row : allAnchorSources) allAnchorToSource.put(row.get(SOURCE_ANCHOR.ANCHOR_ID), row.get(SOURCE_ANCHOR.SOURCE_ID));
-        var allUnitRows = allSharedAnchorIds.isEmpty()
-                ? List.<org.jooq.Record>of()
-                : dsl.select(SOURCE_ANCHOR_UNIT.ANCHOR_ID, SOURCE_ANCHOR_UNIT.SOURCE_UNIT_ID)
-                        .from(SOURCE_ANCHOR_UNIT).where(SOURCE_ANCHOR_UNIT.ANCHOR_ID.in(allSharedAnchorIds)).fetch();
-        Map<UUID, List<UUID>> allAnchorUnits = new HashMap<>();
-        for (Record row : allUnitRows) allAnchorUnits.computeIfAbsent(row.get(SOURCE_ANCHOR_UNIT.ANCHOR_ID), ignored -> new ArrayList<>()).add(row.get(SOURCE_ANCHOR_UNIT.SOURCE_UNIT_ID));
         for (Record relation : sharingRelations) {
             UUID revisionId = relation.get(MEMORY_RELATION.FROM_REVISION_ID);
             UUID anchorId = relation.get(MEMORY_RELATION.TO_ANCHOR_ID);
@@ -243,33 +291,66 @@ public final class JooqDeletionPreviewAdapter implements DeletionPreviewPort {
                     .where(MEMORY_REVISION.MEMORY_REVISION_ID.in(sharingRevisionIds)).fetch();
             for (var row : otherRows) revisionById.put(row.getMemoryRevisionId(), toMemoryRevision(row));
         }
-        Set<UUID> affectedMemoryIds = new LinkedHashSet<>();
-        for (Map.Entry<UUID, Set<UUID>> entry : revisionToPayloads.entrySet()) {
-            MemoryRevision revision = revisionById.get(entry.getKey());
-            if (revision != null && !rootMemoryId.equals(revision.memoryId()) && !entry.getValue().isEmpty()) {
-                affectedMemoryIds.add(revision.memoryId());
-                memoryToPayloads.computeIfAbsent(revision.memoryId(), ignored -> new HashSet<>()).addAll(entry.getValue());
-            }
-        }
-        List<DeletionPreviewGraph.DeletionPreviewAffectedMemory> affected = new ArrayList<>();
-        if (!affectedMemoryIds.isEmpty()) {
-            var affectedRows = dsl.selectFrom(MEMORY_RECORD)
-                    .where(MEMORY_RECORD.MEMORY_ID.in(affectedMemoryIds))
-                    .orderBy(MEMORY_RECORD.MEMORY_ID.asc()).fetch();
-            for (var row : affectedRows) {
-                var affectedCurrentRow = dsl.selectFrom(MEMORY_REVISION)
-                        .where(MEMORY_REVISION.MEMORY_REVISION_ID.eq(row.getCurrentRevisionId()))
-                        .and(MEMORY_REVISION.MEMORY_ID.eq(row.getMemoryId())).fetchOne();
-                if (affectedCurrentRow == null) throw new IllegalStateException("affected current revision mismatch");
-                MemoryRevision affectedCurrent = toMemoryRevision(affectedCurrentRow);
-                affected.add(new DeletionPreviewGraph.DeletionPreviewAffectedMemory(
-                        new MemoryRecord(row.getMemoryId(), row.getState(), row.getCurrentRevisionId(),
-                                row.getPolicyId(), row.getCurrentPolicyRevisionNo(), row.getCreatedAt(), row.getUpdatedAt()),
-                        affectedCurrent, memoryToPayloads.getOrDefault(row.getMemoryId(), Set.of()).size()));
+        Set<UUID> sharedMemoryIds = new LinkedHashSet<>();
+        for (UUID revisionId : sharingRevisionIds) {
+            MemoryRevision revision = revisionById.get(revisionId);
+            if (revision != null && !rootMemoryId.equals(revision.memoryId())
+                    && !revisionToPayloads.getOrDefault(revisionId, Set.of()).isEmpty()) {
+                sharedMemoryIds.add(revision.memoryId());
             }
         }
 
-        return new DeletionPreviewGraph(root, current, policy, policyRevision, revisions, anchors, affected);
+        // R5: payload → set of other memory ids that retain it, covering both direct anchor reuse
+        // and indirect SourceUnit/Payload reuse through a different anchor.
+        Map<UUID, Set<UUID>> payloadToMemoryIds = new HashMap<>();
+        for (UUID revisionId : sharingRevisionIds) {
+            MemoryRevision revision = revisionById.get(revisionId);
+            if (revision != null && !rootMemoryId.equals(revision.memoryId())) {
+                for (UUID payloadId : revisionToPayloads.getOrDefault(revisionId, Set.of())) {
+                    payloadToMemoryIds.computeIfAbsent(payloadId, ignored -> new LinkedHashSet<>())
+                            .add(revision.memoryId());
+                }
+            }
+        }
+
+        List<DeletionPreviewGraph.SharedMemory> sharedMemories = new ArrayList<>();
+        if (!sharedMemoryIds.isEmpty()) {
+            var sharedMemoryRows = dsl.selectFrom(MEMORY_RECORD)
+                    .where(MEMORY_RECORD.MEMORY_ID.in(sharedMemoryIds))
+                    .orderBy(MEMORY_RECORD.MEMORY_ID.asc()).fetch();
+            for (var row : sharedMemoryRows) {
+                var sharedCurrentRow = dsl.selectFrom(MEMORY_REVISION)
+                        .where(MEMORY_REVISION.MEMORY_REVISION_ID.eq(row.getCurrentRevisionId()))
+                        .and(MEMORY_REVISION.MEMORY_ID.eq(row.getMemoryId())).fetchOne();
+                if (sharedCurrentRow == null) throw new IllegalStateException("shared memory current revision mismatch");
+                MemoryRevision sharedCurrent = toMemoryRevision(sharedCurrentRow);
+                sharedMemories.add(new DeletionPreviewGraph.SharedMemory(
+                        row.getMemoryId(), sharedCurrent.revisionNo(), title(sharedCurrent.bodyText())));
+            }
+        }
+
+        // ---- ordered evidence units (conversation order by anchor-unit ordinal) ----
+        Map<UUID, String[]> actorRefs = readActorRefs(unitActors.values());
+        List<DeletionPreviewGraph.EvidenceUnit> evidenceUnits = new ArrayList<>();
+        for (UUID unitId : rootSourceUnitIds) {
+            DeletionPreviewGraph.Payload payload = payloads.getOrDefault(unitId, List.of()).get(0);
+            UUID actorId = unitActors.get(unitId);
+            String[] actor = actorId == null ? null : actorRefs.get(actorId);
+            List<UUID> sharedByMemoryIds = payloadToMemoryIds.getOrDefault(payload.payloadId(), Set.of())
+                    .stream().sorted().toList();
+            evidenceUnits.add(new DeletionPreviewGraph.EvidenceUnit(
+                    unitAnchorIds.get(unitId), unitId, unitOrdinals.get(unitId), actorId,
+                    actor == null ? null : actor[0], actor == null ? null : actor[1],
+                    actor == null ? null : actor[2],
+                    unitOccurredAt.get(unitId), payloadObjectRefs.get(payload.payloadId()),
+                    payload.sizeBytes(), payload.contentHash(), sharedByMemoryIds));
+        }
+        evidenceUnits.sort(Comparator
+                .comparingLong((DeletionPreviewGraph.EvidenceUnit unit) -> unitOrdinals.getOrDefault(unit.sourceUnitId(), Long.MAX_VALUE))
+                .thenComparing(DeletionPreviewGraph.EvidenceUnit::sourceUnitId));
+
+        return new DeletionPreviewGraph(root, current, policy, policyRevision, revisions, anchors,
+                sharedAnchorIds, sharedUnitIds, sharedPayloadIds, evidenceUnits, sharedMemories);
     }
 
     @Override
@@ -324,5 +405,35 @@ public final class JooqDeletionPreviewAdapter implements DeletionPreviewPort {
         return new MemoryRevision(row.getMemoryRevisionId(), row.getMemoryId(), row.getRevisionNo(),
                 row.getMemoryType(), row.getPerspectiveActorId(), row.getBodyText(), row.getValidFrom(),
                 row.getValidTo(), row.getUncertaintyCode(), row.getCreatedByDecisionId(), row.getCreatedAt());
+    }
+
+    private Map<UUID, String[]> readActorRefs(Collection<UUID> actorIds) {
+        Map<UUID, String[]> result = new HashMap<>();
+        Set<UUID> distinct = new LinkedHashSet<>();
+        for (UUID id : actorIds) {
+            if (id != null) distinct.add(id);
+        }
+        if (distinct.isEmpty()) return result;
+        var rows = dsl.select(ACTOR_REF.ACTOR_ID, ACTOR_REF.ACTOR_KIND, ACTOR_REF.STABLE_REF, ACTOR_REF.DISPLAY_LABEL)
+                .from(ACTOR_REF)
+                .where(ACTOR_REF.ACTOR_ID.in(distinct))
+                .fetch();
+        for (Record row : rows) {
+            result.put(row.get(ACTOR_REF.ACTOR_ID),
+                    new String[]{row.get(ACTOR_REF.ACTOR_KIND), row.get(ACTOR_REF.STABLE_REF), row.get(ACTOR_REF.DISPLAY_LABEL)});
+        }
+        return result;
+    }
+
+    private static String title(String body) {
+        if (body == null) return "";
+        for (String line : body.split("\\R")) {
+            String stripped = line.strip();
+            if (!stripped.isEmpty()) {
+                int count = stripped.codePointCount(0, stripped.length());
+                return count <= 40 ? stripped : stripped.substring(0, stripped.offsetByCodePoints(0, 40));
+            }
+        }
+        return "";
     }
 }

@@ -12,7 +12,7 @@ public record LocalV1S3B2BDeletionConfirmResult(
         OffsetDateTime confirmedAt,
         String state,
         int fenceCount,
-        int unfencedAffectedCount) {
+        int retainedCount) {
 
     public LocalV1S3B2BDeletionConfirmResult {
         if (manifestHash == null || manifestHash.length != 32) {
@@ -23,7 +23,7 @@ public record LocalV1S3B2BDeletionConfirmResult(
         if (confirmedAt == null) throw new IllegalArgumentException("confirmedAt must not be null");
         if (!"CONFIRMED".equals(state)) throw new IllegalArgumentException("state must be CONFIRMED");
         if (fenceCount < 0) throw new IllegalArgumentException("fenceCount must be non-negative");
-        if (unfencedAffectedCount < 0) throw new IllegalArgumentException("unfencedAffectedCount must be non-negative");
+        if (retainedCount < 0) throw new IllegalArgumentException("retainedCount must be non-negative");
     }
 
     @Override

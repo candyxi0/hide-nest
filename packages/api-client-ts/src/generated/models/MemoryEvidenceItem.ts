@@ -57,6 +57,12 @@ export interface MemoryEvidenceItem {
     actorStableRef: string;
     /**
      * 
+     * @type {string}
+     * @memberof MemoryEvidenceItem
+     */
+    displayLabel: string;
+    /**
+     * 
      * @type {Date}
      * @memberof MemoryEvidenceItem
      */
@@ -79,6 +85,7 @@ export function instanceOfMemoryEvidenceItem(value: object): value is MemoryEvid
     if (!('actorId' in value) || value['actorId'] === undefined) return false;
     if (!('actorKind' in value) || value['actorKind'] === undefined) return false;
     if (!('actorStableRef' in value) || value['actorStableRef'] === undefined) return false;
+    if (!('displayLabel' in value) || value['displayLabel'] === undefined) return false;
     if (!('occurredAt' in value) || value['occurredAt'] === undefined) return false;
     if (!('bodyText' in value) || value['bodyText'] === undefined) return false;
     return true;
@@ -100,6 +107,7 @@ export function MemoryEvidenceItemFromJSONTyped(json: any, ignoreDiscriminator: 
         'actorId': json['actorId'],
         'actorKind': json['actorKind'],
         'actorStableRef': json['actorStableRef'],
+        'displayLabel': json['displayLabel'],
         'occurredAt': (new Date(json['occurredAt'])),
         'bodyText': json['bodyText'],
     };
@@ -122,6 +130,7 @@ export function MemoryEvidenceItemToJSONTyped(value?: MemoryEvidenceItem | null,
         'actorId': value['actorId'],
         'actorKind': value['actorKind'],
         'actorStableRef': value['actorStableRef'],
+        'displayLabel': value['displayLabel'],
         'occurredAt': value['occurredAt'].toISOString(),
         'bodyText': value['bodyText'],
     };

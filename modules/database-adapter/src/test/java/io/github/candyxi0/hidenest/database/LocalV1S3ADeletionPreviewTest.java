@@ -12,6 +12,7 @@ import io.github.candyxi0.hidenest.application.coordinator.CanonicalPublishCoord
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1S1WindowCloseCoordinator;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1S3ADeletionPreviewCoordinator;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1S3AException;
+import io.github.candyxi0.hidenest.application.model.LocalV1DeletionEvidenceMessage;
 import io.github.candyxi0.hidenest.application.model.LocalV1S1ConfirmRequest;
 import io.github.candyxi0.hidenest.application.model.LocalV1S1PrepareRequest;
 import io.github.candyxi0.hidenest.application.model.LocalV1S3ADeletionPreviewRequest;
@@ -22,6 +23,8 @@ import io.github.candyxi0.hidenest.database.adapter.JooqEvidenceReferenceAdapter
 import io.github.candyxi0.hidenest.database.adapter.JooqMemoryGovernanceAdapter;
 import io.github.candyxi0.hidenest.database.adapter.JooqRuntimeTransactionAdapter;
 import io.github.candyxi0.hidenest.evidence.port.EvidenceReferencePort;
+import io.github.candyxi0.hidenest.evidence.domain.PayloadHeadResult;
+import io.github.candyxi0.hidenest.evidence.domain.PayloadPutResult;
 import io.github.candyxi0.hidenest.evidence.port.PayloadStore;
 import io.github.candyxi0.hidenest.payload.LocalPayloadStore;
 import io.github.candyxi0.hidenest.memory.port.MemoryGovernancePort;
@@ -50,6 +53,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -98,7 +102,7 @@ class LocalV1S3ADeletionPreviewTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(16, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, password)
+        assertEquals(17, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, password)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load()
                 .migrate().migrationsExecuted);
         var raw = new DriverManagerDataSource(postgres.getJdbcUrl(), USER, password);
@@ -117,7 +121,7 @@ class LocalV1S3ADeletionPreviewTest {
         PayloadStore payloadStore = new LocalPayloadStore(payloadRoot);
         s1 = new LocalV1S1WindowCloseCoordinator(evidence, governance, runtime, executor, publisher, payloadStore, CLOCK);
         preview = new LocalV1S3ADeletionPreviewCoordinator(
-                new JooqDeletionPreviewAdapter(dsl), executor, CLOCK, new JooqDeletionFenceAdapter(dsl));
+                new JooqDeletionPreviewAdapter(dsl), executor, CLOCK, new JooqDeletionFenceAdapter(dsl), payloadStore);
     }
 
     @AfterAll
@@ -145,7 +149,7 @@ class LocalV1S3ADeletionPreviewTest {
         assertEquals(10, v10.migrate().migrationsExecuted);
         var v15 = Flyway.configure().dataSource(databaseUrl, USER, dbPassword)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load();
-        assertEquals(6, v15.migrate().migrationsExecuted);
+        assertEquals(7, v15.migrate().migrationsExecuted);
         assertEquals(0, v15.migrate().migrationsExecuted);
     }
 
@@ -162,12 +166,12 @@ class LocalV1S3ADeletionPreviewTest {
         assertEquals(1L, first.previewRevision());
         assertEquals(List.of(fixture.memoryId()), first.deleteCandidateMemoryIds());
         assertEquals(2L, first.payloadCount());
-        assertEquals(0, first.affectedMemories().size());
-        assertTrue(!first.requiresUserChoice());
+        assertEquals(0, first.sharedMemories().size());
         assertEquals(before, count("memory.memory_record") + count("memory.memory_revision"));
         assertEquals(1, count("memory.deletion_closure"));
         assertEquals(1 + 1 + 2 + 2 + 2, count("memory.deletion_closure_member"));
-        assertFalse(first.toString().contains("EVIDENCE_BODY_CANARY"));
+        // Complete evidence body is now surfaced as a human-readable projection.
+        assertTrue(first.evidence().stream().anyMatch(message -> message.bodyText().contains("EVIDENCE_BODY_CANARY")));
 
         var replay = preview.preview(request);
         assertResultEquals(first, replay);
@@ -203,9 +207,49 @@ class LocalV1S3ADeletionPreviewTest {
         var result = preview.preview(new LocalV1S3ADeletionPreviewRequest(
                 root.memoryId(), "preview-shared", sha256("request-shared".getBytes(StandardCharsets.UTF_8))));
         assertEquals(List.of(root.memoryId()), result.deleteCandidateMemoryIds());
-        assertEquals(1, result.affectedMemories().size());
-        assertEquals(other.memoryId(), result.affectedMemories().get(0).memoryId());
-        assertTrue(result.requiresUserChoice());
+        assertEquals(1, result.sharedMemories().size());
+        assertEquals(other.memoryId(), result.sharedMemories().get(0).memoryId());
+        // Direct anchor reuse: only the first segment's message is retained by `other`.
+        for (LocalV1DeletionEvidenceMessage message : result.evidence()) {
+            if (message.ordinal() == 1L) {
+                assertEquals(List.of(other.memoryId()), message.sharedByMemoryIds());
+            } else {
+                assertEquals(List.of(), message.sharedByMemoryIds());
+            }
+        }
+    }
+
+    @Test
+    void indirectUnitSharingMapsToRetainingMemory() {
+        Fixture root = createMemory("indirect-root", "root正文");
+        Fixture other = createMemory("indirect-other", "other正文");
+        dsl.execute("DELETE FROM memory.memory_relation WHERE from_revision_id=?", other.revisionId());
+        UUID decisionId = dsl.fetch("SELECT created_by_decision_id FROM memory.memory_revision WHERE memory_revision_id=?", other.revisionId())
+                .get(0).get(0, UUID.class);
+        UUID rootUnit = dsl.fetchOne("SELECT source_unit_id FROM evidence.source_anchor_unit WHERE anchor_id=?", root.anchorOne())
+                .get(0, UUID.class);
+        UUID sourceId = dsl.fetchOne("SELECT source_id FROM evidence.source_anchor WHERE anchor_id=?", root.anchorOne())
+                .get(0, UUID.class);
+        // A different (non-root) anchor reuses the same SourceUnit/Payload — indirect sharing.
+        UUID indirectAnchor = UUID.randomUUID();
+        dsl.execute("INSERT INTO evidence.source_anchor(anchor_id, source_id, anchor_kind, created_at) VALUES (?,?, 'MESSAGE_SEGMENT', clock_timestamp())",
+                indirectAnchor, sourceId);
+        dsl.execute("INSERT INTO evidence.source_anchor_unit(anchor_id, source_unit_id, from_offset, to_offset, ordinal) VALUES (?,?, 0, 1, 1)",
+                indirectAnchor, rootUnit);
+        dsl.execute("INSERT INTO memory.memory_relation(relation_id,from_revision_id,relation_type,to_anchor_id,created_by_decision_id,created_at) VALUES (?,?, 'EVIDENCED_BY',?,?,clock_timestamp())",
+                UUID.randomUUID(), other.revisionId(), indirectAnchor, decisionId);
+
+        var result = preview.preview(new LocalV1S3ADeletionPreviewRequest(
+                root.memoryId(), "preview-indirect", sha256("request-indirect".getBytes(StandardCharsets.UTF_8))));
+        assertEquals(1, result.sharedMemories().size());
+        assertEquals(other.memoryId(), result.sharedMemories().get(0).memoryId());
+        for (LocalV1DeletionEvidenceMessage message : result.evidence()) {
+            if (message.ordinal() == 1L) {
+                assertEquals(List.of(other.memoryId()), message.sharedByMemoryIds());
+            } else {
+                assertEquals(List.of(), message.sharedByMemoryIds());
+            }
+        }
     }
 
     @Test
@@ -255,9 +299,8 @@ class LocalV1S3ADeletionPreviewTest {
         var result = preview.preview(new LocalV1S3ADeletionPreviewRequest(
                 root.memoryId(), "historical-shared", sha256("historical".getBytes(StandardCharsets.UTF_8))));
         assertEquals(List.of(root.memoryId()), result.deleteCandidateMemoryIds());
-        assertEquals(1, result.affectedMemories().size());
-        assertEquals(other.memoryId(), result.affectedMemories().get(0).memoryId());
-        assertTrue(result.requiresUserChoice());
+        assertEquals(1, result.sharedMemories().size());
+        assertEquals(other.memoryId(), result.sharedMemories().get(0).memoryId());
     }
 
     @Test
@@ -273,13 +316,16 @@ class LocalV1S3ADeletionPreviewTest {
                             new MemoryRecord(root.memoryId(), root.state(), UUID.randomUUID(), root.policyId(),
                                     root.currentPolicyRevisionNo(), root.createdAt(), root.updatedAt()),
                             graph.currentRevision(), graph.policy(), graph.policyRevision(), graph.allRevisions(),
-                            graph.anchors(), graph.affectedMemories());
+                            graph.anchors(), graph.sharedAnchorIds(), graph.sharedUnitIds(), graph.sharedPayloadIds(),
+                            graph.evidenceUnits(), graph.sharedMemories());
                 },
                 () -> {
                     DeletionPreviewGraph graph = validGraph();
                     return new DeletionPreviewGraph(graph.rootMemory(), graph.currentRevision(),
                             new AccessPolicy(graph.policy().policyId(), "MEMORY", UUID.randomUUID(), 1L, null),
-                            graph.policyRevision(), graph.allRevisions(), graph.anchors(), graph.affectedMemories());
+                            graph.policyRevision(), graph.allRevisions(), graph.anchors(),
+                            graph.sharedAnchorIds(), graph.sharedUnitIds(), graph.sharedPayloadIds(),
+                            graph.evidenceUnits(), graph.sharedMemories());
                 },
                 () -> {
                     DeletionPreviewGraph graph = validGraph();
@@ -323,7 +369,7 @@ class LocalV1S3ADeletionPreviewTest {
         for (Supplier<DeletionPreviewGraph> attack : attacks) {
             FakePreviewPort port = new FakePreviewPort(attack.get());
             LocalV1S3ADeletionPreviewCoordinator coordinator = new LocalV1S3ADeletionPreviewCoordinator(
-                    port, immediateTransactions(), CLOCK, new TestDeletionFencePort());
+                    port, immediateTransactions(), CLOCK, new TestDeletionFencePort(), new FakePayloadStore());
             assertThrows(LocalV1S3AException.class, () -> coordinator.preview(
                     new LocalV1S3ADeletionPreviewRequest(UUID.randomUUID(), "attack-" + UUID.randomUUID(),
                             new byte[32])));
@@ -333,11 +379,37 @@ class LocalV1S3ADeletionPreviewTest {
     }
 
     @Test
+    void sharedByMemoryIdsAttackSetIsRejectedBeforePersistence() {
+        UUID foreignId = UUID.randomUUID();
+        List<Supplier<DeletionPreviewGraph>> attacks = List.of(
+                // sharedByMemoryIds references a memory absent from the shared dictionary.
+                () -> graphWithSharedBy(List.of(UUID.randomUUID()), List.of()),
+                // global dictionary orphan: sharedMemories not referenced by any evidence.
+                () -> graphWithSharedBy(List.of(), List.of(new DeletionPreviewGraph.SharedMemory(UUID.randomUUID(), 1L, "orphan"))),
+                // root memoryId in sharedByMemoryIds.
+                () -> graphWithSharedBy(List.of(validGraph().rootMemory().memoryId()), List.of()),
+                // duplicate sharedByMemoryIds.
+                () -> graphWithSharedBy(List.of(foreignId, foreignId),
+                        List.of(new DeletionPreviewGraph.SharedMemory(foreignId, 1L, "dup"))));
+
+        for (Supplier<DeletionPreviewGraph> attack : attacks) {
+            FakePreviewPort port = new FakePreviewPort(attack.get());
+            LocalV1S3ADeletionPreviewCoordinator coordinator = new LocalV1S3ADeletionPreviewCoordinator(
+                    port, immediateTransactions(), CLOCK, new TestDeletionFencePort(), new FakePayloadStore());
+            assertThrows(LocalV1S3AException.class, () -> coordinator.preview(
+                    new LocalV1S3ADeletionPreviewRequest(UUID.randomUUID(), "attack-" + UUID.randomUUID(),
+                            new byte[32])));
+            assertNull(port.inserted);
+        }
+        assertEquals(4, attacks.size());
+    }
+
+    @Test
     void normalizedNodeBoundaryUsesFormalCoordinator() {
         for (int affectedCount : List.of(995, 996)) {
             FakePreviewPort port = new FakePreviewPort(graphWithAffectedMemories(affectedCount));
             LocalV1S3ADeletionPreviewCoordinator coordinator = new LocalV1S3ADeletionPreviewCoordinator(
-                    port, immediateTransactions(), CLOCK, new TestDeletionFencePort());
+                    port, immediateTransactions(), CLOCK, new TestDeletionFencePort(), new FakePayloadStore());
             LocalV1S3AException exception = null;
             try {
                 coordinator.preview(new LocalV1S3ADeletionPreviewRequest(
@@ -363,7 +435,7 @@ class LocalV1S3ADeletionPreviewTest {
         int members = count("memory.deletion_closure_member");
         DeletionPreviewPort delegate = new JooqDeletionPreviewAdapter(dsl);
         LocalV1S3ADeletionPreviewCoordinator failing = new LocalV1S3ADeletionPreviewCoordinator(
-                new FailingInsertPort(delegate), transactions, CLOCK, new JooqDeletionFenceAdapter(dsl));
+                new FailingInsertPort(delegate), transactions, CLOCK, new JooqDeletionFenceAdapter(dsl), new FakePayloadStore());
         LocalV1S3AException exception = assertThrows(LocalV1S3AException.class, () -> failing.preview(
                 new LocalV1S3ADeletionPreviewRequest(fixture.memoryId(), "rollback-key", new byte[32])));
         assertEquals(LocalV1S3AException.Code.PERSISTENCE_CONFLICT, exception.code());
@@ -385,8 +457,8 @@ class LocalV1S3ADeletionPreviewTest {
         assertEquals(expected.deleteCandidateMemoryIds(), actual.deleteCandidateMemoryIds());
         assertEquals(expected.payloadCount(), actual.payloadCount());
         assertEquals(expected.payloadBytes(), actual.payloadBytes());
-        assertEquals(expected.affectedMemories(), actual.affectedMemories());
-        assertEquals(expected.requiresUserChoice(), actual.requiresUserChoice());
+        assertEquals(expected.evidence(), actual.evidence());
+        assertEquals(expected.sharedMemories(), actual.sharedMemories());
     }
 
     private static List<String> closureSnapshot(UUID closureId) {
@@ -470,7 +542,26 @@ class LocalV1S3ADeletionPreviewTest {
                 List.of(new DeletionPreviewGraph.Anchor(anchorId, sourceId,
                         List.of(new DeletionPreviewGraph.SourceUnit(unitId, sourceId,
                                 List.of(validPayload(payloadId, unitId)))))),
+                Set.of(), Set.of(), Set.of(),
+                List.of(new DeletionPreviewGraph.EvidenceUnit(
+                        anchorId, unitId, 1L, actorId, "SYNTHETIC", "a-" + actorId, "小林",
+                        OffsetDateTime.now(CLOCK), "aa/bb.payload", 1L,
+                        sha256(payloadId.toString().getBytes(StandardCharsets.UTF_8)), List.of())),
                 List.of());
+    }
+
+    private static DeletionPreviewGraph graphWithSharedBy(
+            List<UUID> sharedBy, List<DeletionPreviewGraph.SharedMemory> sharedMemories) {
+        DeletionPreviewGraph base = validGraph();
+        DeletionPreviewGraph.EvidenceUnit unit = base.evidenceUnits().get(0);
+        DeletionPreviewGraph.EvidenceUnit updated = new DeletionPreviewGraph.EvidenceUnit(
+                unit.anchorId(), unit.sourceUnitId(), unit.ordinal(), unit.actorId(), unit.actorKind(),
+                unit.actorStableRef(), unit.displayLabel(), unit.occurredAt(), unit.objectRef(),
+                unit.sizeBytes(), unit.contentHash(), sharedBy);
+        return new DeletionPreviewGraph(base.rootMemory(), base.currentRevision(), base.policy(),
+                base.policyRevision(), base.allRevisions(), base.anchors(),
+                base.sharedAnchorIds(), base.sharedUnitIds(), Set.of(),
+                List.of(updated), sharedMemories);
     }
 
     private static DeletionPreviewGraph.Payload validPayload(UUID payloadId, UUID unitId) {
@@ -481,23 +572,32 @@ class LocalV1S3ADeletionPreviewTest {
     private static DeletionPreviewGraph replaceEvidence(DeletionPreviewGraph graph,
             DeletionPreviewGraph.Anchor anchor) {
         return new DeletionPreviewGraph(graph.rootMemory(), graph.currentRevision(), graph.policy(),
-                graph.policyRevision(), graph.allRevisions(), List.of(anchor), graph.affectedMemories());
+                graph.policyRevision(), graph.allRevisions(), List.of(anchor),
+                graph.sharedAnchorIds(), graph.sharedUnitIds(), graph.sharedPayloadIds(),
+                graph.evidenceUnits(), graph.sharedMemories());
     }
 
     private static DeletionPreviewGraph graphWithAffectedMemories(int count) {
         DeletionPreviewGraph base = validGraph();
-        List<DeletionPreviewGraph.DeletionPreviewAffectedMemory> affected = new ArrayList<>();
+        DeletionPreviewGraph.SourceUnit sourceUnit = base.anchors().get(0).sourceUnits().get(0);
+        DeletionPreviewGraph.Payload payload = sourceUnit.payloads().get(0);
+        List<UUID> memoryIds = new ArrayList<>();
+        List<DeletionPreviewGraph.SharedMemory> shared = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            UUID memoryId = UUID.randomUUID();
-            UUID revisionId = UUID.randomUUID();
-            MemoryRevision revision = new MemoryRevision(revisionId, memoryId, 1L, "Claim", UUID.randomUUID(),
-                    "affected-" + i, null, null, null, UUID.randomUUID(), null);
-            affected.add(new DeletionPreviewGraph.DeletionPreviewAffectedMemory(
-                    new MemoryRecord(memoryId, "ACTIVE", revisionId, UUID.randomUUID(), 1L, null, null),
-                    revision, 1));
+            UUID id = UUID.randomUUID();
+            memoryIds.add(id);
+            shared.add(new DeletionPreviewGraph.SharedMemory(id, 1L, "shared-" + i));
         }
+        List<UUID> sortedMemoryIds = memoryIds.stream().sorted().toList();
+        DeletionPreviewGraph.EvidenceUnit unit = base.evidenceUnits().get(0);
+        DeletionPreviewGraph.EvidenceUnit retainedUnit = new DeletionPreviewGraph.EvidenceUnit(
+                unit.anchorId(), unit.sourceUnitId(), unit.ordinal(), unit.actorId(), unit.actorKind(),
+                unit.actorStableRef(), unit.displayLabel(), unit.occurredAt(), unit.objectRef(),
+                unit.sizeBytes(), unit.contentHash(), sortedMemoryIds);
         return new DeletionPreviewGraph(base.rootMemory(), base.currentRevision(), base.policy(),
-                base.policyRevision(), base.allRevisions(), base.anchors(), affected);
+                base.policyRevision(), base.allRevisions(), base.anchors(),
+                base.sharedAnchorIds(), Set.of(sourceUnit.sourceUnitId()), Set.of(payload.payloadId()),
+                List.of(retainedUnit), shared);
     }
 
     private static void publishSecondRevision(Fixture fixture, String body) throws Exception {
@@ -615,6 +715,28 @@ class LocalV1S3ADeletionPreviewTest {
         @Override
         public List<DeletionFence> findByClosureId(UUID closureId) {
             return List.of();
+        }
+    }
+
+    private static final class FakePayloadStore implements PayloadStore {
+        @Override
+        public PayloadPutResult put(UUID payloadId, String contentType, byte[] bytes, byte[] expectedHash) {
+            throw new UnsupportedOperationException("S3A preview unit tests do not write payload files");
+        }
+
+        @Override
+        public byte[] get(String objectRef, byte[] expectedHash, long maxBytes) {
+            return new byte[Math.toIntExact(maxBytes)];
+        }
+
+        @Override
+        public PayloadHeadResult head(String objectRef) {
+            throw new UnsupportedOperationException("S3A preview unit tests do not head payload files");
+        }
+
+        @Override
+        public void delete(String objectRef, byte[] expectedHash) {
+            throw new UnsupportedOperationException("S3A preview unit tests do not delete payload files");
         }
     }
 

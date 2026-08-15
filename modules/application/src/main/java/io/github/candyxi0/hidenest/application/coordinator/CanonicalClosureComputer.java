@@ -19,6 +19,9 @@ import java.util.UUID;
 /** Pure-function canonical closure-member and manifest computation shared by S3A and S3B2B. */
 public final class CanonicalClosureComputer {
 
+    static final String DELETE_CANDIDATE = "DELETE_CANDIDATE";
+    static final String RETAIN_SHARED = "RETAIN_SHARED";
+
     private CanonicalClosureComputer() {}
 
     public static List<DeletionPreviewPort.Member> buildMembers(DeletionPreviewGraph graph) {
@@ -32,7 +35,8 @@ public final class CanonicalClosureComputer {
 
         graph.anchors().stream().sorted(Comparator.comparing(DeletionPreviewGraph.Anchor::anchorId))
                 .forEach(anchor -> raw.add(new RawMember("SOURCE_ANCHOR", anchor.anchorId(), null,
-                        "DELETE_CANDIDATE", null, null)));
+                        graph.sharedAnchorIds().contains(anchor.anchorId()) ? RETAIN_SHARED : DELETE_CANDIDATE,
+                        null, null)));
         Set<UUID> seenUnits = new HashSet<>();
         Set<UUID> seenPayloads = new HashSet<>();
         graph.anchors().stream().sorted(Comparator.comparing(DeletionPreviewGraph.Anchor::anchorId))
@@ -41,18 +45,20 @@ public final class CanonicalClosureComputer {
                         .forEach(unit -> {
                             if (seenUnits.add(unit.sourceUnitId())) {
                                 raw.add(new RawMember("SOURCE_UNIT", unit.sourceUnitId(), null,
-                                        "DELETE_CANDIDATE", null, null));
+                                        graph.sharedUnitIds().contains(unit.sourceUnitId()) ? RETAIN_SHARED : DELETE_CANDIDATE,
+                                        null, null));
                             }
                             DeletionPreviewGraph.Payload payload = unit.payloads().get(0);
                             if (seenPayloads.add(payload.payloadId())) {
                                 raw.add(new RawMember("SOURCE_PAYLOAD", payload.payloadId(), null,
-                                        "DELETE_CANDIDATE", payload.sizeBytes(), payload.contentHash()));
+                                        graph.sharedPayloadIds().contains(payload.payloadId()) ? RETAIN_SHARED : DELETE_CANDIDATE,
+                                        payload.sizeBytes(), payload.contentHash()));
                             }
                         }));
-        graph.affectedMemories().stream()
-                .sorted(Comparator.comparing(item -> item.memory().memoryId()))
-                .forEach(item -> raw.add(new RawMember("AFFECTED_MEMORY", item.memory().memoryId(),
-                        item.currentRevision().revisionNo(), "AFFECTED_PENDING_CHOICE", null, null)));
+        graph.sharedMemories().stream()
+                .sorted(Comparator.comparing(DeletionPreviewGraph.SharedMemory::memoryId))
+                .forEach(memory -> raw.add(new RawMember("SHARED_REFERENCE", memory.memoryId(),
+                        memory.revisionNo(), RETAIN_SHARED, null, null)));
 
         raw.sort(RawMember.ORDER);
         List<DeletionPreviewPort.Member> result = new ArrayList<>();

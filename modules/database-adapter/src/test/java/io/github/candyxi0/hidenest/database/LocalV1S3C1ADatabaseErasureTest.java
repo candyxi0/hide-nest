@@ -101,7 +101,7 @@ class LocalV1S3C1ADatabaseErasureTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(16, Flyway.configure().dataSource(jdbcUrl, USER, password)
+        assertEquals(17, Flyway.configure().dataSource(jdbcUrl, USER, password)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load()
                 .migrate().migrationsExecuted);
         var raw = new DriverManagerDataSource(jdbcUrl, USER, password);
@@ -121,7 +121,7 @@ class LocalV1S3C1ADatabaseErasureTest {
         s1 = new LocalV1S1WindowCloseCoordinator(evidence, governance, runtime, executor, publisher, payloadStore, CLOCK);
         DeletionPreviewPort previewAdapter = new JooqDeletionPreviewAdapter(dsl);
         DeletionFencePort fenceAdapter = new JooqDeletionFenceAdapter(dsl);
-        preview = new LocalV1S3ADeletionPreviewCoordinator(previewAdapter, executor, CLOCK, fenceAdapter);
+        preview = new LocalV1S3ADeletionPreviewCoordinator(previewAdapter, executor, CLOCK, fenceAdapter, payloadStore);
         confirm = new LocalV1S3B2BDeletionConfirmCoordinator(
                 new JooqDeletionConfirmationAdapter(dsl), governance, fenceAdapter, previewAdapter, executor, CLOCK);
         execution = new JooqDeletionExecutionAdapter(dsl);
@@ -148,7 +148,7 @@ class LocalV1S3C1ADatabaseErasureTest {
     @DisplayName("1. V014 empty 14, upgrade 13→14 1, repeat 0; generated A/B/tracked consistent")
     void migrationCounts() throws Exception {
         // Clean migration on a fresh database: 16
-        assertEquals(16, count("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(17, count("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
 
         // Upgrade from V013 to V015 on separate container
         String upgradePassword = UUID.randomUUID().toString();
@@ -171,7 +171,7 @@ class LocalV1S3C1ADatabaseErasureTest {
             var fw15 = Flyway.configure().dataSource(upgradeContainer.getJdbcUrl(), USER, upgradePassword)
                     .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true)
                     .load();
-            assertEquals(3, fw15.migrate().migrationsExecuted);
+            assertEquals(4, fw15.migrate().migrationsExecuted);
             // Repeat: 0
             assertEquals(0, fw15.migrate().migrationsExecuted);
         } finally {
@@ -440,44 +440,32 @@ class LocalV1S3C1ADatabaseErasureTest {
     }
 
     // ================================================================
-    // 7. AFFECTED_PENDING_CHOICE → HDM014_DELETION_CHOICE_REQUIRED
+    // 7. Shared evidence → RETAIN_SHARED + SHARED_REFERENCE (no choice required)
     // ================================================================
 
     @Test
     @Order(7)
-    @DisplayName("7. AFFECTED_PENDING_CHOICE present: stable HDM014_DELETION_CHOICE_REQUIRED, zero change")
-    void affectedPendingChoiceRejected() {
-        // Create root memory and another memory sharing its anchor (making it affected)
-        Fixture root = createMemory("affected-root", "affected-root-body");
-        Fixture other = createMemory("affected-other", "affected-other-body", root.anchorOne());
+    @DisplayName("7. Shared evidence preview: RETAIN_SHARED + SHARED_REFERENCE, no AFFECTED_PENDING_CHOICE")
+    void sharedEvidenceMarksRetainShared() {
+        Fixture root = createMemory("shared-root", "shared-root-body");
+        Fixture other = createMemory("shared-other", "shared-other-body", root.anchorOne());
 
-        byte[] reqHash = sha256("preview-affected");
+        byte[] reqHash = sha256("preview-shared");
         var previewResult = preview.preview(new LocalV1S3ADeletionPreviewRequest(
-                root.memoryId(), "preview-affected", reqHash));
+                root.memoryId(), "preview-shared", reqHash));
 
-        // Verify AFFECTED_PENDING_CHOICE member exists
-        long affectedCount = count(
+        assertEquals(0L, count(
                 "SELECT count(*) FROM memory.deletion_closure_member WHERE closure_id=? AND disposition='AFFECTED_PENDING_CHOICE'",
-                previewResult.previewId());
-        assertTrue(affectedCount > 0, "expected AFFECTED_PENDING_CHOICE members");
-
-        // Cannot confirm (fence set would be incomplete for affected members)
-        // The closure stays PREVIEWED, cannot execute
-        try {
-            execution.executeDatabasePhase(UUID.randomUUID(), previewResult.previewId(), OffsetDateTime.now(CLOCK));
-            throw new AssertionError("expected rejection");
-        } catch (Exception e) {
-            assertSqlStateContains("23514", e);
-            // Either CLOSURE_NOT_CONFIRMED (since we couldn't confirm) or CHOICE_REQUIRED
-            assertMessageContains("HDM014", e);
-        }
-
-        // Business rows unchanged: verify the closure was not disrupted
+                previewResult.previewId()));
+        assertTrue(count(
+                "SELECT count(*) FROM memory.deletion_closure_member WHERE closure_id=? AND disposition='RETAIN_SHARED'",
+                previewResult.previewId()) > 0, "expected RETAIN_SHARED members");
+        assertTrue(count(
+                "SELECT count(*) FROM memory.deletion_closure_member WHERE closure_id=? AND member_kind='SHARED_REFERENCE'",
+                previewResult.previewId()) > 0, "expected SHARED_REFERENCE member");
         assertEquals("PREVIEWED", scalarString(
                 "SELECT state FROM memory.deletion_closure WHERE closure_id=?", previewResult.previewId()));
         assertEquals(0L, count("SELECT count(*) FROM runtime.deletion_run WHERE closure_id=?", previewResult.previewId()));
-        assertEquals(0L, count("SELECT count(*) FROM runtime.deletion_payload_task WHERE deletion_run_id IN "
-                + "(SELECT deletion_run_id FROM runtime.deletion_run WHERE closure_id=?)", previewResult.previewId()));
     }
 
     // ================================================================

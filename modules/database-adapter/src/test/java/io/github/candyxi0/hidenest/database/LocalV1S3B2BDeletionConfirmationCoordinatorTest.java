@@ -96,7 +96,7 @@ class LocalV1S3B2BDeletionConfirmationCoordinatorTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(16, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, password)
+        assertEquals(17, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, password)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load()
                 .migrate().migrationsExecuted);
         var raw = new DriverManagerDataSource(postgres.getJdbcUrl(), USER, password);
@@ -116,7 +116,7 @@ class LocalV1S3B2BDeletionConfirmationCoordinatorTest {
         s1 = new LocalV1S1WindowCloseCoordinator(evidence, governance, runtime, executor, publisher, payloadStore, CLOCK);
         DeletionPreviewPort previewAdapter = new JooqDeletionPreviewAdapter(dsl);
         DeletionFencePort fenceAdapter = new JooqDeletionFenceAdapter(dsl);
-        preview = new LocalV1S3ADeletionPreviewCoordinator(previewAdapter, executor, CLOCK, fenceAdapter);
+        preview = new LocalV1S3ADeletionPreviewCoordinator(previewAdapter, executor, CLOCK, fenceAdapter, payloadStore);
         confirm = new LocalV1S3B2BDeletionConfirmCoordinator(
                 new JooqDeletionConfirmationAdapter(dsl), governance, fenceAdapter, previewAdapter, executor, CLOCK);
     }
@@ -148,7 +148,7 @@ class LocalV1S3B2BDeletionConfirmationCoordinatorTest {
         assertNotNull(result.decisionId());
         assertEquals("CONFIRMED", result.state());
         assertTrue(result.fenceCount() > 0);
-        assertEquals(0, result.unfencedAffectedCount());
+        assertEquals(0, result.retainedCount());
 
         assertEquals("CONFIRMED", closureState(fixture.previewId()));
         assertEquals(1L, count("SELECT count(*) FROM memory.decision WHERE decision_kind='USER_DELETE_CONFIRM' AND target_id=?",
@@ -160,12 +160,12 @@ class LocalV1S3B2BDeletionConfirmationCoordinatorTest {
         for (long count : fencePerMember) {
             assertEquals(1L, count);
         }
-        // AFFECTED members have 0 fences
+        // RETAIN_SHARED members have 0 fences
         assertEquals(0L, count("SELECT count(*) FROM memory.deletion_fence f "
                 + "JOIN memory.deletion_closure_member m ON m.closure_id=f.closure_id "
                 + "AND m.member_kind=f.target_kind AND m.target_id=f.target_id "
                 + "AND m.target_revision_ref IS NOT DISTINCT FROM f.target_revision_ref "
-                + "WHERE f.closure_id=? AND m.disposition='AFFECTED_PENDING_CHOICE'",
+                + "WHERE f.closure_id=? AND m.disposition='RETAIN_SHARED'",
                 fixture.previewId()));
     }
 
@@ -190,7 +190,7 @@ class LocalV1S3B2BDeletionConfirmationCoordinatorTest {
         assertEquals(first.confirmedAt(), second.confirmedAt());
         assertEquals(first.state(), second.state());
         assertEquals(first.fenceCount(), second.fenceCount());
-        assertEquals(first.unfencedAffectedCount(), second.unfencedAffectedCount());
+        assertEquals(first.retainedCount(), second.retainedCount());
         assertEquals(decisionCount, count("SELECT count(*) FROM memory.decision"));
         assertEquals(fenceCount, count("SELECT count(*) FROM memory.deletion_fence"));
     }

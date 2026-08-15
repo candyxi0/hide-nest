@@ -39,6 +39,7 @@ final class LocalV1MemoryResponseMapper {
                         source.memoryId(),
                         source.currentRevisionId(),
                         Math.toIntExact(source.revisionNo()),
+                        source.currentPolicyRevisionNo(),
                         state(source.state()),
                         memoryType(source.memoryType()),
                         source.perspectiveActorId(),
@@ -56,6 +57,7 @@ final class LocalV1MemoryResponseMapper {
                 source.actorId(),
                 source.actorKind(),
                 source.actorStableRef(),
+                source.displayLabel(),
                 source.occurredAt(),
                 source.bodyText());
     }

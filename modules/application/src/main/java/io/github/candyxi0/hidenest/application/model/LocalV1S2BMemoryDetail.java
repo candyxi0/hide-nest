@@ -8,6 +8,7 @@ public record LocalV1S2BMemoryDetail(
         UUID currentRevisionId,
         String state,
         Long revisionNo,
+        Long currentPolicyRevisionNo,
         String memoryType,
         UUID perspectiveActorId,
         String bodyText,

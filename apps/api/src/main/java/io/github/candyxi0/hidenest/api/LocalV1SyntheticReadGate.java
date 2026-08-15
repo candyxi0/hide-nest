@@ -29,6 +29,7 @@ public final class LocalV1SyntheticReadGate extends OncePerRequestFilter {
     private static final Pattern DELETION_WRITE_PATH =
             Pattern.compile("^/v1/deletion-previews(?:/[0-9a-fA-F-]{36}/confirm)?$");
     private static final Pattern DELETION_RUN_PATH = Pattern.compile("^/v1/deletion-runs/[0-9a-fA-F-]{36}$");
+    private static final Pattern FIXTURE_PATH = Pattern.compile("^/v1/deletion-fixtures$");
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final byte[] expectedToken;
@@ -66,6 +67,11 @@ public final class LocalV1SyntheticReadGate extends OncePerRequestFilter {
             return;
         }
         if ("GET".equals(request.getMethod()) && DELETION_RUN_PATH.matcher(path).matches()) {
+            chain.doFilter(request, response);
+            return;
+        }
+        // The shared-evidence fixture path is validated by LocalV1DeletionGate (ordered before us).
+        if ("POST".equals(request.getMethod()) && FIXTURE_PATH.matcher(path).matches()) {
             chain.doFilter(request, response);
             return;
         }

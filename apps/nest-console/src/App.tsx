@@ -1,12 +1,14 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   Configuration,
+  DeletionApi,
   FetchError,
   MemoriesApi,
   MemoryState,
   ResponseError,
+  type DeletionClosureMember,
+  type DeletionPreviewResponse,
   type MemoryDetail,
-  type MemoryEvidenceItem,
   type MemoryEvidenceResponse,
   type MemoryListItem,
 } from "@hide-nest/api-client-ts";
@@ -16,7 +18,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BrowserRouter,
   Link,
@@ -29,10 +31,13 @@ import {
   useSearchParams,
 } from "react-router";
 import "./app.css";
+import { deletionRequestHash } from "./deletion-canonicalizer";
 import { EVIDENCE_KEY, queryClientFactory } from "./query";
 
 const api = new MemoriesApi(new Configuration({ basePath: "/v1" }));
+const deletionApi = new DeletionApi(new Configuration({ basePath: "/v1" }));
 const LIST_KEY = "local-v1-memories";
+const DETAIL_KEY = "local-v1-memory";
 
 type MemoryFilter = "ALL" | "ACTIVE" | "ARCHIVED";
 type ReadProblem = "offline" | "denied" | "not-found" | "invalid" | "integrity";
@@ -54,6 +59,119 @@ function classifyError(error: unknown): ReadProblem {
     if (error.response.status === 422) return "invalid";
   }
   return "integrity";
+}
+
+// ─── Permanent deletion (Task33B2) ───────────────────────────────────────────
+
+const KNOWN_MEMBER_KINDS = new Set(["MEMORY", "MEMORY_REVISION", "SOURCE_ANCHOR", "SOURCE_UNIT", "SOURCE_PAYLOAD", "SHARED_REFERENCE"]);
+const KNOWN_DISPOSITIONS = new Set(["DELETE_REQUESTED", "DELETE_CANDIDATE", "RETAIN_SHARED"]);
+
+type DeleteProblem = "offline" | "denied" | "not-found" | "stale" | "integrity";
+
+interface ClosureSummary {
+  valid: boolean;
+  reason: string;
+}
+
+function summarizeClosure(members: DeletionClosureMember[]): ClosureSummary {
+  if (members.length === 0) {
+    return { valid: false, reason: "系统没有返回可确认的闭合范围。" };
+  }
+  const seen = new Set<number>();
+  for (const member of members) {
+    if (!Number.isInteger(member.ordinal) || member.ordinal < 1) {
+      return { valid: false, reason: "影响序号不连续，已暂停最终确认。" };
+    }
+    if (seen.has(member.ordinal)) {
+      return { valid: false, reason: "影响序号重复，已暂停最终确认。" };
+    }
+    seen.add(member.ordinal);
+  }
+  const sorted = members.map((member) => member.ordinal).sort((a, b) => a - b);
+  for (let index = 0; index < sorted.length; index += 1) {
+    if (sorted[index] !== index + 1) {
+      return { valid: false, reason: "影响序号不连续，已暂停最终确认。" };
+    }
+  }
+  for (const member of members) {
+    if (!KNOWN_MEMBER_KINDS.has(member.memberKind)) {
+      return { valid: false, reason: "存在未知的闭合成员类型，已暂停最终确认。" };
+    }
+    if (!KNOWN_DISPOSITIONS.has(member.disposition)) {
+      return { valid: false, reason: "存在未知的处置状态，已暂停最终确认。" };
+    }
+  }
+  return { valid: true, reason: "" };
+}
+
+interface ProblemShape {
+  resultCategory?: string;
+  failureCode?: string;
+  requestId?: string;
+  retryable?: boolean;
+}
+
+async function readProblemBody(response: Response): Promise<ProblemShape | null> {
+  try {
+    const body = await response.clone().json();
+    if (body && typeof body === "object") {
+      const record = body as Record<string, unknown>;
+      return {
+        resultCategory: typeof record.resultCategory === "string" ? record.resultCategory : undefined,
+        failureCode: typeof record.failureCode === "string" ? record.failureCode : undefined,
+        requestId: typeof record.requestId === "string" ? record.requestId : undefined,
+        retryable: typeof record.retryable === "boolean" ? record.retryable : undefined,
+      };
+    }
+  } catch {
+    // non-JSON problem body
+  }
+  return null;
+}
+
+async function classifyDeleteError(error: unknown): Promise<DeleteProblem> {
+  if (error instanceof FetchError || error instanceof TypeError) return "offline";
+  if (error instanceof ResponseError) {
+    const status = error.response.status;
+    const problem = await readProblemBody(error.response);
+    if (problem && (problem.resultCategory === "STALE" || (problem.failureCode?.includes("STALE") ?? false))) {
+      return "stale";
+    }
+    if (status === 401 || status === 403) return "denied";
+    if (status === 404) return "not-found";
+    if (status === 409 || status === 422) return "stale";
+    return "integrity";
+  }
+  return "integrity";
+}
+
+const DELETE_PROBLEM_COPY: Record<DeleteProblem, [string, string]> = {
+  offline: ["现在无法连接本地接入器", "预览没有发出；请确认本地服务可用后再试。"],
+  denied: ["当前没有删除权限", "系统不会透露目标是否存在，也不会执行删除。"],
+  "not-found": ["没有找到可删除的目标", "目标不存在、版本不匹配或已经进入删除围栏时，都使用同一安全结果。"],
+  stale: ["页面中的版本已经过期", "旧预览不会应用到新版本；请刷新详情后重新预览。"],
+  integrity: ["删除预览没有通过完整性检查", "依赖故障或载荷校验失败；页面不会伪造删除结果。"],
+};
+
+function resolveRun(statusUrl: string, runId: string): { ok: true } | { ok: false } {
+  let url: URL;
+  try {
+    url = new URL(statusUrl, window.location.origin);
+  } catch {
+    return { ok: false };
+  }
+  if (url.origin !== window.location.origin) return { ok: false };
+  if (url.pathname !== `/v1/deletion-runs/${runId}`) return { ok: false };
+  return { ok: true };
+}
+
+function failureLabel(code: string | undefined): string {
+  if (!code) return "执行失败";
+  if (code.includes("CLOSURE")) return "删除闭合范围不一致";
+  if (code.includes("STALE")) return "删除预览或版本已过期";
+  if (code.includes("EXECUTION")) return "删除执行失败";
+  if (code.includes("FENCED")) return "目标已进入删除围栏";
+  return "执行失败";
 }
 
 function useDebouncedValue(value: string, wait = 250) {
@@ -249,12 +367,13 @@ function ListResult({
 function MemoryDetailView({ memoryId, onBack }: { memoryId: string; onBack: () => void }) {
   const queryClient = useQueryClient();
   const detailQuery = useQuery({
-    queryKey: ["local-v1-memory", memoryId],
+    queryKey: [DETAIL_KEY, memoryId],
     queryFn: () => api.getMemory({ memoryId }),
   });
 
   useEffect(() => () => {
     queryClient.removeQueries({ queryKey: [EVIDENCE_KEY, memoryId] });
+    queryClient.removeQueries({ queryKey: [DETAIL_KEY, memoryId] });
   }, [memoryId, queryClient]);
 
   if (detailQuery.isPending) return <LoadingState scope="详情" />;
@@ -264,6 +383,8 @@ function MemoryDetailView({ memoryId, onBack }: { memoryId: string; onBack: () =
 
 function DetailContent({ memory, onBack }: { memory: MemoryDetail; onBack: () => void }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteSession, setDeleteSession] = useState(0);
   const [actionFeedback, setActionFeedback] = useState("");
   const queryClient = useQueryClient();
   useEffect(() => {
@@ -272,6 +393,14 @@ function DetailContent({ memory, onBack }: { memory: MemoryDetail; onBack: () =>
   const body = splitMemoryBody(memory.bodyText);
   const announceUnavailableAction = (action: string) => {
     setActionFeedback(`${action}当前本地 V1 尚未接线；未发出写请求。`);
+  };
+  const handleDeletionSucceeded = () => {
+    void queryClient.invalidateQueries({ queryKey: [LIST_KEY] });
+    onBack();
+  };
+  const openDeleteDrawer = (nextOpen: boolean) => {
+    setDeleteOpen(nextOpen);
+    setDeleteSession((session) => session + 1);
   };
 
   return (
@@ -287,7 +416,12 @@ function DetailContent({ memory, onBack }: { memory: MemoryDetail; onBack: () =>
           <button className="detail-action action-correct" type="button" onClick={() => announceUnavailableAction("与 hide 一起修正")}>与 hide 一起修正</button>
           <button className="detail-action" type="button" onClick={() => announceUnavailableAction("归档")}>归档</button>
           <button className="detail-action" type="button" onClick={() => announceUnavailableAction("隔离")}>隔离</button>
-          <button className="detail-action action-delete" type="button" onClick={() => announceUnavailableAction("永久删除")}>永久删除</button>
+          <Dialog.Root open={deleteOpen} onOpenChange={openDeleteDrawer}>
+            <Dialog.Trigger asChild>
+              <button className="detail-action action-delete" type="button">永久删除</button>
+            </Dialog.Trigger>
+            <DeleteDrawer key={deleteSession} memory={memory} open={deleteOpen} onOpenChange={openDeleteDrawer} onDeleted={handleDeletionSucceeded} onBack={onBack} />
+          </Dialog.Root>
           <p className="action-feedback" role="status" aria-live="polite">{actionFeedback}</p>
         </div>
       </header>
@@ -344,6 +478,244 @@ function DetailContent({ memory, onBack }: { memory: MemoryDetail; onBack: () =>
   );
 }
 
+type DeletePhase = "loading" | "ready" | "confirming" | "polling" | "failed" | "timeout" | "error";
+
+function DeleteDrawer({
+  memory,
+  open,
+  onOpenChange,
+  onDeleted,
+  onBack,
+  pollIntervalMs = 500,
+  pollMaxAttempts = 10,
+}: {
+  memory: MemoryDetail;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDeleted: () => void;
+  onBack: () => void;
+  pollIntervalMs?: number;
+  pollMaxAttempts?: number;
+}) {
+  const [phase, setPhase] = useState<DeletePhase>("loading");
+  const [preview, setPreview] = useState<DeletionPreviewResponse | null>(null);
+  const [problem, setProblem] = useState<DeleteProblem | null>(null);
+  const [runFailure, setRunFailure] = useState<{ requestId?: string; failureCode?: string; retryable?: boolean } | null>(null);
+  const [runShortId, setRunShortId] = useState("");
+
+  const pollTokenRef = useRef(0);
+  const [keys] = useState(() => ({ previewKey: crypto.randomUUID(), confirmKey: crypto.randomUUID() }));
+
+  const summary = useMemo(() => (preview ? summarizeClosure(preview.closureMembers) : null), [preview]);
+  const evidenceSegments = useMemo(() => (preview ? groupByAnchor(preview.evidence) : []), [preview]);
+  const impactSummary = useMemo(() => {
+    if (!preview) return "";
+    let retained = 0;
+    let cleared = 0;
+    let mixed = 0;
+    for (const segment of evidenceSegments) {
+      const retention = segmentRetention(segment.items);
+      if (retention === "shared") retained += 1;
+      else if (retention === "exclusive") cleared += 1;
+      else mixed += 1;
+    }
+    const parts: string[] = [];
+    if (retained > 0) parts.push(`${retained} 段保留`);
+    if (cleared > 0) parts.push(`${cleared} 段清除`);
+    if (mixed > 0) parts.push(`${mixed} 段部分保留`);
+    return parts.length > 0 ? ` · 其中 ${parts.join("，")}` : "";
+  }, [preview, evidenceSegments]);
+
+  useEffect(() => {
+    if (!open) return;
+    const token = pollTokenRef.current;
+    void (async () => {
+      try {
+        const requestManifestHash = await deletionRequestHash(memory.memoryId, memory.revisionNo, memory.currentPolicyRevisionNo);
+        const result = await deletionApi.createDeletionPreview({
+          idempotencyKey: keys.previewKey,
+          governanceActionRequest: {
+            targetId: memory.memoryId,
+            expectedRevision: memory.revisionNo,
+            expectedPolicyRevision: memory.currentPolicyRevisionNo,
+            requestManifestHash,
+          },
+        });
+        if (pollTokenRef.current !== token) return;
+        setPreview(result);
+        setPhase("ready");
+      } catch (error) {
+        if (pollTokenRef.current !== token) return;
+        setPreview(null);
+        setProblem(await classifyDeleteError(error));
+        setPhase("error");
+      }
+    })();
+  }, [open, keys, memory.memoryId, memory.revisionNo, memory.currentPolicyRevisionNo]);
+
+  useEffect(() => () => {
+    pollTokenRef.current += 1;
+  }, []);
+
+  const pollRun = async (runId: string, token: number): Promise<void> => {
+    for (let attempt = 0; attempt < pollMaxAttempts; attempt += 1) {
+      if (pollTokenRef.current !== token) return;
+      try {
+        const status = await deletionApi.getDeletionRun({ runId });
+        if (pollTokenRef.current !== token) return;
+        if (status.phase === "CANONICAL_COMMITTED" || status.phase === "INDEX_READY") {
+          onDeleted();
+          return;
+        }
+        if (status.phase === "FINAL_FAILED") {
+          setPhase("failed");
+          setRunFailure({ requestId: status.requestId, failureCode: status.failureCode, retryable: status.retryable });
+          return;
+        }
+      } catch {
+        // A failed poll is treated as an intermediate attempt; the next poll continues.
+      }
+      if (pollTokenRef.current !== token) return;
+      if (attempt < pollMaxAttempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      }
+    }
+    if (pollTokenRef.current === token) {
+      setPhase("timeout");
+    }
+  };
+
+  const confirm = async (): Promise<void> => {
+    if (!preview || phase === "confirming" || phase === "polling") return;
+    const token = pollTokenRef.current;
+    setPhase("confirming");
+    setProblem(null);
+    setRunFailure(null);
+    try {
+      const requestManifestHash = await deletionRequestHash(memory.memoryId, memory.revisionNo, memory.currentPolicyRevisionNo);
+      const accepted = await deletionApi.confirmDeletion({
+        idempotencyKey: keys.confirmKey,
+        id: preview.previewId,
+        deletionConfirmRequest: {
+          targetId: memory.memoryId,
+          expectedRevision: memory.revisionNo,
+          expectedPolicyRevision: memory.currentPolicyRevisionNo,
+          requestManifestHash,
+          previewId: preview.previewId,
+          previewRevision: preview.previewRevision,
+          manifestHash: preview.manifestHash,
+        },
+      });
+      if (pollTokenRef.current !== token) return;
+      const resolved = resolveRun(accepted.statusUrl, accepted.runId);
+      if (!resolved.ok) {
+        setPhase("failed");
+        setRunFailure({ requestId: undefined, failureCode: "DELETION_CLOSURE_MISMATCH", retryable: false });
+        return;
+      }
+      setRunShortId(shortId(accepted.runId));
+      await pollRun(accepted.runId, token);
+    } catch (error) {
+      if (pollTokenRef.current !== token) return;
+      const classified = await classifyDeleteError(error);
+      if (classified === "stale") {
+        setPhase("error");
+        setProblem("stale");
+      } else {
+        setProblem(classified);
+        setPhase("ready");
+      }
+    }
+  };
+
+  const confirmDisabled = !summary?.valid || phase === "confirming" || phase === "polling";
+
+  return (
+    <Dialog.Portal>
+      <Dialog.Overlay className="drawer-overlay" />
+      <Dialog.Content className="delete-drawer" aria-describedby="delete-description">
+        <div className="drawer-topline">
+          <span className="eyebrow">永久删除 · 不可撤销</span>
+          <Dialog.Close className="drawer-close" aria-label="关闭永久删除预览">×</Dialog.Close>
+        </div>
+        <Dialog.Title>永久删除影响预览</Dialog.Title>
+        <Dialog.Description id="delete-description">
+          系统已经按当前版本计算闭合范围。请只在这些影响与小林的意图一致时越过最终确认点。
+        </Dialog.Description>
+
+        {phase === "loading" && <LoadingState scope="删除预览" />}
+
+        {phase === "error" && problem && (
+          <div className="delete-problem" role="status">
+            <h3>{DELETE_PROBLEM_COPY[problem][0]}</h3>
+            <p>{DELETE_PROBLEM_COPY[problem][1]}</p>
+          </div>
+        )}
+
+        {phase !== "loading" && phase !== "error" && summary?.valid && preview && (
+          <div className="delete-impact-list">
+            <div className="delete-evidence" aria-label="完整证据">
+              <p className="delete-evidence-heading">完整证据：{evidenceSegments.length} 段，共 {preview.evidence.length} 条消息{impactSummary}</p>
+              <EvidenceConversation items={preview.evidence} deletion={{ sharedMemories: preview.sharedMemories }} />
+            </div>
+          </div>
+        )}
+
+        {phase !== "loading" && phase !== "error" && summary && !summary.valid && (
+          <div className="delete-impact-list">
+            <div className="impact-row">
+              <span>闭合范围</span>
+              <strong>{summary.reason}</strong>
+            </div>
+          </div>
+        )}
+
+        {summary && !summary.valid && phase === "ready" && (
+          <p className="delete-block-reason" role="status">{summary.reason}</p>
+        )}
+
+        <div className="impact-warning">确认后不可取消、扩大或重新打开。若清理失败，整个闭合范围继续保持隔离；当前房间里已经出现的文字可能仍然可见。</div>
+
+        {phase === "ready" && problem && (
+          <p className="delete-inline-problem" role="status">{DELETE_PROBLEM_COPY[problem][0]}：{DELETE_PROBLEM_COPY[problem][1]}</p>
+        )}
+
+        <div className="delete-actions">
+          {phase === "failed" || phase === "timeout" ? (
+            <button className="detail-action" type="button" onClick={onBack}>返回档案</button>
+          ) : (
+            <>
+              <button className="delete-cancel" type="button" onClick={() => onOpenChange(false)}>取消</button>
+              <button
+                className="delete-confirm"
+                type="button"
+                disabled={confirmDisabled}
+                onClick={() => void confirm()}
+              >
+                {phase === "confirming" || phase === "polling" ? "正在确认…" : "永久删除这 1 条记忆"}
+              </button>
+            </>
+          )}
+        </div>
+
+        {phase === "failed" && runFailure && (
+          <p className="delete-failure" role="status">
+            永久删除执行失败 · {failureLabel(runFailure.failureCode)}
+            {runFailure.requestId ? ` · 请求 ${shortId(runFailure.requestId)}` : ""} · {runFailure.retryable ? "可重试" : "不可重试"}
+          </p>
+        )}
+        {phase === "timeout" && (
+          <p className="delete-timeout" role="status">
+            执行状态尚未收敛 · 记录 {runShortId}
+          </p>
+        )}
+
+        <p className="drawer-footnote">操作绑定 {shortId(memory.memoryId)} · 第 {memory.revisionNo} 版。版本变化时失败关闭。</p>
+      </Dialog.Content>
+    </Dialog.Portal>
+  );
+}
+
 function EvidenceDrawer({ memory, enabled }: { memory: MemoryDetail; enabled: boolean }) {
   const evidenceQuery = useQuery({
     queryKey: [EVIDENCE_KEY, memory.memoryId, memory.currentRevisionId],
@@ -364,7 +736,7 @@ function EvidenceDrawer({ memory, enabled }: { memory: MemoryDetail; enabled: bo
         <Dialog.Description id="evidence-description">
           下面无截断展示本条记忆已经保存的全部最小必要证据；它不等于整场原对话。
         </Dialog.Description>
-        <EvidenceResult result={evidenceQuery} />
+        <EvidenceResult result={evidenceQuery} memory={memory} />
         <p className="drawer-footnote">关闭后，这些证据正文会从页面查询内存中移除。</p>
       </Dialog.Content>
     </Dialog.Portal>
@@ -373,54 +745,194 @@ function EvidenceDrawer({ memory, enabled }: { memory: MemoryDetail; enabled: bo
 
 type EvidenceQuery = ReturnType<typeof useQuery<MemoryEvidenceResponse>>;
 
-function EvidenceResult({ result }: { result: EvidenceQuery }) {
+function EvidenceResult({ result, memory }: { result: EvidenceQuery; memory: MemoryDetail }) {
   if (result.isPending) return <LoadingState scope="完整证据" />;
   if (result.isError) return <ProblemPanel problem={classifyError(result.error)} />;
   const items = [...result.data.evidenceItems].sort((a, b) => a.ordinal - b.ordinal);
   if (!items.length) return <StatePanel title="已保存证据当前不可用" copy="来源边界仍被诚实保留，页面不会用空字符串冒充原文。" compact />;
-  if (items.length === 1) return <SingleEvidence item={items[0]} />;
+
+  const segments = groupByAnchor(items);
+  const title = splitMemoryBody(memory.bodyText).title;
+  const summary = `完整证据：${segments.length} 段，共 ${items.length} 条消息${formatEvidenceTimeRange(items) ? ` · ${formatEvidenceTimeRange(items)}` : ""}`;
+
   return (
-    <div className="conversation" aria-label="多人证据记录">
-      {items.map((item) => <EvidenceMessage item={item} key={`${item.anchorId}-${item.ordinal}`} />)}
+    <>
+      <div className="evidence-summary" aria-label="完整证据摘要">
+        <p>对应记忆：<strong>{title}</strong></p>
+        <p>{summary}</p>
+      </div>
+      <EvidenceConversation items={items} />
+    </>
+  );
+}
+
+interface EvidenceItemLike {
+  anchorId: string;
+  ordinal: number;
+  displayLabel: string;
+  occurredAt: Date;
+  bodyText: string;
+  sharedByMemoryIds?: string[];
+}
+
+interface DeletionImpact {
+  sharedMemories: Array<{ memoryId: string; title: string }>;
+}
+
+function groupByAnchor<T extends EvidenceItemLike>(items: T[]) {
+  const order: string[] = [];
+  const byAnchor = new Map<string, T[]>();
+  for (const item of items) {
+    if (!byAnchor.has(item.anchorId)) {
+      byAnchor.set(item.anchorId, []);
+      order.push(item.anchorId);
+    }
+    byAnchor.get(item.anchorId)!.push(item);
+  }
+  return order.map((anchorId) => ({
+    anchorId,
+    items: byAnchor.get(anchorId)!.sort((a, b) => a.ordinal - b.ordinal),
+  }));
+}
+
+function formatTime(value: Date) {
+  return new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false }).format(value);
+}
+
+function formatEvidenceTimeRange(items: { occurredAt: Date }[]): string {
+  if (!items.length) return "";
+  const min = items.reduce((a, b) => (a.occurredAt.getTime() <= b.occurredAt.getTime() ? a : b));
+  const max = items.reduce((a, b) => (a.occurredAt.getTime() >= b.occurredAt.getTime() ? a : b));
+  const minLabel = formatDate(min.occurredAt);
+  const maxLabel = formatDate(max.occurredAt);
+  if (minLabel === maxLabel) return minLabel;
+  const sameDay = min.occurredAt.getFullYear() === max.occurredAt.getFullYear()
+    && min.occurredAt.getMonth() === max.occurredAt.getMonth()
+    && min.occurredAt.getDate() === max.occurredAt.getDate();
+  return sameDay ? `${minLabel}–${formatTime(max.occurredAt)}` : `${minLabel}–${maxLabel}`;
+}
+
+type SegmentRetention = "shared" | "exclusive" | "mixed";
+
+function segmentMemoryIds(segment: EvidenceItemLike[]): string[] {
+  return [...new Set(segment.flatMap((item) => item.sharedByMemoryIds ?? []))].sort();
+}
+
+function segmentRetention(segment: EvidenceItemLike[]): SegmentRetention {
+  const retained = segment.filter((item) => (item.sharedByMemoryIds ?? []).length > 0).length;
+  if (retained === 0) return "exclusive";
+  if (retained === segment.length) return "shared";
+  return "mixed";
+}
+
+function SegmentRetentionLabel({ segment, titleMap }: { segment: EvidenceItemLike[]; titleMap: Map<string, string> }) {
+  const retention = segmentRetention(segment);
+  const memoryIds = segmentMemoryIds(segment);
+  const sharedTitles = memoryIds
+    .map((id) => ({ id, title: titleMap.get(id) }))
+    .filter((entry): entry is { id: string; title: string } => Boolean(entry.title));
+  if (retention === "shared") {
+    return (
+      <div className="delete-segment-retention">
+        <span className="delete-segment-retention-label">删除后会保留 · 另有 {memoryIds.length} 条记忆使用</span>
+        {sharedTitles.length > 0 && (
+          <ul className="delete-segment-titles">
+            {sharedTitles.map(({ id, title }) => <li key={id}>《{title}》</li>)}
+          </ul>
+        )}
+      </div>
+    );
+  }
+  if (retention === "exclusive") {
+    return (
+      <div className="delete-segment-retention">
+        <span className="delete-segment-retention-label">删除后会清除 · 仅当前记忆使用</span>
+      </div>
+    );
+  }
+  return (
+    <div className="delete-segment-retention">
+      <span className="delete-segment-retention-label">删除后部分保留</span>
     </div>
   );
 }
 
-function SingleEvidence({ item }: { item: MemoryEvidenceItem }) {
+function EvidenceConversation({ items, deletion }: { items: EvidenceItemLike[]; deletion?: DeletionImpact }) {
+  const segments = groupByAnchor(items);
+  const titleMap = deletion ? new Map(deletion.sharedMemories.map((s) => [s.memoryId, s.title])) : undefined;
+
+  const renderMessages = (segment: { anchorId: string; items: EvidenceItemLike[] }, mixed: boolean) => (
+    <div className="conversation">
+      {segment.items.map((item) => {
+        const retained = (item.sharedByMemoryIds ?? []).length > 0;
+        const retention = mixed
+          ? (retained
+              ? `会保留${(item.sharedByMemoryIds ?? [])
+                  .map((id) => titleMap?.get(id))
+                  .filter((t): t is string => Boolean(t))
+                  .map((t) => ` · 《${t}》`)
+                  .join("")}`
+              : "会清除")
+          : undefined;
+        return (
+          <EvidenceBubble
+            key={`${item.anchorId}-${item.ordinal}`}
+            displayLabel={item.displayLabel}
+            occurredAt={item.occurredAt}
+            bodyText={item.bodyText}
+            retention={retention}
+            retained={retained}
+          />
+        );
+      })}
+    </div>
+  );
+
+  if (segments.length === 1) {
+    const segment = segments[0];
+    return (
+      <div className={deletion ? "delete-segment" : undefined}>
+        {deletion && <SegmentRetentionLabel segment={segment.items} titleMap={titleMap!} />}
+        {renderMessages(segment, deletion ? segmentRetention(segment.items) === "mixed" : false)}
+      </div>
+    );
+  }
   return (
-    <article className="single-evidence">
-      <EvidenceMeta item={item} />
-      <blockquote>{item.bodyText}</blockquote>
-    </article>
+    <>
+      {segments.map((segment, index) => (
+        <section className="evidence-segment" key={segment.anchorId} aria-label={`第 ${index + 1} 段证据`}>
+          <h3 className="evidence-segment-heading">
+            第 {index + 1} 段 · {segment.items.length} 条消息 · {formatEvidenceTimeRange(segment.items)}
+          </h3>
+          {deletion && <SegmentRetentionLabel segment={segment.items} titleMap={titleMap!} />}
+          {renderMessages(segment, deletion ? segmentRetention(segment.items) === "mixed" : false)}
+        </section>
+      ))}
+    </>
   );
 }
 
-function EvidenceMessage({ item }: { item: MemoryEvidenceItem }) {
-  const actor = actorPresentation(item);
+function EvidenceBubble({ displayLabel, occurredAt, bodyText, retention, retained }: {
+  displayLabel: string;
+  occurredAt: Date;
+  bodyText: string;
+  retention?: string;
+  retained?: boolean;
+}) {
+  const actor = actorPresentation(displayLabel);
   return (
     <article className={`evidence-message ${actor.side}`}>
-      <div><strong>{actor.label}</strong><time>{formatDate(item.occurredAt)}</time></div>
-      <p>{item.bodyText}</p>
+      <div><strong>{actor.label}</strong><time>{formatDate(occurredAt)}</time></div>
+      <p>{bodyText}</p>
+      {retention && <span className={`delete-message-retention ${retained ? "retained" : "cleared"}`}>{retention}</span>}
     </article>
   );
 }
 
-function EvidenceMeta({ item }: { item: MemoryEvidenceItem }) {
-  const actor = actorPresentation(item);
-  return (
-    <dl className="evidence-meta">
-      <div><dt>说话者</dt><dd>{actor.label}</dd></div>
-      <div><dt>时间</dt><dd>{formatDate(item.occurredAt)}</dd></div>
-      <div><dt>消息边界</dt><dd>第 {item.ordinal} 条已保存消息</dd></div>
-    </dl>
-  );
-}
-
-function actorPresentation(item: MemoryEvidenceItem) {
-  const stable = item.actorStableRef.toLocaleLowerCase();
-  if (stable.startsWith("hide:")) return { label: "hide", side: "hide" };
-  if (stable.startsWith("xiaolin:")) return { label: "小林", side: "xiaolin" };
-  return { label: "未标注参与者", side: "neutral" };
+function actorPresentation(displayLabel: string | undefined | null) {
+  if (displayLabel === "小林") return { label: "小林", side: "xiaolin" };
+  if (displayLabel === "hide") return { label: "hide", side: "hide" };
+  return { label: "未知说话者", side: "neutral" };
 }
 
 function StatusTag({ state }: { state: string }) {

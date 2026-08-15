@@ -34,6 +34,10 @@ const evidenceMessageSchema = z.strictObject({
   bodyText: z.string().min(1),
 });
 
+const evidenceSegmentSchema = z.strictObject({
+  messages: z.array(evidenceMessageSchema).min(1).max(100),
+});
+
 const candidateSchema = z.strictObject({
   perspectiveSpeakerKey: z.string().min(1).max(64),
   memoryType: memoryTypeSchema,
@@ -45,7 +49,7 @@ const toolInputSchema = z.strictObject({
   threadKey: z.string().min(1).max(128),
   userConfirmed: z.literal(true),
   candidate: candidateSchema,
-  evidenceMessages: z.array(evidenceMessageSchema).min(1).max(100),
+  evidenceSegments: z.array(evidenceSegmentSchema).min(1).max(100),
 });
 
 export function createCloseoutServer(): McpServer {

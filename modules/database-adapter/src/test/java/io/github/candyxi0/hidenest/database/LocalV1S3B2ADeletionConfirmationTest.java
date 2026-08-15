@@ -50,7 +50,7 @@ class LocalV1S3B2ADeletionConfirmationTest {
         postgres.start();
         createRoles(postgres);
         MigrateResult result = flyway(postgres).migrate();
-        assertEquals(16, result.migrationsExecuted);
+        assertEquals(17, result.migrationsExecuted);
         dsl = dsl(postgres);
     }
 
@@ -70,9 +70,9 @@ class LocalV1S3B2ADeletionConfirmationTest {
             MigrateResult second = flyway(upgrade).migrate();
             MigrateResult repeat = flyway(upgrade).migrate();
             assertEquals(12, first.migrationsExecuted);
-            assertEquals(4, second.migrationsExecuted);
+            assertEquals(5, second.migrationsExecuted);
             assertEquals(0, repeat.migrationsExecuted);
-            assertEquals(16L, scalar(upgrade, "SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+            assertEquals(17L, scalar(upgrade, "SELECT count(*) FROM public.flyway_schema_history WHERE success"));
         } finally {
             upgrade.stop();
         }
@@ -128,7 +128,7 @@ class LocalV1S3B2ADeletionConfirmationTest {
         assertEquals(0L, count("SELECT count(*) FROM memory.deletion_fence f JOIN memory.deletion_closure_member m "
                 + "ON m.closure_id=f.closure_id AND m.member_kind=f.target_kind AND m.target_id=f.target_id "
                 + "AND m.target_revision_ref IS NOT DISTINCT FROM f.target_revision_ref "
-                + "WHERE f.closure_id=? AND m.disposition='AFFECTED_PENDING_CHOICE'", fixture.closureId));
+                + "WHERE f.closure_id=? AND m.disposition='RETAIN_SHARED'", fixture.closureId));
     }
 
     @Test
@@ -336,7 +336,7 @@ class LocalV1S3B2ADeletionConfirmationTest {
             members.add(new MemberSpec(kind, id, revision));
         }
         if (includeAffected) {
-            dsl.execute("INSERT INTO memory.deletion_closure_member(closure_id,ordinal,member_kind,target_id,disposition) VALUES (?,99,'AFFECTED_MEMORY',?,'AFFECTED_PENDING_CHOICE')",
+            dsl.execute("INSERT INTO memory.deletion_closure_member(closure_id,ordinal,member_kind,target_id,disposition) VALUES (?,99,'SHARED_REFERENCE',?,'RETAIN_SHARED')",
                     closureId, UUID.randomUUID());
         }
         members.sort(java.util.Comparator.comparing(MemberSpec::kind));

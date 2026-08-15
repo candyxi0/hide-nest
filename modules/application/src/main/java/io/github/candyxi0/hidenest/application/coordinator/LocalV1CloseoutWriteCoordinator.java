@@ -25,8 +25,10 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -390,7 +392,6 @@ public class LocalV1CloseoutWriteCoordinator {
 
         ThreadReaderManifest manifest = request.threadReaderManifest();
         if (!SCHEMA_VERSION.equals(manifest.schemaVersion())
-                || !manifest.continuous()
                 || manifest.fromOrdinal() == null
                 || manifest.toOrdinal() == null
                 || manifest.fromOrdinal() < 0
@@ -405,6 +406,8 @@ public class LocalV1CloseoutWriteCoordinator {
         Set<UUID> selectedUnits = new HashSet<>();
         Set<UUID> selectedActors = new HashSet<>();
         Set<Long> selectedOrdinals = new HashSet<>();
+        Map<UUID, Long> ordinalByUnit = new HashMap<>();
+        Long previousOrdinal = null;
         for (EvidenceMessage message : manifest.selectedEvidenceMessages()) {
             if (message.sourceUnitId() == null || message.actorId() == null) {
                 throw schema();
@@ -422,6 +425,12 @@ public class LocalV1CloseoutWriteCoordinator {
             if (message.ordinal() < manifest.fromOrdinal() || message.ordinal() > manifest.toOrdinal()) {
                 throw new LocalV1CloseoutException(LocalV1CloseoutException.Code.SOURCE_RANGE_GAP);
             }
+            // R4-R1: request-order ordinals must be strictly increasing (no duplicates, no descending).
+            if (previousOrdinal != null && message.ordinal() <= previousOrdinal) {
+                throw new LocalV1CloseoutException(LocalV1CloseoutException.Code.SOURCE_ORDER_INVALID);
+            }
+            previousOrdinal = message.ordinal();
+            ordinalByUnit.put(message.sourceUnitId(), message.ordinal());
             if (message.externalUnitRef() == null
                     || message.externalUnitRef().isEmpty()
                     || message.externalUnitRef().length() > 256
@@ -437,6 +446,15 @@ public class LocalV1CloseoutWriteCoordinator {
             }
         }
 
+        // R4-R1: fromOrdinal/toOrdinal must equal the true first/last selected ordinal.
+        EvidenceMessage firstMessage = manifest.selectedEvidenceMessages().get(0);
+        EvidenceMessage lastMessage =
+                manifest.selectedEvidenceMessages().get(manifest.selectedEvidenceMessages().size() - 1);
+        if (!firstMessage.ordinal().equals(manifest.fromOrdinal())
+                || !lastMessage.ordinal().equals(manifest.toOrdinal())) {
+            throw new LocalV1CloseoutException(LocalV1CloseoutException.Code.SOURCE_RANGE_GAP);
+        }
+
         // Thread reader manifest hash must bind the actual selected evidence messages.
         if (!constantTimeEquals(
                 LocalV1CloseoutCanonicalizer.threadManifestHash(manifest), manifest.manifestHash())) {
@@ -449,7 +467,12 @@ public class LocalV1CloseoutWriteCoordinator {
             throw schema();
         }
 
-        validateAnchors(request.sourceAnchors(), selectedUnits);
+        validateAnchors(request.sourceAnchors(), selectedUnits, ordinalByUnit);
+
+        // R4-R1: continuous must be exactly "single anchor".
+        if (manifest.continuous() != (request.sourceAnchors().size() == 1)) {
+            throw schema();
+        }
 
         // The confirmation source unit must never be mixed into selected evidence.
         if (selectedUnits.contains(request.userConfirmation().confirmationSourceUnitId())) {
@@ -500,11 +523,14 @@ public class LocalV1CloseoutWriteCoordinator {
         }
     }
 
-    private void validateAnchors(List<SourceAnchor> anchors, Set<UUID> selectedUnits) {
+    private void validateAnchors(
+            List<SourceAnchor> anchors, Set<UUID> selectedUnits, Map<UUID, Long> ordinalByUnit) {
         if (anchors == null || anchors.isEmpty()) {
             throw schema();
         }
         Set<UUID> anchorIds = new HashSet<>();
+        Set<UUID> partitionedUnits = new HashSet<>();
+        Long previousAnchorLastOrdinal = null;
         for (SourceAnchor anchor : anchors) {
             if (anchor.anchorId() == null || !anchorIds.add(anchor.anchorId())) {
                 throw schema();
@@ -515,9 +541,17 @@ public class LocalV1CloseoutWriteCoordinator {
                 throw schema();
             }
             Set<UUID> anchorUnits = new HashSet<>();
+            Set<Long> anchorOrdinals = new HashSet<>();
+            Long previousUnitOrdinal = null;
+            Long anchorFirstOrdinal = null;
+            Long anchorLastOrdinal = null;
             for (AnchorUnit unit : anchor.units()) {
                 if (unit.sourceUnitId() == null || !anchorUnits.add(unit.sourceUnitId())) {
                     throw schema();
+                }
+                // R4-R1: each selected source unit is partitioned into exactly one anchor.
+                if (!partitionedUnits.add(unit.sourceUnitId())) {
+                    throw new LocalV1CloseoutException(LocalV1CloseoutException.Code.SOURCE_ORDER_INVALID);
                 }
                 boolean fromNull = unit.fromOffset() == null;
                 boolean toNull = unit.toOffset() == null;
@@ -530,10 +564,38 @@ public class LocalV1CloseoutWriteCoordinator {
                 if (unit.ordinal() == null || unit.ordinal() < 0) {
                     throw schema();
                 }
-                if (!selectedUnits.contains(unit.sourceUnitId())) {
-                    throw schema(); // anchor references an unselected source unit
+                if (!anchorOrdinals.add(unit.ordinal())) {
+                    throw schema(); // duplicate ordinal within one anchor
+                }
+                // R4-R1: an anchor unit ordinal must bind to the corresponding selected message ordinal.
+                Long messageOrdinal = ordinalByUnit.get(unit.sourceUnitId());
+                if (messageOrdinal == null || !unit.ordinal().equals(messageOrdinal)) {
+                    throw new LocalV1CloseoutException(LocalV1CloseoutException.Code.SOURCE_ORDER_INVALID);
+                }
+                // R4-R1: within an anchor ordinals are strictly increasing and contiguous.
+                if (previousUnitOrdinal != null && unit.ordinal() != previousUnitOrdinal + 1) {
+                    throw new LocalV1CloseoutException(LocalV1CloseoutException.Code.SOURCE_ORDER_INVALID);
+                }
+                previousUnitOrdinal = unit.ordinal();
+                if (anchorFirstOrdinal == null) {
+                    anchorFirstOrdinal = unit.ordinal();
+                }
+                anchorLastOrdinal = unit.ordinal();
+            }
+            // R4-R1: anchors are first-ordinal ascending, non-overlapping and never adjacent.
+            if (previousAnchorLastOrdinal != null) {
+                if (anchorFirstOrdinal <= previousAnchorLastOrdinal) {
+                    throw new LocalV1CloseoutException(LocalV1CloseoutException.Code.SOURCE_ORDER_INVALID);
+                }
+                if (anchorFirstOrdinal == previousAnchorLastOrdinal + 1) {
+                    throw new LocalV1CloseoutException(LocalV1CloseoutException.Code.SOURCE_ORDER_INVALID);
                 }
             }
+            previousAnchorLastOrdinal = anchorLastOrdinal;
+        }
+        // R4-R1: every selected unit is partitioned (no missing, no extra).
+        if (!partitionedUnits.equals(selectedUnits)) {
+            throw new LocalV1CloseoutException(LocalV1CloseoutException.Code.SOURCE_ORDER_INVALID);
         }
     }
 

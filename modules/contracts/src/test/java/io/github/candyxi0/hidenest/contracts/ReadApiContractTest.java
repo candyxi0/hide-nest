@@ -33,19 +33,22 @@ class ReadApiContractTest {
         JsonNode detail = required(schemas.get("MemoryDetail"), "MemoryDetail schema");
 
         assertEquals(Set.of(
-                "memoryId", "currentRevisionId", "revisionNo", "state", "memoryType",
-                "perspectiveActorId", "bodyText", "updatedAt", "evidenceCount", "uncertaintyCode"),
+                "memoryId", "currentRevisionId", "revisionNo", "currentPolicyRevisionNo", "state",
+                "memoryType", "perspectiveActorId", "bodyText", "updatedAt", "evidenceCount", "uncertaintyCode"),
                 propertyNames(detail.get("properties")),
                 "MemoryDetail properties set mismatch");
 
         assertEquals(Set.of(
-                "memoryId", "currentRevisionId", "revisionNo", "state", "memoryType",
-                "perspectiveActorId", "bodyText", "updatedAt", "evidenceCount"),
+                "memoryId", "currentRevisionId", "revisionNo", "currentPolicyRevisionNo", "state",
+                "memoryType", "perspectiveActorId", "bodyText", "updatedAt", "evidenceCount"),
                 requiredNames(detail),
                 "MemoryDetail required set mismatch");
 
         assertEquals("integer", detail.at("/properties/revisionNo/type").asText());
         assertEquals(1, detail.at("/properties/revisionNo/minimum").asInt());
+        assertEquals("integer", detail.at("/properties/currentPolicyRevisionNo/type").asText());
+        assertEquals("int64", detail.at("/properties/currentPolicyRevisionNo/format").asText());
+        assertEquals(1, detail.at("/properties/currentPolicyRevisionNo/minimum").asInt());
         assertEquals("integer", detail.at("/properties/evidenceCount/type").asText());
         assertEquals(0, detail.at("/properties/evidenceCount/minimum").asInt());
         assertEquals("string", detail.at("/properties/updatedAt/type").asText());
@@ -62,18 +65,19 @@ class ReadApiContractTest {
 
         assertEquals(Set.of(
                 "anchorId", "sourceUnitId", "ordinal", "actorId", "actorKind",
-                "actorStableRef", "occurredAt", "bodyText"),
+                "actorStableRef", "displayLabel", "occurredAt", "bodyText"),
                 propertyNames(item.get("properties")),
                 "MemoryEvidenceItem properties set mismatch");
 
         assertEquals(Set.of(
                 "anchorId", "sourceUnitId", "ordinal", "actorId", "actorKind",
-                "actorStableRef", "occurredAt", "bodyText"),
+                "actorStableRef", "displayLabel", "occurredAt", "bodyText"),
                 requiredNames(item),
                 "MemoryEvidenceItem must have all fields required");
 
         assertEquals("integer", item.at("/properties/ordinal/type").asText());
         assertEquals(0, item.at("/properties/ordinal/minimum").asInt());
+        assertEquals("string", item.at("/properties/displayLabel/type").asText());
         assertEquals("string", item.at("/properties/occurredAt/type").asText());
         assertEquals("date-time", item.at("/properties/occurredAt/format").asText());
         assertFalse(item.at("/additionalProperties").asBoolean(true),
@@ -168,6 +172,7 @@ class ReadApiContractTest {
                     "        - memoryId\n" +
                     "        - currentRevisionId\n" +
                     "        - revisionNo\n" +
+                    "        - currentPolicyRevisionNo\n" +
                     "        - state\n" +
                     "        - memoryType\n" +
                     "        - perspectiveActorId\n" +

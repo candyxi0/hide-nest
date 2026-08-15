@@ -54,18 +54,22 @@ function validArgs() {
       memoryType: "EVENT",
       bodyText: `${BODY_CANARY}确认了合成记忆候选`,
     },
-    evidenceMessages: [
+    evidenceSegments: [
       {
-        speakerKey: "xiaolin",
-        ordinal: 0,
-        occurredAt: "2026-08-13T12:00:00+08:00",
-        bodyText: `${EVIDENCE_CANARY}一`,
-      },
-      {
-        speakerKey: "hide",
-        ordinal: 1,
-        occurredAt: "2026-08-13T12:01:00+08:00",
-        bodyText: "证据消息二",
+        messages: [
+          {
+            speakerKey: "xiaolin",
+            ordinal: 0,
+            occurredAt: "2026-08-13T12:00:00+08:00",
+            bodyText: `${EVIDENCE_CANARY}一`,
+          },
+          {
+            speakerKey: "hide",
+            ordinal: 1,
+            occurredAt: "2026-08-13T12:01:00+08:00",
+            bodyText: "证据消息二",
+          },
+        ],
       },
     ],
   };

@@ -1028,6 +1028,8 @@ components:
         - previewRevision
         - manifestHash
         - closureMembers
+        - evidence
+        - sharedMemories
       properties:
         requestId:
           type: string
@@ -1047,6 +1049,70 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DeletionClosureMember"
+        evidence:
+          description: Complete saved evidence messages bound to this preview closure.
+          type: array
+          items:
+            $ref: "#/components/schemas/DeletionEvidenceItem"
+        sharedMemories:
+          description: Other normative memories that still reference the same evidence, with authorized titles.
+          type: array
+          items:
+            $ref: "#/components/schemas/DeletionSharedMemory"
+      additionalProperties: false
+
+    DeletionEvidenceItem:
+      type: object
+      required:
+        - anchorId
+        - ordinal
+        - actorId
+        - actorStableRef
+        - displayLabel
+        - occurredAt
+        - bodyText
+        - sharedByMemoryIds
+      properties:
+        anchorId:
+          type: string
+          format: uuid
+        ordinal:
+          type: integer
+          minimum: 0
+        actorId:
+          type: string
+          format: uuid
+        actorStableRef:
+          type: string
+        displayLabel:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        bodyText:
+          type: string
+        sharedByMemoryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+      additionalProperties: false
+
+    DeletionSharedMemory:
+      type: object
+      required:
+        - memoryId
+        - revisionNo
+        - title
+      properties:
+        memoryId:
+          type: string
+          format: uuid
+        revisionNo:
+          type: integer
+          minimum: 1
+        title:
+          type: string
       additionalProperties: false
 
     DeletionClosureMember:
@@ -1213,6 +1279,7 @@ components:
         - memoryId
         - currentRevisionId
         - revisionNo
+        - currentPolicyRevisionNo
         - state
         - memoryType
         - perspectiveActorId
@@ -1228,6 +1295,10 @@ components:
           format: uuid
         revisionNo:
           type: integer
+          minimum: 1
+        currentPolicyRevisionNo:
+          type: integer
+          format: int64
           minimum: 1
         state:
           $ref: "#/components/schemas/MemoryState"
@@ -1294,6 +1365,7 @@ components:
         - actorId
         - actorKind
         - actorStableRef
+        - displayLabel
         - occurredAt
         - bodyText
       properties:
@@ -1312,6 +1384,8 @@ components:
         actorKind:
           type: string
         actorStableRef:
+          type: string
+        displayLabel:
           type: string
         occurredAt:
           type: string

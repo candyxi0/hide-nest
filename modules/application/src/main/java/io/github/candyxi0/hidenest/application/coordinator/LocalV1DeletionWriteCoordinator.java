@@ -3,6 +3,7 @@ package io.github.candyxi0.hidenest.application.coordinator;
 import io.github.candyxi0.hidenest.application.model.LocalV1DeletionPreviewResult;
 import io.github.candyxi0.hidenest.application.model.LocalV1RunStatus;
 import io.github.candyxi0.hidenest.application.model.LocalV1S3ADeletionPreviewRequest;
+import io.github.candyxi0.hidenest.application.model.LocalV1S3ADeletionPreviewResult;
 import io.github.candyxi0.hidenest.application.model.LocalV1S3B2BDeletionConfirmRequest;
 import io.github.candyxi0.hidenest.memory.port.DeletionBindingPort;
 import io.github.candyxi0.hidenest.memory.port.DeletionExecutionPort;
@@ -82,8 +83,9 @@ public final class LocalV1DeletionWriteCoordinator {
             throw new LocalV1DeletionException(LocalV1DeletionException.Code.DELETION_PREVIEW_STALE);
         }
 
+        LocalV1S3ADeletionPreviewResult previewResult;
         try {
-            previewCoordinator.preview(new LocalV1S3ADeletionPreviewRequest(targetId, idempotencyKey, requestHash));
+            previewResult = previewCoordinator.preview(new LocalV1S3ADeletionPreviewRequest(targetId, idempotencyKey, requestHash));
         } catch (LocalV1S3AException ex) {
             throw mapS3A(ex);
         }
@@ -93,7 +95,8 @@ public final class LocalV1DeletionWriteCoordinator {
             throw new LocalV1DeletionException(LocalV1DeletionException.Code.INTERNAL_FAILURE);
         }
         return new LocalV1DeletionPreviewResult(
-                existing.previewId(), existing.previewRevision(), existing.manifestHash(), existing.members());
+                existing.previewId(), existing.previewRevision(), existing.manifestHash(), existing.members(),
+                previewResult.evidence(), previewResult.sharedMemories());
     }
 
     // ── confirm ────────────────────────────────────────────────────────────

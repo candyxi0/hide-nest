@@ -101,6 +101,7 @@ public class LocalV1S2BQueryCoordinator {
                 current.revision().memoryRevisionId(),
                 current.record().state(),
                 current.revision().revisionNo(),
+                current.record().currentPolicyRevisionNo(),
                 current.revision().memoryType(),
                 current.revision().perspectiveActorId(),
                 current.revision().bodyText(),
@@ -234,6 +235,7 @@ public class LocalV1S2BQueryCoordinator {
                                 actor.actorId(),
                                 actor.actorKind(),
                                 actor.stableRef(),
+                                actor.displayLabel(),
                                 sourceUnit.occurredAt(),
                                 text)));
             }

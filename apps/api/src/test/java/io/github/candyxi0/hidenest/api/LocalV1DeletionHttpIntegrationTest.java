@@ -98,7 +98,7 @@ class LocalV1DeletionHttpIntegrationTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(16, Flyway.configure()
+        assertEquals(17, Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), USER, password)
                 .defaultSchema("public")
                 .locations("classpath:db/migration")
@@ -601,6 +601,127 @@ class LocalV1DeletionHttpIntegrationTest {
         assertTrue(countRows("SELECT 1 FROM runtime.deletion_run WHERE deletion_run_id=?::uuid", runId) >= 1);
     }
 
+    // ── 11. shared-evidence fixture: A/B share, no orphans, delete A → B → C retained ──
+
+    @Test
+    @Order(11)
+    void sharedEvidenceFixtureDeleteFlow() throws Exception {
+        long anchorsBefore = countRows("SELECT 1 FROM evidence.source_anchor");
+        long unitsBefore = countRows("SELECT 1 FROM evidence.source_unit");
+        long payloadsBefore = countRows("SELECT 1 FROM evidence.source_payload");
+
+        Response seed = post("/v1/deletion-fixtures", null, TOKEN, CAPABILITY, null);
+        assertEquals(200, seed.status());
+        JsonNode seedJson = JSON.readTree(seed.body());
+        UUID memoryA = UUID.fromString(seedJson.get("memoryA").asText());
+        UUID memoryB = UUID.fromString(seedJson.get("memoryB").asText());
+        UUID memoryC = UUID.fromString(seedJson.get("memoryC").asText());
+        assertEquals("SHARED_FIXTURE_NOT_PROOF_OF_MULTI_CANDIDATE_CLOSEOUT", seedJson.get("sharedFixtureBoundary").asText());
+
+        // No B-exclusive orphans: net new evidence is A(2) + C(1), not A(2)+B(1)+C(1).
+        assertEquals(anchorsBefore + 3, countRows("SELECT 1 FROM evidence.source_anchor"));
+        assertEquals(unitsBefore + 3, countRows("SELECT 1 FROM evidence.source_unit"));
+        assertEquals(payloadsBefore + 3, countRows("SELECT 1 FROM evidence.source_payload"));
+
+        // A and B share exactly one anchor/unit/payload.
+        String sharedAnchor = scalar("SELECT to_anchor_id::text FROM memory.memory_relation WHERE relation_type='EVIDENCED_BY' GROUP BY to_anchor_id HAVING count(*) > 1");
+        assertNotNull(sharedAnchor);
+        String sharedUnit = scalar("SELECT source_unit_id::text FROM evidence.source_anchor_unit WHERE anchor_id=?::uuid", UUID.fromString(sharedAnchor));
+        String sharedPayload = scalar("SELECT payload_id::text FROM evidence.source_payload WHERE source_unit_id=?::uuid", UUID.fromString(sharedUnit));
+        String sharedObjectRef = scalar("SELECT object_ref FROM evidence.source_payload WHERE payload_id=?::uuid", UUID.fromString(sharedPayload));
+
+        // Preview A: the shared segment carries sharedByMemoryIds=[B]; the exclusive segment is empty.
+        long[] factsA = readFacts(memoryA);
+        String requestHashA = LocalV1DeletionCanonicalizer.requestHashHex(memoryA, factsA[0], factsA[1]);
+        Response previewA = post("/v1/deletion-previews",
+                previewBody(memoryA, factsA[0], factsA[1], requestHashA), TOKEN, null, UUID.randomUUID().toString());
+        assertEquals(200, previewA.status());
+        JsonNode previewABody = JSON.readTree(previewA.body());
+        JsonNode previewSharedMemories = previewABody.get("sharedMemories");
+        assertEquals(1, previewSharedMemories.size());
+        assertEquals(memoryB.toString(), previewSharedMemories.get(0).get("memoryId").asText());
+        JsonNode previewEvidenceA = previewABody.get("evidence");
+        assertEquals(2, previewEvidenceA.size());
+        for (JsonNode item : previewEvidenceA) {
+            if (item.get("ordinal").asLong() == 1L) {
+                assertEquals(1, item.get("sharedByMemoryIds").size());
+                assertEquals(memoryB.toString(), item.get("sharedByMemoryIds").get(0).asText());
+            } else {
+                assertEquals(0, item.get("sharedByMemoryIds").size());
+            }
+        }
+
+        // Delete A: B + shared payload retained.
+        deleteMemory(memoryA);
+        assertProblem(get("/v1/memories/" + memoryA, TOKEN), 404, "RETRIEVAL_NO_MATCH");
+        assertEquals(200, get("/v1/memories/" + memoryB, TOKEN).status());
+        assertEquals(1L, countRows("SELECT 1 FROM evidence.source_payload WHERE payload_id=?::uuid", UUID.fromString(sharedPayload)));
+        assertTrue(Files.exists(payloadRoot.resolve(sharedObjectRef)), "shared payload file retained after deleting A");
+
+        // Delete B: shared anchor/unit/payload metadata + file finally cleared.
+        deleteMemory(memoryB);
+        assertEquals(0L, countRows("SELECT 1 FROM evidence.source_anchor WHERE anchor_id=?::uuid", UUID.fromString(sharedAnchor)));
+        assertEquals(0L, countRows("SELECT 1 FROM evidence.source_unit WHERE source_unit_id=?::uuid", UUID.fromString(sharedUnit)));
+        assertEquals(0L, countRows("SELECT 1 FROM evidence.source_payload WHERE payload_id=?::uuid", UUID.fromString(sharedPayload)));
+        assertFalse(Files.exists(payloadRoot.resolve(sharedObjectRef)), "shared payload file cleared after deleting B");
+
+        // C untouched.
+        assertEquals(200, get("/v1/memories/" + memoryC, TOKEN).status());
+    }
+
+    // ── 12. closeout evidence + deletion preview return formal display names ──
+
+    @Test
+    @Order(12)
+    void closeoutEvidenceAndPreviewReturnDisplayNames() throws Exception {
+        Built built = buildCloseout("display-names");
+        UUID submissionId = built.submission().submissionId();
+        Response closeout = post("/v1/closeout-submissions", built.json(), TOKEN, CAPABILITY, submissionId.toString());
+        assertEquals(202, closeout.status());
+        UUID memoryId = deterministicId("memory:", submissionId);
+
+        Response evidence = get("/v1/memories/" + memoryId + "/evidence", TOKEN);
+        assertEquals(200, evidence.status());
+        JsonNode evidenceItems = JSON.readTree(evidence.body()).get("evidenceItems");
+        assertEquals(2, evidenceItems.size());
+        assertEquals("hide", evidenceItems.get(0).get("displayLabel").asText());
+        assertEquals("小林", evidenceItems.get(1).get("displayLabel").asText());
+
+        long[] facts = readFacts(memoryId);
+        String requestHashHex = LocalV1DeletionCanonicalizer.requestHashHex(memoryId, facts[0], facts[1]);
+        Response preview = post("/v1/deletion-previews",
+                previewBody(memoryId, facts[0], facts[1], requestHashHex), TOKEN, null, UUID.randomUUID().toString());
+        assertEquals(200, preview.status());
+        JsonNode previewEvidence = JSON.readTree(preview.body()).get("evidence");
+        assertEquals(2, previewEvidence.size());
+        assertEquals("hide", previewEvidence.get(0).get("displayLabel").asText());
+        assertEquals("小林", previewEvidence.get(1).get("displayLabel").asText());
+
+        // Deletion preview must carry the same real anchor ids and ordering as read/evidence.
+        for (int i = 0; i < 2; i++) {
+            assertEquals(evidenceItems.get(i).get("anchorId").asText(),
+                    previewEvidence.get(i).get("anchorId").asText());
+            assertEquals(evidenceItems.get(i).get("ordinal").asLong(),
+                    previewEvidence.get(i).get("ordinal").asLong());
+        }
+    }
+
+    private static void deleteMemory(UUID memoryId) throws Exception {
+        long[] facts = readFacts(memoryId);
+        String requestHashHex = LocalV1DeletionCanonicalizer.requestHashHex(memoryId, facts[0], facts[1]);
+        Response preview = post("/v1/deletion-previews",
+                previewBody(memoryId, facts[0], facts[1], requestHashHex), TOKEN, null, UUID.randomUUID().toString());
+        assertEquals(200, preview.status());
+        JsonNode previewJson = JSON.readTree(preview.body());
+        UUID previewId = UUID.fromString(previewJson.get("previewId").asText());
+        long previewRevision = previewJson.get("previewRevision").asLong();
+        String manifestHash = previewJson.get("manifestHash").asText();
+        Response confirm = post("/v1/deletion-previews/" + previewId + "/confirm",
+                confirmBody(memoryId, facts[0], facts[1], requestHashHex, previewId, previewRevision, manifestHash),
+                TOKEN, CAPABILITY, UUID.randomUUID().toString());
+        assertEquals(202, confirm.status());
+    }
+
     // ── helpers ─────────────────────────────────────────────────────────────
 
     private static ConfigurableApplicationContext startApi(String address, String password) {
@@ -839,9 +960,8 @@ class LocalV1DeletionHttpIntegrationTest {
         UUID actor2 = deterministicId("a2:", submissionId);
         UUID perspectiveActor = actor2;
         UUID anchor1 = deterministicId("anchor1:", submissionId);
-        UUID anchor2 = deterministicId("anchor2:", submissionId);
-        String msg1 = "协作者：只保存必要证据";
-        String msg2 = "小林：已确认本版";
+        String msg1 = "只保存必要证据";
+        String msg2 = "已确认本版";
 
         EvidenceMessage m1 = new EvidenceMessage(msg1Unit, actor1, 1L, "unit-" + marker + "-1",
                 OffsetDateTime.parse("2026-08-12T09:30:00Z"), msg1, sha256Hex(msg1));
@@ -857,8 +977,7 @@ class LocalV1DeletionHttpIntegrationTest {
         UserConfirmation placeholder = new UserConfirmation("CONFIRM", "", confirmationUnit);
         List<SourceAnchor> anchors = List.of(
                 new SourceAnchor(anchor1, List.of(
-                        new AnchorUnit(msg1Unit, 0L, (long) msg1.codePointCount(0, msg1.length()), 1L))),
-                new SourceAnchor(anchor2, List.of(
+                        new AnchorUnit(msg1Unit, 0L, (long) msg1.codePointCount(0, msg1.length()), 1L),
                         new AnchorUnit(msg2Unit, 0L, (long) msg2.codePointCount(0, msg2.length()), 2L))));
 
         LocalV1CloseoutSubmission provisional = new LocalV1CloseoutSubmission(

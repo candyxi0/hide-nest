@@ -27,6 +27,20 @@ import {
     DeletionClosureMemberToJSON,
     DeletionClosureMemberToJSONTyped,
 } from './DeletionClosureMember.js';
+import type { DeletionEvidenceItem } from './DeletionEvidenceItem.js';
+import {
+    DeletionEvidenceItemFromJSON,
+    DeletionEvidenceItemFromJSONTyped,
+    DeletionEvidenceItemToJSON,
+    DeletionEvidenceItemToJSONTyped,
+} from './DeletionEvidenceItem.js';
+import type { DeletionSharedMemory } from './DeletionSharedMemory.js';
+import {
+    DeletionSharedMemoryFromJSON,
+    DeletionSharedMemoryFromJSONTyped,
+    DeletionSharedMemoryToJSON,
+    DeletionSharedMemoryToJSONTyped,
+} from './DeletionSharedMemory.js';
 
 /**
  * 
@@ -70,6 +84,18 @@ export interface DeletionPreviewResponse {
      * @memberof DeletionPreviewResponse
      */
     closureMembers: Array<DeletionClosureMember>;
+    /**
+     * Complete saved evidence messages bound to this preview closure.
+     * @type {Array<DeletionEvidenceItem>}
+     * @memberof DeletionPreviewResponse
+     */
+    evidence: Array<DeletionEvidenceItem>;
+    /**
+     * Other normative memories that still reference the same evidence, with authorized titles.
+     * @type {Array<DeletionSharedMemory>}
+     * @memberof DeletionPreviewResponse
+     */
+    sharedMemories: Array<DeletionSharedMemory>;
 }
 
 
@@ -84,6 +110,8 @@ export function instanceOfDeletionPreviewResponse(value: object): value is Delet
     if (!('previewRevision' in value) || value['previewRevision'] === undefined) return false;
     if (!('manifestHash' in value) || value['manifestHash'] === undefined) return false;
     if (!('closureMembers' in value) || value['closureMembers'] === undefined) return false;
+    if (!('evidence' in value) || value['evidence'] === undefined) return false;
+    if (!('sharedMemories' in value) || value['sharedMemories'] === undefined) return false;
     return true;
 }
 
@@ -103,6 +131,8 @@ export function DeletionPreviewResponseFromJSONTyped(json: any, ignoreDiscrimina
         'previewRevision': json['previewRevision'],
         'manifestHash': json['manifestHash'],
         'closureMembers': ((json['closureMembers'] as Array<any>).map(DeletionClosureMemberFromJSON)),
+        'evidence': ((json['evidence'] as Array<any>).map(DeletionEvidenceItemFromJSON)),
+        'sharedMemories': ((json['sharedMemories'] as Array<any>).map(DeletionSharedMemoryFromJSON)),
     };
 }
 
@@ -123,6 +153,8 @@ export function DeletionPreviewResponseToJSONTyped(value?: DeletionPreviewRespon
         'previewRevision': value['previewRevision'],
         'manifestHash': value['manifestHash'],
         'closureMembers': ((value['closureMembers'] as Array<any>).map(DeletionClosureMemberToJSON)),
+        'evidence': ((value['evidence'] as Array<any>).map(DeletionEvidenceItemToJSON)),
+        'sharedMemories': ((value['sharedMemories'] as Array<any>).map(DeletionSharedMemoryToJSON)),
     };
 }
 

@@ -77,7 +77,7 @@ class LocalV1S3B1DeletionFenceTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(16, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, postgres.getPassword())
+        assertEquals(17, Flyway.configure().dataSource(postgres.getJdbcUrl(), USER, postgres.getPassword())
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load()
                 .migrate().migrationsExecuted);
         DefaultConfiguration configuration = new DefaultConfiguration();
@@ -135,11 +135,11 @@ class LocalV1S3B1DeletionFenceTest {
                         UUID.randomUUID(), missingMember.closureId(), "MEMORY", UUID.randomUUID(), null,
                         missingMember.decisionId(), missingMember.createdAt())))));
 
-        Fixture affected = fixture("AFFECTED_MEMORY", null);
-        assertFenced(new AttackCase("affected pending choice must not become a fence", () ->
+        Fixture retained = fixture("SHARED_REFERENCE", null);
+        assertFenced(new AttackCase("retained shared reference must not become a fence", () ->
                 fences.insertFences(List.of(new DeletionFencePort.FenceDraft(
-                        affected.fenceId(), affected.closureId(), "MEMORY", affected.targetId(), null,
-                        affected.decisionId(), affected.createdAt())))));
+                        retained.fenceId(), retained.closureId(), "MEMORY", retained.targetId(), null,
+                        retained.decisionId(), retained.createdAt())))));
 
         Fixture wrongDecisionKind = fixture(
                 "MEMORY", UUID.randomUUID(), null, "USER_ARCHIVE", "DELETION_CLOSURE",
@@ -200,7 +200,8 @@ class LocalV1S3B1DeletionFenceTest {
             @Override public void insertPreview(PreviewDraft draft) { throw new AssertionError("must not write"); }
         };
         LocalV1S3ADeletionPreviewCoordinator coordinator = new LocalV1S3ADeletionPreviewCoordinator(
-                port, immediateTransactions(), Clock.fixed(Instant.parse("2026-08-12T00:00:00Z"), ZoneId.of("UTC")), fences);
+                port, immediateTransactions(), Clock.fixed(Instant.parse("2026-08-12T00:00:00Z"), ZoneId.of("UTC")), fences,
+                new LocalPayloadStore(payloadRoot));
         LocalV1S3AException error = assertThrows(LocalV1S3AException.class, () -> coordinator.preview(
                 new LocalV1S3ADeletionPreviewRequest(fixture.targetId(), "fenced-root", new byte[32])));
         assertEquals(LocalV1S3AException.Code.DELETION_FENCED, error.code());
@@ -362,7 +363,7 @@ class LocalV1S3B1DeletionFenceTest {
             String kind, UUID targetId, Long revisionRef, String decisionKind, String decisionTargetKind) {
         String disposition = "MEMORY".equals(kind) || "MEMORY_REVISION".equals(kind)
                 ? "DELETE_REQUESTED"
-                : "AFFECTED_MEMORY".equals(kind) ? "AFFECTED_PENDING_CHOICE" : "DELETE_CANDIDATE";
+                : "SHARED_REFERENCE".equals(kind) ? "RETAIN_SHARED" : "DELETE_CANDIDATE";
         return fixture(kind, targetId, revisionRef, decisionKind, decisionTargetKind,
                 disposition, true, 7L);
     }

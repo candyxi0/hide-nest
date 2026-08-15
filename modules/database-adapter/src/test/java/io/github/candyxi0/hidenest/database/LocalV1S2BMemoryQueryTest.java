@@ -102,7 +102,7 @@ class LocalV1S2BMemoryQueryTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(16, Flyway.configure()
+        assertEquals(17, Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), USER, password)
                 .defaultSchema("public")
                 .locations("classpath:db/migration")
@@ -175,6 +175,16 @@ class LocalV1S2BMemoryQueryTest {
         assertEquals(fixture.actorOne(), full.messages().get(0).actorId());
         assertEquals("SYNTHETIC", full.messages().get(0).actorKind());
         assertEquals("a-" + fixture.actorOne(), full.messages().get(0).actorStableRef());
+    }
+
+    @Test
+    void currentPolicyRevisionComesFromDatabaseNotRevisionNo() {
+        Fixture fixture = createMemory("s2b-policy-rev", "策略版本来自数据库");
+        bumpPolicyRevision(fixture, 7L);
+
+        var detail = query.getMemoryDetail(fixture.memoryId());
+        assertEquals(7L, detail.currentPolicyRevisionNo());
+        assertEquals(1L, detail.revisionNo());
     }
 
     @Test
@@ -484,6 +494,57 @@ class LocalV1S2BMemoryQueryTest {
                 .formatted(UUID.randomUUID(), decisionId, fixture.memoryId(), manifest, changeId));
         dsl.execute("UPDATE memory.memory_record SET state='ARCHIVED', updated_at=clock_timestamp() WHERE memory_id=?",
                 fixture.memoryId());
+    }
+
+    /** Governed policy revision bump mirroring the canonical publish/isolation writes. */
+    private void bumpPolicyRevision(Fixture fixture, long newPolicyRevision) {
+        UUID policyId = dsl.fetchOne(
+                        "SELECT policy_id FROM memory.memory_record WHERE memory_id=?", fixture.memoryId())
+                .get("policy_id", UUID.class);
+        UUID decisionId = UUID.randomUUID();
+        UUID policyChangeId = UUID.randomUUID();
+        UUID memoryPolicyChangeId = UUID.randomUUID();
+        String manifestHash = "00".repeat(32);
+
+        dsl.execute(("INSERT INTO memory.decision(decision_id,decision_kind,actor_id,actor_role,target_kind,target_id,"
+                        + "target_revision_ref,authorization_ref,idempotency_key,created_at) VALUES "
+                        + "('%s','USER_ISOLATE','%s','USER','MEMORY','%s',1,'s2b-policy','%s',clock_timestamp())")
+                .formatted(decisionId, fixture.actorOne(), fixture.memoryId(), "s2b-policy-" + decisionId));
+
+        dsl.execute(("INSERT INTO memory.change_event(change_event_id,event_type,target_kind,target_id,target_revision_ref,"
+                        + "decision_id,occurred_at) VALUES ('%s','memory.policy-changed.v1','ACCESS_POLICY','%s',%d,'%s',clock_timestamp())")
+                .formatted(policyChangeId, policyId, newPolicyRevision, decisionId));
+        String policyManifest = "{\"aggregateId\":\"" + policyId + "\",\"aggregateRevision\":" + newPolicyRevision
+                + ",\"policyRevision\":0,\"purpose\":\"S2B_TEST\",\"manifestHash\":\"" + manifestHash + "\"}";
+        dsl.execute(("INSERT INTO runtime.outbox_event(event_id,idempotency_key,event_category,event_type,aggregate_kind,"
+                        + "aggregate_id,aggregate_revision,contract_version,purpose,policy_revision,manifest_hash,payload_manifest,"
+                        + "change_event_id,state,available_at,attempt_count,max_attempts,created_at) VALUES "
+                        + "('%s','s2b-policy-outbox-%s','GOVERNED','memory.policy-changed.v1','ACCESS_POLICY','%s',%d,"
+                        + "'pink.event.v1','S2B_TEST',0,decode('%s','hex'),'%s'::jsonb,'%s','READY',clock_timestamp(),0,8,clock_timestamp())")
+                .formatted(UUID.randomUUID(), policyChangeId, policyId, newPolicyRevision,
+                        manifestHash, policyManifest, policyChangeId));
+
+        dsl.execute(("INSERT INTO memory.access_policy_revision(policy_id,revision_no,companion_allowed,maintenance_allowed,"
+                        + "export_allowed,external_provider_allowed,isolated,created_by_decision_id,created_at) "
+                        + "SELECT policy_id,%d,companion_allowed,maintenance_allowed,export_allowed,external_provider_allowed,"
+                        + "isolated,'%s',clock_timestamp() FROM memory.access_policy_revision WHERE policy_id='%s' AND revision_no=1")
+                .formatted(newPolicyRevision, decisionId, policyId));
+
+        dsl.execute(("INSERT INTO memory.change_event(change_event_id,event_type,target_kind,target_id,target_revision_ref,"
+                        + "decision_id,occurred_at) VALUES ('%s','memory.policy-changed.v1','MEMORY','%s',1,'%s',clock_timestamp())")
+                .formatted(memoryPolicyChangeId, fixture.memoryId(), decisionId));
+        String memoryManifest = "{\"aggregateId\":\"" + fixture.memoryId() + "\",\"aggregateRevision\":1,"
+                + "\"policyRevision\":0,\"purpose\":\"S2B_TEST\",\"manifestHash\":\"" + manifestHash + "\"}";
+        dsl.execute(("INSERT INTO runtime.outbox_event(event_id,idempotency_key,event_category,event_type,aggregate_kind,"
+                        + "aggregate_id,aggregate_revision,contract_version,purpose,policy_revision,manifest_hash,payload_manifest,"
+                        + "change_event_id,state,available_at,attempt_count,max_attempts,created_at) VALUES "
+                        + "('%s','s2b-policy-mem-outbox-%s','GOVERNED','memory.policy-changed.v1','MEMORY','%s',1,"
+                        + "'pink.event.v1','S2B_TEST',0,decode('%s','hex'),'%s'::jsonb,'%s','READY',clock_timestamp(),0,8,clock_timestamp())")
+                .formatted(UUID.randomUUID(), memoryPolicyChangeId, fixture.memoryId(),
+                        manifestHash, memoryManifest, memoryPolicyChangeId));
+
+        dsl.execute("UPDATE memory.memory_record SET current_policy_revision_no=? WHERE memory_id=?",
+                newPolicyRevision, fixture.memoryId());
     }
 
     private static void assertCode(LocalV1S2BException.Code code, org.junit.jupiter.api.function.Executable executable) {

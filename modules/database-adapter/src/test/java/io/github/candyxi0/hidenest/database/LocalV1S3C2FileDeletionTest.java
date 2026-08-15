@@ -117,7 +117,7 @@ class LocalV1S3C2FileDeletionTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(16, Flyway.configure().dataSource(jdbcUrl, USER, password)
+        assertEquals(17, Flyway.configure().dataSource(jdbcUrl, USER, password)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load()
                 .migrate().migrationsExecuted);
         rawDataSource = new DriverManagerDataSource(jdbcUrl, USER, password);
@@ -137,7 +137,7 @@ class LocalV1S3C2FileDeletionTest {
         s1 = new LocalV1S1WindowCloseCoordinator(evidence, governance, runtime, executor, publisher, payloadStore, CLOCK);
         DeletionPreviewPort previewAdapter = new JooqDeletionPreviewAdapter(dsl);
         fenceAdapter = new JooqDeletionFenceAdapter(dsl);
-        preview = new LocalV1S3ADeletionPreviewCoordinator(previewAdapter, executor, CLOCK, fenceAdapter);
+        preview = new LocalV1S3ADeletionPreviewCoordinator(previewAdapter, executor, CLOCK, fenceAdapter, payloadStore);
         confirm = new LocalV1S3B2BDeletionConfirmCoordinator(
                 new JooqDeletionConfirmationAdapter(dsl), governance, fenceAdapter, previewAdapter, executor, CLOCK);
         execution = new JooqDeletionExecutionAdapter(dsl);
@@ -165,7 +165,7 @@ class LocalV1S3C2FileDeletionTest {
     @Order(1)
     @DisplayName("1. V015 empty 15, V014→V015 upgrade 1, repeat 0")
     void migrationCounts() throws Exception {
-        assertEquals(16, count("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(17, count("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
 
         String upgradePassword = UUID.randomUUID().toString();
         PostgreSQLContainer<?> upgradeContainer = new PostgreSQLContainer<>(
@@ -189,7 +189,7 @@ class LocalV1S3C2FileDeletionTest {
             var fw15 = Flyway.configure().dataSource(upgradeContainer.getJdbcUrl(), USER, upgradePassword)
                     .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true)
                     .load();
-            assertEquals(2, fw15.migrate().migrationsExecuted);
+            assertEquals(3, fw15.migrate().migrationsExecuted);
             // Repeat: 0
             assertEquals(0, fw15.migrate().migrationsExecuted);
         } finally {

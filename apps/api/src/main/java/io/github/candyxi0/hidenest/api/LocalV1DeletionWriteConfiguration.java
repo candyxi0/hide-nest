@@ -52,8 +52,9 @@ public class LocalV1DeletionWriteConfiguration {
             DeletionPreviewPort previewPort,
             TransactionExecutor transactions,
             Clock clock,
-            DeletionFencePort deletionFencePort) {
-        return new LocalV1S3ADeletionPreviewCoordinator(previewPort, transactions, clock, deletionFencePort);
+            DeletionFencePort deletionFencePort,
+            PayloadStore payloadStore) {
+        return new LocalV1S3ADeletionPreviewCoordinator(previewPort, transactions, clock, deletionFencePort, payloadStore);
     }
 
     @Bean
@@ -93,5 +94,14 @@ public class LocalV1DeletionWriteConfiguration {
                 executionPort,
                 fileDeletionCoordinator,
                 clock);
+    }
+
+    @Bean
+    LocalV1SharedEvidenceFixtureCoordinator localV1SharedEvidenceFixtureCoordinator(
+            io.github.candyxi0.hidenest.application.coordinator.LocalV1S1WindowCloseCoordinator s1,
+            DSLContext dsl,
+            PayloadStore payloadStore,
+            Clock clock) {
+        return new LocalV1SharedEvidenceFixtureCoordinator(s1, dsl, payloadStore, clock);
     }
 }

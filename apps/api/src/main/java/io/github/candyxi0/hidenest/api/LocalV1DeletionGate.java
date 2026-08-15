@@ -35,6 +35,7 @@ public final class LocalV1DeletionGate extends OncePerRequestFilter {
     private static final Pattern CONFIRM_PATH =
             Pattern.compile("^/v1/deletion-previews/[0-9a-fA-F-]{36}/confirm$");
     private static final Pattern RUN_PATH = Pattern.compile("^/v1/deletion-runs/[0-9a-fA-F-]{36}$");
+    private static final Pattern FIXTURE_PATH = Pattern.compile("^/v1/deletion-fixtures$");
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final byte[] expectedToken;
@@ -84,6 +85,13 @@ public final class LocalV1DeletionGate extends OncePerRequestFilter {
         }
         if ("GET".equals(method) && RUN_PATH.matcher(path).matches()) {
             if (!authorize(request, response, requestId, false)) {
+                return;
+            }
+            chain.doFilter(request, response);
+            return;
+        }
+        if ("POST".equals(method) && FIXTURE_PATH.matcher(path).matches()) {
+            if (!authorize(request, response, requestId, true)) {
                 return;
             }
             chain.doFilter(request, response);
