@@ -1,6 +1,6 @@
 package io.github.candyxi0.hidenest.api;
 
-import io.github.candyxi0.hidenest.application.coordinator.LocalV1CloseoutWriteCoordinator;
+import io.github.candyxi0.hidenest.application.coordinator.LocalV1CloseoutVectorProjectionCoordinator;
 import io.github.candyxi0.hidenest.application.model.LocalV1RunStatus;
 import io.github.candyxi0.hidenest.contracts.model.FailureCode;
 import io.github.candyxi0.hidenest.contracts.model.ResultCategory;
@@ -19,9 +19,9 @@ import org.springframework.web.bind.annotation.RestController;
 @Profile("local-v1-synthetic")
 public final class LocalV1RunStatusController {
 
-    private final LocalV1CloseoutWriteCoordinator coordinator;
+    private final LocalV1CloseoutVectorProjectionCoordinator coordinator;
 
-    public LocalV1RunStatusController(LocalV1CloseoutWriteCoordinator coordinator) {
+    public LocalV1RunStatusController(LocalV1CloseoutVectorProjectionCoordinator coordinator) {
         this.coordinator = coordinator;
     }
 

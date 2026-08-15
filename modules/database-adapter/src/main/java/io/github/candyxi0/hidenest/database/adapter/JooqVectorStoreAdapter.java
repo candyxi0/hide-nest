@@ -118,6 +118,47 @@ public class JooqVectorStoreAdapter implements MemoryVectorStorePort {
         return result;
     }
 
+    @Override
+    public boolean hasEmbedding(
+            UUID memoryRevisionId,
+            String modelName,
+            byte[] ggufSha256,
+            int dimension,
+            String normalization,
+            byte[] embeddedBodySha256) {
+        if (memoryRevisionId == null
+                || modelName == null
+                || ggufSha256 == null
+                || normalization == null
+                || embeddedBodySha256 == null) {
+            throw new IllegalArgumentException("arguments must not be null");
+        }
+        if (dimension != DIMENSION) {
+            throw new IllegalArgumentException("dimension must be 512");
+        }
+        if (!NORMALIZATION.equals(normalization)) {
+            throw new IllegalArgumentException("normalization must be CALLER_L2");
+        }
+        if (ggufSha256.length != 32) {
+            throw new IllegalArgumentException("gguf_sha256 must be 32 bytes");
+        }
+        if (embeddedBodySha256.length != 32) {
+            throw new IllegalArgumentException("embedded_body_sha256 must be 32 bytes");
+        }
+        Record existing = dsl.fetchOne(
+                "SELECT 1 FROM memory.memory_revision_embedding "
+                        + "WHERE memory_revision_id = ? AND model_name = ? "
+                        + "AND gguf_sha256 = ? AND dimension = ? AND normalization = ? "
+                        + "AND embedded_body_sha256 = ?",
+                memoryRevisionId,
+                modelName,
+                ggufSha256,
+                dimension,
+                normalization,
+                embeddedBodySha256);
+        return existing != null;
+    }
+
     private static void validateDraft(VectorEmbeddingDraft draft) {
         if (draft.dimension() != DIMENSION) {
             throw new IllegalArgumentException("dimension must be 512");

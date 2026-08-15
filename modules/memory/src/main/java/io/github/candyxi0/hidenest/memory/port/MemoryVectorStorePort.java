@@ -22,6 +22,19 @@ public interface MemoryVectorStorePort {
      */
     List<VectorMatch> searchSimilar(VectorSearchRequest request);
 
+    /**
+     * Read-only exact verification: returns {@code true} iff a derived vector fact exists for the
+     * exact memory revision + model fingerprint + embedded body SHA-256. It never re-embeds and
+     * never mutates storage; it is the readiness probe used by run status.
+     */
+    boolean hasEmbedding(
+            UUID memoryRevisionId,
+            String modelName,
+            byte[] ggufSha256,
+            int dimension,
+            String normalization,
+            byte[] embeddedBodySha256);
+
     /** Immutable write draft for one normalized embedding row. */
     record VectorEmbeddingDraft(
             UUID memoryRevisionId,
