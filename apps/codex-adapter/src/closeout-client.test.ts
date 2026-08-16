@@ -480,3 +480,79 @@ describe("submitCloseout leak safety", () => {
     await handle.close();
   });
 });
+
+function phaseHandler(postPhase: string, getPhase: string) {
+  return (req: IncomingMessage, res: ServerResponse, body: string): void => {
+    if (req.method === "POST" && req.url === "/v1/closeout-submissions") {
+      const parsed = JSON.parse(body) as Record<string, unknown>;
+      const submissionId = String(parsed.submissionId ?? "");
+      res.writeHead(202, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          requestId: "req-" + submissionId,
+          resultCategory: "SUCCEEDED",
+          runId: submissionId,
+          statusUrl: "/v1/runs/" + submissionId,
+          phase: postPhase,
+        }),
+      );
+      return;
+    }
+    if (req.method === "GET" && (req.url ?? "").startsWith("/v1/runs/")) {
+      const runId = (req.url ?? "").split("/").pop() ?? "";
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          requestId: "req-" + runId,
+          resultCategory: "SUCCEEDED",
+          runId,
+          phase: getPhase,
+        }),
+      );
+      return;
+    }
+    res.writeHead(404);
+    res.end("{}");
+  };
+}
+
+describe("submitCloseout phase matrix (R2-01)", () => {
+  it("passes CANONICAL_COMMITTED → CANONICAL_COMMITTED", async () => {
+    const handle = await startServer(phaseHandler("CANONICAL_COMMITTED", "CANONICAL_COMMITTED"));
+    const result = await submitCloseout(makeRequest(), configFor(handle));
+    expect(result.phase).toBe("CANONICAL_COMMITTED");
+    await handle.close();
+  });
+
+  it("passes CANONICAL_COMMITTED → INDEX_READY and returns the GET phase", async () => {
+    const handle = await startServer(phaseHandler("CANONICAL_COMMITTED", "INDEX_READY"));
+    const result = await submitCloseout(makeRequest(), configFor(handle));
+    expect(result.phase).toBe("INDEX_READY");
+    await handle.close();
+  });
+
+  it("passes INDEX_READY → INDEX_READY", async () => {
+    const handle = await startServer(phaseHandler("INDEX_READY", "INDEX_READY"));
+    const result = await submitCloseout(makeRequest(), configFor(handle));
+    expect(result.phase).toBe("INDEX_READY");
+    await handle.close();
+  });
+
+  it("rejects INDEX_READY → CANONICAL_COMMITTED regression", async () => {
+    const handle = await startServer(phaseHandler("INDEX_READY", "CANONICAL_COMMITTED"));
+    await expectCode(submitCloseout(makeRequest(), configFor(handle)), "GET_STATUS_MISMATCH");
+    await handle.close();
+  });
+
+  it("rejects an unknown POST phase", async () => {
+    const handle = await startServer(phaseHandler("WEIRD_PHASE", "INDEX_READY"));
+    await expectCode(submitCloseout(makeRequest(), configFor(handle)), "POST_RECEIPT_MISMATCH");
+    await handle.close();
+  });
+
+  it("rejects an unknown GET phase", async () => {
+    const handle = await startServer(phaseHandler("INDEX_READY", "BOGUS_PHASE"));
+    await expectCode(submitCloseout(makeRequest(), configFor(handle)), "GET_STATUS_MISMATCH");
+    await handle.close();
+  });
+});

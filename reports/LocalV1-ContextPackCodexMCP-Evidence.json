@@ -1,0 +1,146 @@
+{
+  "schemaVersion": "1.0",
+  "task": "Task35A3-R2-LocalV1-ContextPack-Codex-MCP",
+  "status": "LOCAL_V1_CONTEXT_PACK_CODEX_MCP_REAL_API_SMOKE_PASS",
+  "frozenHead": "6cd741eec36b443a08651d9f5302d72759270243",
+  "startGitIndex": {
+    "trackedModified": 3,
+    "trackedDeleted": 0,
+    "staged": 0,
+    "taskUntrackedCount": 9,
+    "preExistingUntracked": [
+      "reports/local-v1-read-browser-qa/.playwright-artifacts/"
+    ]
+  },
+  "endGitIndex": {
+    "trackedModified": 4,
+    "trackedDeleted": 0,
+    "staged": 0,
+    "taskUntracked": [
+      "apps/codex-adapter/src/context-pack-canonicalizer.ts",
+      "apps/codex-adapter/src/context-pack-canonicalizer.test.ts",
+      "apps/codex-adapter/src/context-pack-input.ts",
+      "apps/codex-adapter/src/context-pack-input.test.ts",
+      "apps/codex-adapter/src/context-pack-client.ts",
+      "apps/codex-adapter/src/context-pack-client.test.ts",
+      "apps/codex-adapter/src/context-pack-tool.ts",
+      "reports/LocalV1-ContextPackCodexMCP-Evidence.json",
+      "reports/LocalV1-ContextPackCodexMCP-执行报告.md"
+    ],
+    "preExistingUntracked": [
+      "reports/local-v1-read-browser-qa/.playwright-artifacts/"
+    ]
+  },
+  "pathSet": [
+    "apps/codex-adapter/src/closeout-client.ts",
+    "apps/codex-adapter/src/closeout-client.test.ts",
+    "apps/codex-adapter/src/mcp.integration.test.ts",
+    "apps/codex-adapter/src/mcp.ts",
+    "apps/codex-adapter/src/context-pack-canonicalizer.ts",
+    "apps/codex-adapter/src/context-pack-canonicalizer.test.ts",
+    "apps/codex-adapter/src/context-pack-input.ts",
+    "apps/codex-adapter/src/context-pack-input.test.ts",
+    "apps/codex-adapter/src/context-pack-client.ts",
+    "apps/codex-adapter/src/context-pack-client.test.ts",
+    "apps/codex-adapter/src/context-pack-tool.ts",
+    "reports/LocalV1-ContextPackCodexMCP-执行报告.md",
+    "reports/LocalV1-ContextPackCodexMCP-Evidence.json"
+  ],
+  "tools": [
+    "hide_nest_closeout_synthetic_confirmed",
+    "hide_nest_retrieve_context_pack_synthetic"
+  ],
+  "testCounts": {
+    "codexAdapter": { "files": 9, "passed": 149, "skipped": 1, "failed": 0 }
+  },
+  "r2_01": {
+    "closedPhaseSet": ["CANONICAL_COMMITTED", "INDEX_READY"],
+    "phaseMatrix": {
+      "CC_to_CC": "PASS",
+      "CC_to_INDEX_READY": "PASS",
+      "INDEX_READY_to_INDEX_READY": "PASS",
+      "INDEX_READY_to_CC_regression": "REJECTED",
+      "unknown_POST_phase": "REJECTED",
+      "unknown_GET_phase": "REJECTED"
+    },
+    "returnPhase": "GET-confirmed real phase (never downgraded)",
+    "mcpIndexReadyProjection": "PASS"
+  },
+  "tunnelPreflight": {
+    "probes": 5,
+    "allHttp200": true,
+    "model": "bge-small-zh-v1.5-f16",
+    "dimension": 512
+  },
+  "smoke": {
+    "result": "PASS",
+    "flywayHistory": 19,
+    "mcpInitializeToolsList": "PASS (two tools)",
+    "mcpStderrBytesOnSuccess": 0,
+    "closeoutA": { "status": "SAVED", "phase": "INDEX_READY", "memoryIdShort": "14096623" },
+    "closeoutB": { "status": "SAVED", "phase": "INDEX_READY", "memoryIdShort": "f929f82c" },
+    "dbAfterCloseout": {
+      "activeMemories": 2,
+      "vectorFacts": 2,
+      "vectorFactsPerRevision": [1, 1],
+      "memoryIdMatchesDb": true
+    },
+    "retrieve": {
+      "status": "CONTEXT_READY",
+      "resultCategory": "SUCCEEDED",
+      "aFirst": true,
+      "aGtB": true,
+      "scoreA": 0.6345026682169044,
+      "scoreB": 0.2148648500442505,
+      "elapsedMs": 802
+    },
+    "auditFirstRetrieval": { "trace": 1, "delivery": 1, "item": 2, "receipt": 1 },
+    "retrySameKey": { "exact": true, "auditIncrement": { "trace": 0, "delivery": 0, "item": 0, "receipt": 0 } },
+    "newTurnFresh": { "fresh": true, "newRequestId": true, "newDeliveryId": true },
+    "auditAfterNewTurn": { "trace": 2, "delivery": 2, "item": 4, "receipt": 2 },
+    "disableEmbeddingOldKeyReplay": { "exact": true, "auditIncrement": { "trace": 0, "delivery": 0, "item": 0, "receipt": 0 } },
+    "disableEmbeddingNewKey": { "result": "REJECTED", "failureCode": "MODEL_PROVIDER_UNAVAILABLE", "resultCategory": "FAILED" }
+  },
+  "qualityGates": {
+    "codexAdapterTypecheck": { "exitCode": 0, "result": "PASS" },
+    "codexAdapterLint": { "exitCode": 0, "result": "PASS", "warnings": 2, "notes": "pre-existing generated-events eslint-disable warnings" },
+    "codexAdapterTest": { "exitCode": 0, "result": "PASS" },
+    "codexAdapterBuild": { "exitCode": 0, "result": "PASS" },
+    "rootTypecheck": { "exitCode": 0, "result": "PASS" },
+    "rootLint": { "exitCode": 0, "result": "PASS" },
+    "rootTest": { "exitCode": 0, "result": "PASS" },
+    "rootBuild": { "exitCode": 0, "result": "PASS" },
+    "gitDiffCheck": { "exitCode": 0, "result": "PASS" }
+  },
+  "cleanup": {
+    "dockerContainers": 0,
+    "dockerVolumes": 0,
+    "dockerNetworks": 0,
+    "leftoverJavaProcesses": 0,
+    "leftoverNodeMcpProcesses": 0,
+    "tempPayloadRemoved": true,
+    "harnessRemoved": true
+  },
+  "forbiddenAreas": {
+    "java": 0,
+    "database": 0,
+    "contract": 0,
+    "react": 0
+  },
+  "leakScan": {
+    "stderrOnSuccess": "EMPTY",
+    "problemProjection": "five safe fields only",
+    "problemCanaryLeaked": false,
+    "nonTestBuildArtifactLeaks": 0,
+    "runtimeConsoleWrites": 0,
+    "capabilityHeaderSentOnContextPack": 0,
+    "cookieHeaderSent": 0
+  },
+  "notRunUnchanged": [
+    "mavenCleanVerify",
+    "openapi",
+    "browserQa"
+  ],
+  "networkAccess": "only existing Tailscale tunnel loopback (embedding)",
+  "gitWrite": false
+}

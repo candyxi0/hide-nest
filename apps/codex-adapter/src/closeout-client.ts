@@ -49,7 +49,7 @@ export function loadCloseoutConfig(env: NodeJS.ProcessEnv = process.env): Closeo
   return { baseUrl, token, capability };
 }
 
-function isHighEntropy(value: string | undefined): value is string {
+export function isHighEntropy(value: string | undefined): value is string {
   if (typeof value !== "string" || value.length < ENTROPY_MIN_LENGTH) {
     return false;
   }
@@ -130,11 +130,28 @@ function projectProblem(status: number, body: string): Record<string, unknown> {
   return safe;
 }
 
+/**
+ * Closed, monotonic closeout phase set. `CANONICAL_COMMITTED` means canonical facts are committed
+ * but the vector projection is not yet confirmed; `INDEX_READY` means the frozen-model vector fact
+ * for the current revision is also confirmed. The only legal advance is
+ * `CANONICAL_COMMITTED` → `INDEX_READY`; any other string or a regression fails closed.
+ */
+export type CloseoutPhase = "CANONICAL_COMMITTED" | "INDEX_READY";
+
+const PHASE_ORDER: Record<CloseoutPhase, number> = {
+  CANONICAL_COMMITTED: 0,
+  INDEX_READY: 1,
+};
+
+function isCloseoutPhase(value: unknown): value is CloseoutPhase {
+  return value === "CANONICAL_COMMITTED" || value === "INDEX_READY";
+}
+
 export interface CloseoutSuccess {
   status: "SAVED";
   runId: string;
   memoryId: string;
-  phase: "CANONICAL_COMMITTED";
+  phase: CloseoutPhase;
   statusUrl: string;
   selectedEvidenceCount: number;
 }
@@ -142,13 +159,13 @@ export interface CloseoutSuccess {
 interface PostReceipt {
   runId: string;
   statusUrl: string;
-  phase: string;
+  phase: CloseoutPhase;
   resultCategory: string;
 }
 
 interface RunStatus {
   runId: string;
-  phase: string;
+  phase: CloseoutPhase;
   resultCategory: string;
 }
 
@@ -212,11 +229,14 @@ async function postSubmission(
   ) {
     throw new CloseoutClientError("INVALID_RESPONSE", "INVALID_RESPONSE");
   }
-  // R1-02: bind the 202 receipt to this request's facts before any GET.
+  // R2-01: phase must be a closed value; bind the 202 receipt to this request's facts before any GET.
+  const phase = record.phase;
+  if (!isCloseoutPhase(phase)) {
+    throw new CloseoutClientError("POST_RECEIPT_MISMATCH", "POST_RECEIPT_MISMATCH");
+  }
   if (
     record.resultCategory !== "SUCCEEDED" ||
     record.runId !== submissionId ||
-    record.phase !== "CANONICAL_COMMITTED" ||
     record.statusUrl === ""
   ) {
     throw new CloseoutClientError("POST_RECEIPT_MISMATCH", "POST_RECEIPT_MISMATCH");
@@ -224,7 +244,7 @@ async function postSubmission(
   return {
     runId: record.runId,
     statusUrl: record.statusUrl,
-    phase: record.phase,
+    phase,
     resultCategory: record.resultCategory,
   };
 }
@@ -234,6 +254,7 @@ async function getRunStatus(
   resolvedStatusUrl: string,
   submissionId: string,
   postRunId: string,
+  postPhase: CloseoutPhase,
 ): Promise<RunStatus> {
   let response: Response;
   try {
@@ -268,22 +289,31 @@ async function getRunStatus(
   ) {
     throw new CloseoutClientError("CONFIRMATION_PENDING", "CONFIRMATION_PENDING");
   }
-  // R1-02: bind the 200 status to request.submissionId == POST.runId == GET.runId.
+  // R2-01: bind the 200 status to request.submissionId == POST.runId == GET.runId, and require a
+  // monotonic closed phase (CANONICAL_COMMITTED may advance to INDEX_READY; INDEX_READY must never
+  // regress to CANONICAL_COMMITTED).
+  const phase = record.phase;
+  if (!isCloseoutPhase(phase)) {
+    throw new CloseoutClientError("GET_STATUS_MISMATCH", "GET_STATUS_MISMATCH");
+  }
   if (
     record.resultCategory !== "SUCCEEDED" ||
     record.runId !== submissionId ||
-    record.runId !== postRunId ||
-    record.phase !== "CANONICAL_COMMITTED"
+    record.runId !== postRunId
   ) {
     throw new CloseoutClientError("GET_STATUS_MISMATCH", "GET_STATUS_MISMATCH");
   }
-  return { runId: record.runId, phase: record.phase, resultCategory: record.resultCategory };
+  if (PHASE_ORDER[postPhase] > PHASE_ORDER[phase]) {
+    throw new CloseoutClientError("GET_STATUS_MISMATCH", "GET_STATUS_MISMATCH");
+  }
+  return { runId: record.runId, phase, resultCategory: record.resultCategory };
 }
 
 /**
  * Submits a closed closeout request and performs one GET fact confirmation. Returns the six safe
- * success fields only after POST=202 and GET reports phase=CANONICAL_COMMITTED with the same runId.
- * POST-success-but-unconfirmed is surfaced as a safe-to-replay sanitized failure.
+ * success fields only after POST=202 and GET confirms the same runId with a monotonic closed phase
+ * (CANONICAL_COMMITTED or INDEX_READY). The returned phase is the GET-confirmed real phase, never a
+ * downgraded value. POST-success-but-unconfirmed is surfaced as a safe-to-replay sanitized failure.
  */
 export async function submitCloseout(
   request: CloseoutRequest,
@@ -300,18 +330,19 @@ export async function submitCloseout(
   // R1-03: enforce same-origin + exact path before any GET.
   const resolvedStatusUrl = resolveStatusUrl(receipt.statusUrl, config.baseUrl, request.submissionId);
 
-  await getRunStatus(
+  const runStatus = await getRunStatus(
     config.token,
     resolvedStatusUrl,
     request.submissionId,
     receipt.runId,
+    receipt.phase,
   );
 
   return {
     status: "SAVED",
     runId: request.submissionId,
     memoryId: deriveMemoryId(request.submissionId),
-    phase: "CANONICAL_COMMITTED",
+    phase: runStatus.phase,
     statusUrl: resolvedStatusUrl,
     selectedEvidenceCount: request.threadReaderManifest.selectedEvidenceMessages.length,
   };

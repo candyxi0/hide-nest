@@ -1,11 +1,12 @@
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import { createServer, type Server } from "node:http";
 import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { resolve, dirname } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { TOOL_NAME } from "./mcp.js";
+import { CONTEXT_PACK_TOOL_NAME, TOOL_NAME } from "./mcp.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "../../..");
@@ -18,6 +19,13 @@ const TEST_CAPABILITY = "synthetic-capability-" + "0123456789abcdef".repeat(4);
 const BODY_CANARY = "正文canary-ABC123";
 const EVIDENCE_CANARY = "证据canary-XYZ789";
 const PROBLEM_CANARY = "PROBLEM_CANARY_LEAK";
+
+const CONTEXT_QUERY_CANARY = "查询canary-QRY789";
+const CONTEXT_RETRIEVAL_CANARY = "retrieval-canary-RET456";
+const CONTEXT_THREAD_CANARY = "thread-canary-THR123";
+const CONTEXT_TURN_CANARY = "turn-canary-TRN456";
+const CONTEXT_MEMORY_BODY = "记忆正文canary-CTX-BODY";
+const CONTEXT_PROBLEM_CANARY = "CTX_PROBLEM_CANARY_LEAK";
 
 interface ObservedRequest {
   method: string;
@@ -75,6 +83,15 @@ function validArgs() {
   };
 }
 
+function contextPackArgs(overrides?: Partial<{ retrievalKey: string; turnKey: string; query: string }>) {
+  return {
+    retrievalKey: overrides?.retrievalKey ?? CONTEXT_RETRIEVAL_CANARY,
+    threadKey: CONTEXT_THREAD_CANARY,
+    turnKey: overrides?.turnKey ?? CONTEXT_TURN_CANARY,
+    query: overrides?.query ?? `${CONTEXT_QUERY_CANARY} 小林最近确认了哪些合成记忆？`,
+  };
+}
+
 describe("real MCP stdio + loopback gate (6.2)", () => {
   let httpServer: Server;
   let port: number;
@@ -82,6 +99,11 @@ describe("real MCP stdio + loopback gate (6.2)", () => {
   let transport: StdioClientTransport;
   let client: Client;
   const stderrChunks: Buffer[] = [];
+  const contextPackReceipts = new Map<
+    string,
+    { requestId: string; deliveryId: string; memoryId: string; memoryRevisionId: string }
+  >();
+  const indexReadyRuns = new Set<string>();
 
   beforeAll(async () => {
     const build = spawnSync(process.execPath, [tscBin, "-p", tsconfig], { cwd: repoRoot });
@@ -104,6 +126,9 @@ describe("real MCP stdio + loopback gate (6.2)", () => {
           }
           const submissionId = String(parsed.submissionId ?? req.headers["idempotency-key"] ?? "");
           const hideSelection = parsed.hideSelection as Record<string, unknown> | undefined;
+          if (hideSelection?.bodyText === "TRIGGER_INDEX_READY") {
+            indexReadyRuns.add(submissionId);
+          }
           if (hideSelection?.bodyText === "TRIGGER_409") {
             res.writeHead(409, { "Content-Type": "application/problem+json" });
             res.end(
@@ -141,8 +166,79 @@ describe("real MCP stdio + loopback gate (6.2)", () => {
               requestId: "req-" + runId,
               resultCategory: "SUCCEEDED",
               runId,
-              phase: "CANONICAL_COMMITTED",
+              phase: indexReadyRuns.has(runId) ? "INDEX_READY" : "CANONICAL_COMMITTED",
               retryable: false,
+            }),
+          );
+          return;
+        }
+
+        if (req.method === "POST" && req.url === "/v1/context-packs") {
+          const idempotencyKey = String(req.headers["idempotency-key"] ?? "");
+          const parsed = JSON.parse(body) as Record<string, unknown>;
+          const query = String(parsed.query ?? "");
+
+          if (query.includes("TRIGGER_PROBLEM")) {
+            res.writeHead(422, { "Content-Type": "application/problem+json" });
+            res.end(
+              JSON.stringify({
+                type: "about:blank",
+                title: "Unprocessable",
+                status: 422,
+                requestId: "req-ctx-123",
+                resultCategory: "DENIED",
+                failureCode: "REQUEST_SCHEMA_INVALID",
+                retryable: false,
+                secretCanary: CONTEXT_PROBLEM_CANARY,
+              }),
+            );
+            return;
+          }
+
+          let receipt = contextPackReceipts.get(idempotencyKey);
+          if (!receipt) {
+            receipt = {
+              requestId: randomUUID(),
+              deliveryId: randomUUID(),
+              memoryId: randomUUID(),
+              memoryRevisionId: randomUUID(),
+            };
+            contextPackReceipts.set(idempotencyKey, receipt);
+          }
+
+          const noRelevant = query.includes("NO_RELEVANT");
+          const resultCategory = noRelevant ? "NO_RELEVANT_RESULT" : "SUCCEEDED";
+          const memories = noRelevant
+            ? []
+            : [
+                {
+                  memoryId: receipt.memoryId,
+                  memoryRevisionId: receipt.memoryRevisionId,
+                  revisionNo: 1,
+                  policyRevisionNo: 1,
+                  memoryType: "INTERPRETATION",
+                  bodyText: CONTEXT_MEMORY_BODY,
+                  score: 0.48,
+                },
+              ];
+          const policyRevisionSet = memories
+            .map((m) => `MEMORY:${m.memoryId}:${m.policyRevisionNo}`)
+            .sort();
+
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(
+            JSON.stringify({
+              requestId: receipt.requestId,
+              resultCategory,
+              deliveryId: receipt.deliveryId,
+              threadId: parsed.threadId,
+              turnId: parsed.turnId,
+              purpose: parsed.purpose,
+              policyRevisionSet,
+              issuedAt: "2026-08-16T00:00:00.000Z",
+              expiresAt: "2026-08-16T00:10:00.000Z",
+              budgetLimited: false,
+              memories,
             }),
           );
           return;
@@ -180,10 +276,11 @@ describe("real MCP stdio + loopback gate (6.2)", () => {
     await new Promise<void>((r) => httpServer?.close(() => r()));
   });
 
-  it("initialize + tools/list exposes exactly one tool", async () => {
+  it("initialize + tools/list exposes exactly two tools", async () => {
     const list = await client.listTools();
-    expect(list.tools).toHaveLength(1);
-    expect(list.tools[0].name).toBe(TOOL_NAME);
+    expect(list.tools).toHaveLength(2);
+    const names = list.tools.map((tool) => tool.name).sort();
+    expect(names).toEqual([CONTEXT_PACK_TOOL_NAME, TOOL_NAME].sort());
   });
 
   it("tools/call returns six safe fields and drives one loopback POST + GET", async () => {
@@ -231,6 +328,16 @@ describe("real MCP stdio + loopback gate (6.2)", () => {
     ]);
   });
 
+  it("closeout tools/call projects INDEX_READY when the vector converges (R2-01)", async () => {
+    const args = validArgs();
+    args.candidate.bodyText = "TRIGGER_INDEX_READY";
+    const result = await client.callTool({ name: TOOL_NAME, arguments: args });
+    expect(resultIsError(result)).toBe(false);
+    const parsed = JSON.parse(resultText(result)) as Record<string, unknown>;
+    expect(parsed.status).toBe("SAVED");
+    expect(parsed.phase).toBe("INDEX_READY");
+  });
+
   it("success output and stderr never leak token/capability/body canary", async () => {
     const result = await client.callTool({ name: TOOL_NAME, arguments: validArgs() });
     const text = resultText(result);
@@ -267,5 +374,139 @@ describe("real MCP stdio + loopback gate (6.2)", () => {
     ]);
     expect(text).not.toContain(PROBLEM_CANARY);
     expect(text).not.toContain("TRIGGER_409");
+  });
+
+  it("context-pack tools/call drives one loopback POST with exact projection", async () => {
+    const result = await client.callTool({ name: CONTEXT_PACK_TOOL_NAME, arguments: contextPackArgs() });
+    expect(resultIsError(result)).toBe(false);
+
+    const text = resultText(result);
+    const parsed = JSON.parse(text) as Record<string, unknown>;
+    expect(Object.keys(parsed).sort()).toEqual([
+      "budgetLimited",
+      "deliveryId",
+      "expiresAt",
+      "issuedAt",
+      "memories",
+      "requestId",
+      "resultCategory",
+      "status",
+    ]);
+    expect(parsed.status).toBe("CONTEXT_READY");
+    expect(parsed.resultCategory).toBe("SUCCEEDED");
+    expect(parsed.budgetLimited).toBe(false);
+    expect(parsed).not.toHaveProperty("threadId");
+    expect(parsed).not.toHaveProperty("turnId");
+    expect(parsed).not.toHaveProperty("purpose");
+    expect(parsed).not.toHaveProperty("policyRevisionSet");
+
+    const memories = parsed.memories as Array<Record<string, unknown>>;
+    expect(memories).toHaveLength(1);
+    expect(Object.keys(memories[0]).sort()).toEqual([
+      "bodyText",
+      "memoryId",
+      "memoryRevisionId",
+      "memoryType",
+      "policyRevisionNo",
+      "revisionNo",
+      "score",
+    ]);
+    expect(memories[0].bodyText).toBe(CONTEXT_MEMORY_BODY);
+
+    const post = requests.find((r) => r.method === "POST" && r.url === "/v1/context-packs");
+    expect(post).toBeDefined();
+    expect(post!.headers.authorization).toBe(`Bearer ${TEST_TOKEN}`);
+    expect(post!.headers["idempotency-key"]).toBe(CONTEXT_RETRIEVAL_CANARY);
+    expect(post!.headers["x-action-capability"]).toBeUndefined();
+    expect(post!.headers.cookie).toBeUndefined();
+
+    const sent = JSON.parse(post!.body) as Record<string, unknown>;
+    expect(Object.keys(sent).sort()).toEqual(["purpose", "query", "threadId", "turnId"]);
+    expect(sent.purpose).toBe("ANSWER_CURRENT_TURN");
+    expect(sent.query).toBe(contextPackArgs().query);
+  });
+
+  it("same logical request retries identically; new keys send a new POST", async () => {
+    const countPosts = () =>
+      requests.filter((r) => r.method === "POST" && r.url === "/v1/context-packs").length;
+
+    const first = await client.callTool({ name: CONTEXT_PACK_TOOL_NAME, arguments: contextPackArgs() });
+    const firstId = JSON.parse(resultText(first)).requestId as string;
+    const before = countPosts();
+
+    const retry = await client.callTool({ name: CONTEXT_PACK_TOOL_NAME, arguments: contextPackArgs() });
+    const retryId = JSON.parse(resultText(retry)).requestId as string;
+    expect(retryId).toBe(firstId);
+    expect(countPosts()).toBe(before + 1);
+
+    const fresh = await client.callTool({
+      name: CONTEXT_PACK_TOOL_NAME,
+      arguments: contextPackArgs({
+        retrievalKey: CONTEXT_RETRIEVAL_CANARY + "-r2",
+        turnKey: CONTEXT_TURN_CANARY + "-t2",
+      }),
+    });
+    const freshId = JSON.parse(resultText(fresh)).requestId as string;
+    expect(freshId).not.toBe(firstId);
+    expect(countPosts()).toBe(before + 2);
+
+    const posts = requests.filter((r) => r.method === "POST" && r.url === "/v1/context-packs");
+    expect(posts[posts.length - 1].headers["idempotency-key"]).toBe(CONTEXT_RETRIEVAL_CANARY + "-r2");
+  });
+
+  it("NO_RELEVANT_RESULT is a successful empty result, not an error", async () => {
+    const result = await client.callTool({
+      name: CONTEXT_PACK_TOOL_NAME,
+      arguments: contextPackArgs({ query: "NO_RELEVANT 这段查询没有任何相关记忆" }),
+    });
+    expect(resultIsError(result)).toBe(false);
+    const parsed = JSON.parse(resultText(result)) as Record<string, unknown>;
+    expect(parsed.status).toBe("NO_RELEVANT_MEMORY");
+    expect(parsed.resultCategory).toBe("NO_RELEVANT_RESULT");
+    expect(parsed.memories).toEqual([]);
+  });
+
+  it("context-pack problem projection never leaks the canary or query", async () => {
+    const result = await client.callTool({
+      name: CONTEXT_PACK_TOOL_NAME,
+      arguments: contextPackArgs({ query: "TRIGGER_PROBLEM" }),
+    });
+    expect(resultIsError(result)).toBe(true);
+    const text = resultText(result);
+    const parsed = JSON.parse(text) as Record<string, unknown>;
+    expect(parsed.status).toBe(422);
+    expect(parsed.failureCode).toBe("REQUEST_SCHEMA_INVALID");
+    expect(parsed.resultCategory).toBe("DENIED");
+    expect(parsed.retryable).toBe(false);
+    expect(parsed.requestId).toBe("req-ctx-123");
+    expect(Object.keys(parsed).sort()).toEqual([
+      "failureCode",
+      "requestId",
+      "resultCategory",
+      "retryable",
+      "status",
+    ]);
+    expect(text).not.toContain(CONTEXT_PROBLEM_CANARY);
+    expect(text).not.toContain("TRIGGER_PROBLEM");
+  });
+
+  it("context-pack success keeps body in result but never leaks query/keys/token to result or stderr", async () => {
+    const result = await client.callTool({ name: CONTEXT_PACK_TOOL_NAME, arguments: contextPackArgs() });
+    const text = resultText(result);
+    const stderr = Buffer.concat(stderrChunks).toString("utf8");
+
+    expect(text).toContain(CONTEXT_MEMORY_BODY);
+    expect(text).not.toContain(CONTEXT_QUERY_CANARY);
+    expect(text).not.toContain(CONTEXT_RETRIEVAL_CANARY);
+    expect(text).not.toContain(CONTEXT_THREAD_CANARY);
+    expect(text).not.toContain(CONTEXT_TURN_CANARY);
+    expect(text).not.toContain(TEST_TOKEN);
+    expect(text).not.toContain(TEST_CAPABILITY);
+
+    expect(stderr).not.toContain(CONTEXT_MEMORY_BODY);
+    expect(stderr).not.toContain(CONTEXT_QUERY_CANARY);
+    expect(stderr).not.toContain(CONTEXT_RETRIEVAL_CANARY);
+    expect(stderr).not.toContain(TEST_TOKEN);
+    expect(stderr).toBe("");
   });
 });
