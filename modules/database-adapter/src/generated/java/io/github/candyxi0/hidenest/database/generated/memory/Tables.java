@@ -8,6 +8,9 @@ import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicy
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicyGrant;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicyRevision;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ActorRef;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.CandidateEvidenceMapping;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.CandidateSet;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.CandidateSetMember;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionClosure;
@@ -56,6 +59,21 @@ public class Tables {
      * The table <code>memory.actor_ref</code>.
      */
     public static final ActorRef ACTOR_REF = ActorRef.ACTOR_REF;
+
+    /**
+     * The table <code>memory.candidate_evidence_mapping</code>.
+     */
+    public static final CandidateEvidenceMapping CANDIDATE_EVIDENCE_MAPPING = CandidateEvidenceMapping.CANDIDATE_EVIDENCE_MAPPING;
+
+    /**
+     * The table <code>memory.candidate_set</code>.
+     */
+    public static final CandidateSet CANDIDATE_SET = CandidateSet.CANDIDATE_SET;
+
+    /**
+     * The table <code>memory.candidate_set_member</code>.
+     */
+    public static final CandidateSetMember CANDIDATE_SET_MEMBER = CandidateSetMember.CANDIDATE_SET_MEMBER;
 
     /**
      * The table <code>memory.change_event</code>.

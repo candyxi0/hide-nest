@@ -9,6 +9,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.Keys;
 import io.github.candyxi0.hidenest.database.generated.memory.Memory;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicyRevision.AccessPolicyRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ActorRef.ActorRefPath;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.CandidateSetMember.CandidateSetMemberPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent.ChangeEventPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionClosure.DeletionClosurePath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionFence.DeletionFencePath;
@@ -281,6 +282,19 @@ public class Decision extends TableImpl<DecisionRecord> {
             _accessPolicyRevision = new AccessPolicyRevisionPath(this, null, Keys.ACCESS_POLICY_REVISION__ACCESS_POLICY_REVISION_DECISION_FK.getInverseKey());
 
         return _accessPolicyRevision;
+    }
+
+    private transient CandidateSetMemberPath _candidateSetMember;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>memory.candidate_set_member</code> table
+     */
+    public CandidateSetMemberPath candidateSetMember() {
+        if (_candidateSetMember == null)
+            _candidateSetMember = new CandidateSetMemberPath(this, null, Keys.CANDIDATE_SET_MEMBER__CANDIDATE_SET_MEMBER_DECISION_FK.getInverseKey());
+
+        return _candidateSetMember;
     }
 
     private transient ChangeEventPath _changeEvent;

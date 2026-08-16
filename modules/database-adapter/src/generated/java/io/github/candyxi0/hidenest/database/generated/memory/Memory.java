@@ -9,6 +9,9 @@ import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicy
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicyGrant;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicyRevision;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ActorRef;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.CandidateEvidenceMapping;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.CandidateSet;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.CandidateSetMember;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ChangeEvent;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionClosure;
@@ -72,6 +75,21 @@ public class Memory extends SchemaImpl {
      * The table <code>memory.actor_ref</code>.
      */
     public final ActorRef ACTOR_REF = ActorRef.ACTOR_REF;
+
+    /**
+     * The table <code>memory.candidate_evidence_mapping</code>.
+     */
+    public final CandidateEvidenceMapping CANDIDATE_EVIDENCE_MAPPING = CandidateEvidenceMapping.CANDIDATE_EVIDENCE_MAPPING;
+
+    /**
+     * The table <code>memory.candidate_set</code>.
+     */
+    public final CandidateSet CANDIDATE_SET = CandidateSet.CANDIDATE_SET;
+
+    /**
+     * The table <code>memory.candidate_set_member</code>.
+     */
+    public final CandidateSetMember CANDIDATE_SET_MEMBER = CandidateSetMember.CANDIDATE_SET_MEMBER;
 
     /**
      * The table <code>memory.change_event</code>.
@@ -158,6 +176,9 @@ public class Memory extends SchemaImpl {
             AccessPolicyGrant.ACCESS_POLICY_GRANT,
             AccessPolicyRevision.ACCESS_POLICY_REVISION,
             ActorRef.ACTOR_REF,
+            CandidateEvidenceMapping.CANDIDATE_EVIDENCE_MAPPING,
+            CandidateSet.CANDIDATE_SET,
+            CandidateSetMember.CANDIDATE_SET_MEMBER,
             ChangeEvent.CHANGE_EVENT,
             Decision.DECISION,
             DeletionClosure.DELETION_CLOSURE,

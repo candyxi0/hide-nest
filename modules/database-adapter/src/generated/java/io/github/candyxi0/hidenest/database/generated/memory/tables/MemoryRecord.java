@@ -8,6 +8,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.Indexes;
 import io.github.candyxi0.hidenest.database.generated.memory.Keys;
 import io.github.candyxi0.hidenest.database.generated.memory.Memory;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.AccessPolicyRevision.AccessPolicyRevisionPath;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.CandidateSetMember.CandidateSetMemberPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevision.MemoryRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Proposal.ProposalPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.MemoryRecordRecord;
@@ -224,6 +225,19 @@ public class MemoryRecord extends TableImpl<MemoryRecordRecord> {
             _memoryRevision = new MemoryRevisionPath(this, Keys.MEMORY_RECORD__MEMORY_RECORD_CURRENT_REVISION_FK, null);
 
         return _memoryRevision;
+    }
+
+    private transient CandidateSetMemberPath _candidateSetMember;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>memory.candidate_set_member</code> table
+     */
+    public CandidateSetMemberPath candidateSetMember() {
+        if (_candidateSetMember == null)
+            _candidateSetMember = new CandidateSetMemberPath(this, null, Keys.CANDIDATE_SET_MEMBER__CANDIDATE_SET_MEMBER_TARGET_MEMORY_FK.getInverseKey());
+
+        return _candidateSetMember;
     }
 
     private transient ProposalPath _proposal;

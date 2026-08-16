@@ -8,6 +8,7 @@ import io.github.candyxi0.hidenest.database.generated.memory.Indexes;
 import io.github.candyxi0.hidenest.database.generated.memory.Keys;
 import io.github.candyxi0.hidenest.database.generated.memory.Memory;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ActorRef.ActorRefPath;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.CandidateSetMember.CandidateSetMemberPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision.DecisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRevision.MemoryRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Proposal.ProposalPath;
@@ -260,6 +261,19 @@ public class ProposalRevision extends TableImpl<ProposalRevisionRecord> {
             _proposal = new ProposalPath(this, Keys.PROPOSAL_REVISION__PROPOSAL_REVISION_PROPOSAL_FK, null);
 
         return _proposal;
+    }
+
+    private transient CandidateSetMemberPath _candidateSetMember;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>memory.candidate_set_member</code> table
+     */
+    public CandidateSetMemberPath candidateSetMember() {
+        if (_candidateSetMember == null)
+            _candidateSetMember = new CandidateSetMemberPath(this, null, Keys.CANDIDATE_SET_MEMBER__CANDIDATE_SET_MEMBER_PROPOSAL_REVISION_FK.getInverseKey());
+
+        return _candidateSetMember;
     }
 
     private transient DecisionPath _decision;

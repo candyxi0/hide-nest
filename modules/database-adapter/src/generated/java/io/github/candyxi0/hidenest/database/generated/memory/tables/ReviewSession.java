@@ -6,6 +6,7 @@ package io.github.candyxi0.hidenest.database.generated.memory.tables;
 
 import io.github.candyxi0.hidenest.database.generated.memory.Keys;
 import io.github.candyxi0.hidenest.database.generated.memory.Memory;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.CandidateSet.CandidateSetPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.Decision.DecisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ProposalRevision.ProposalRevisionPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.ReviewMember.ReviewMemberPath;
@@ -181,6 +182,19 @@ public class ReviewSession extends TableImpl<ReviewSessionRecord> {
     @Override
     public List<UniqueKey<ReviewSessionRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.REVIEW_SESSION_IDEMPOTENCY_KEY_KEY);
+    }
+
+    private transient CandidateSetPath _candidateSet;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>memory.candidate_set</code> table
+     */
+    public CandidateSetPath candidateSet() {
+        if (_candidateSet == null)
+            _candidateSet = new CandidateSetPath(this, null, Keys.CANDIDATE_SET__CANDIDATE_SET_REVIEW_SESSION_FK.getInverseKey());
+
+        return _candidateSet;
     }
 
     private transient DecisionPath _decision;

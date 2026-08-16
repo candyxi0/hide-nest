@@ -50,7 +50,7 @@ class LocalV1S3B2ADeletionConfirmationTest {
         postgres.start();
         createRoles(postgres);
         MigrateResult result = flyway(postgres).migrate();
-        assertEquals(19, result.migrationsExecuted);
+        assertEquals(20, result.migrationsExecuted);
         dsl = dsl(postgres);
     }
 
@@ -70,9 +70,9 @@ class LocalV1S3B2ADeletionConfirmationTest {
             MigrateResult second = flyway(upgrade).migrate();
             MigrateResult repeat = flyway(upgrade).migrate();
             assertEquals(12, first.migrationsExecuted);
-            assertEquals(7, second.migrationsExecuted);
+            assertEquals(8, second.migrationsExecuted);
             assertEquals(0, repeat.migrationsExecuted);
-            assertEquals(19L, scalar(upgrade, "SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+            assertEquals(20L, scalar(upgrade, "SELECT count(*) FROM public.flyway_schema_history WHERE success"));
         } finally {
             upgrade.stop();
         }

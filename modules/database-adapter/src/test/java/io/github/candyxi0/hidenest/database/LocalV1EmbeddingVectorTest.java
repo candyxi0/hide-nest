@@ -128,8 +128,7 @@ class LocalV1EmbeddingVectorTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(
-                19,
+        assertEquals(20,
                 Flyway.configure()
                         .dataSource(jdbcUrl, USER, password)
                         .defaultSchema("public")

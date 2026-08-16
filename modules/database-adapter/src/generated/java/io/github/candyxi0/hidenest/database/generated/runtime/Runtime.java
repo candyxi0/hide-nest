@@ -12,6 +12,7 @@ import io.github.candyxi0.hidenest.database.generated.runtime.tables.CloseoutRun
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.CompleteDeletionRun;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.ConsumerEffect;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.ContextDelivery;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.ContextPackDeliveryItem;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.DeletionErasureMarker;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.DeletionPayloadTask;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.DeletionRun;
@@ -139,6 +140,11 @@ public class Runtime extends SchemaImpl {
      * The table <code>runtime.context_delivery</code>.
      */
     public final ContextDelivery CONTEXT_DELIVERY = ContextDelivery.CONTEXT_DELIVERY;
+
+    /**
+     * The table <code>runtime.context_pack_delivery_item</code>.
+     */
+    public final ContextPackDeliveryItem CONTEXT_PACK_DELIVERY_ITEM = ContextPackDeliveryItem.CONTEXT_PACK_DELIVERY_ITEM;
 
     /**
      * The table <code>runtime.deletion_erasure_marker</code>.
@@ -368,6 +374,7 @@ public class Runtime extends SchemaImpl {
             CompleteDeletionRun.COMPLETE_DELETION_RUN,
             ConsumerEffect.CONSUMER_EFFECT,
             ContextDelivery.CONTEXT_DELIVERY,
+            ContextPackDeliveryItem.CONTEXT_PACK_DELIVERY_ITEM,
             DeletionErasureMarker.DELETION_ERASURE_MARKER,
             DeletionPayloadTask.DELETION_PAYLOAD_TASK,
             DeletionRun.DELETION_RUN,

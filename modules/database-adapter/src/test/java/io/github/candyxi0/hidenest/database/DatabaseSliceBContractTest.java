@@ -84,7 +84,7 @@ class DatabaseSliceBContractTest {
                 .validateMigrationNaming(true)
                 .load();
         MigrateResult result = flyway.migrate();
-        assertEquals(19, result.migrationsExecuted);
+        assertEquals(20, result.migrationsExecuted);
     }
 
     @AfterAll
@@ -105,7 +105,7 @@ class DatabaseSliceBContractTest {
         MigrateResult repeated = flyway.migrate();
         assertEquals(0, repeated.migrationsExecuted);
         assertEquals(before, catalogFingerprint());
-        assertEquals(19, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(20, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
     }
 
     @Test
@@ -155,6 +155,9 @@ class DatabaseSliceBContractTest {
                         "evidence.source_anchor_unit",
                         "memory.memory_relation",
                         "memory.actor_ref",
+                        "memory.candidate_set",
+                        "memory.candidate_set_member",
+                        "memory.candidate_evidence_mapping",
                         "memory.memory_record",
                         "memory.memory_revision",
                         "memory.memory_revision_embedding",
@@ -379,7 +382,7 @@ class DatabaseSliceBContractTest {
     @DisplayName("DatabasePrivilegeIT: migrator ownership and runtime least privilege")
     void databasePrivilegeIT() throws SQLException {
         assertEquals(
-                39,
+                42,
                 scalarLong("SELECT count(*) FROM pg_catalog.pg_tables "
                         + "WHERE schemaname IN ('evidence','memory','runtime','security') "
                         + "AND tableowner='hide_nest_migrator'"));
@@ -1472,7 +1475,7 @@ class DatabaseSliceBContractTest {
     @Order(44)
     @DisplayName("V013: migration history = 13, repeat migrate executes 0")
     void v010MigrationHistoryAndRepeat() {
-        assertEquals(19, flyway.info().applied().length, "history must be 18");
+        assertEquals(20, flyway.info().applied().length, "history must be 20");
         MigrateResult repeat = flyway.migrate();
         assertEquals(0, repeat.migrationsExecuted, "repeat migrate must execute 0");
     }

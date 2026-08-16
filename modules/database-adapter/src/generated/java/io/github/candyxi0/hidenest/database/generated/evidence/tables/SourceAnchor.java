@@ -10,6 +10,8 @@ import io.github.candyxi0.hidenest.database.generated.evidence.Keys;
 import io.github.candyxi0.hidenest.database.generated.evidence.tables.Source.SourcePath;
 import io.github.candyxi0.hidenest.database.generated.evidence.tables.SourceAnchorUnit.SourceAnchorUnitPath;
 import io.github.candyxi0.hidenest.database.generated.evidence.tables.records.SourceAnchorRecord;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.CandidateEvidenceMapping.CandidateEvidenceMappingPath;
+import io.github.candyxi0.hidenest.database.generated.memory.tables.CandidateSetMember.CandidateSetMemberPath;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.MemoryRelation.MemoryRelationPath;
 
 import java.time.OffsetDateTime;
@@ -205,6 +207,19 @@ public class SourceAnchor extends TableImpl<SourceAnchorRecord> {
         return _sourceAnchorUnit;
     }
 
+    private transient CandidateEvidenceMappingPath _candidateEvidenceMapping;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>memory.candidate_evidence_mapping</code> table
+     */
+    public CandidateEvidenceMappingPath candidateEvidenceMapping() {
+        if (_candidateEvidenceMapping == null)
+            _candidateEvidenceMapping = new CandidateEvidenceMappingPath(this, null, io.github.candyxi0.hidenest.database.generated.memory.Keys.CANDIDATE_EVIDENCE_MAPPING__CANDIDATE_EVIDENCE_MAPPING_ANCHOR_FK.getInverseKey());
+
+        return _candidateEvidenceMapping;
+    }
+
     private transient MemoryRelationPath _memoryRelation;
 
     /**
@@ -216,6 +231,14 @@ public class SourceAnchor extends TableImpl<SourceAnchorRecord> {
             _memoryRelation = new MemoryRelationPath(this, null, io.github.candyxi0.hidenest.database.generated.memory.Keys.MEMORY_RELATION__MEMORY_RELATION_TO_ANCHOR_FK.getInverseKey());
 
         return _memoryRelation;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>memory.candidate_set_member</code> table
+     */
+    public CandidateSetMemberPath candidateSetMember() {
+        return candidateEvidenceMapping().candidateSetMember();
     }
 
     @Override
