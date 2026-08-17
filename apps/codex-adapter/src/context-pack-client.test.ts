@@ -130,6 +130,8 @@ describe("retrieveContextPack success + request shape", () => {
               memoryType: "INTERPRETATION",
               bodyText: MEMORY_BODY,
               score: 0.48,
+              evidenceOccurredAt: "2026-08-12T09:30:01Z",
+              evidenceAgeDays: 3,
             },
           ],
         }),
@@ -303,6 +305,8 @@ describe("retrieveContextPack response re-validation", () => {
           memoryType: "INTERPRETATION",
           bodyText: MEMORY_BODY,
           score: 0.48,
+          evidenceOccurredAt: "2026-08-12T09:30:01Z",
+          evidenceAgeDays: 3,
         },
       ],
     });

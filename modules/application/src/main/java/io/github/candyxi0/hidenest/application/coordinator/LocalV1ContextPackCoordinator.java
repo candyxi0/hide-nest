@@ -3,6 +3,8 @@ package io.github.candyxi0.hidenest.application.coordinator;
 import io.github.candyxi0.hidenest.application.model.LocalV1ContextPackMemory;
 import io.github.candyxi0.hidenest.application.model.LocalV1ContextPackRequest;
 import io.github.candyxi0.hidenest.application.model.LocalV1ContextPackResult;
+import io.github.candyxi0.hidenest.application.model.LocalV1S2BEvidenceMessage;
+import io.github.candyxi0.hidenest.application.model.LocalV1S2BEvidenceResult;
 import io.github.candyxi0.hidenest.application.model.LocalV1S2BMemoryDetail;
 import io.github.candyxi0.hidenest.application.model.LocalV1VectorMatch;
 import io.github.candyxi0.hidenest.memory.domain.MemoryRevision;
@@ -18,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -44,6 +47,7 @@ public class LocalV1ContextPackCoordinator {
     private static final int MAX_QUERY_BYTES = 480;
     private static final int MAX_IDEMPOTENCY_KEY_BYTES = 128;
     private static final int EXPIRES_MINUTES = 10;
+    private static final long SECONDS_PER_DAY = 86_400L;
     private static final String PURPOSE_CODE = "CONTEXT_PACK";
     private static final String OPERATION_CODE = "LOCAL_V1_CONTEXT_PACK";
     private static final String RESOURCE_KIND = "CONTEXT_DELIVERY";
@@ -272,6 +276,7 @@ public class LocalV1ContextPackCoordinator {
                 || detail.bodyText() == null) {
             return null;
         }
+        OffsetDateTime evidenceOccurredAt = latestEvidenceOccurredAt(candidate.memoryId());
         return new DeliveredMemory(
                 detail.memoryId(),
                 detail.currentRevisionId(),
@@ -279,7 +284,36 @@ public class LocalV1ContextPackCoordinator {
                 detail.currentPolicyRevisionNo(),
                 toWireMemoryType(detail.memoryType()),
                 detail.bodyText(),
-                candidate.score());
+                candidate.score(),
+                evidenceOccurredAt);
+    }
+
+    private OffsetDateTime latestEvidenceOccurredAt(UUID memoryId) {
+        LocalV1S2BEvidenceResult evidence;
+        try {
+            evidence = s2b.getFullEvidence(memoryId);
+        } catch (LocalV1S2BException exception) {
+            throw new LocalV1ContextPackException(LocalV1ContextPackException.Code.INTERNAL_FAILURE, exception);
+        } catch (RuntimeException exception) {
+            throw new LocalV1ContextPackException(LocalV1ContextPackException.Code.INTERNAL_FAILURE, exception);
+        }
+        if (evidence.messages() == null || evidence.messages().isEmpty()) {
+            throw new LocalV1ContextPackException(LocalV1ContextPackException.Code.INTERNAL_FAILURE);
+        }
+        OffsetDateTime latest = null;
+        for (LocalV1S2BEvidenceMessage message : evidence.messages()) {
+            OffsetDateTime occurredAt = message.occurredAt();
+            if (occurredAt == null) {
+                throw new LocalV1ContextPackException(LocalV1ContextPackException.Code.INTERNAL_FAILURE);
+            }
+            if (latest == null || occurredAt.isAfter(latest)) {
+                latest = occurredAt;
+            }
+        }
+        if (latest == null) {
+            throw new LocalV1ContextPackException(LocalV1ContextPackException.Code.INTERNAL_FAILURE);
+        }
+        return latest;
     }
 
     /** Replay-time visibility gate: reject (never return stale body) if governance facts changed. */
@@ -311,6 +345,7 @@ public class LocalV1ContextPackCoordinator {
                 || item.policyRevisionNo() != detail.currentPolicyRevisionNo().longValue()) {
             throw new LocalV1ContextPackException(LocalV1ContextPackException.Code.CONTEXT_PACK_STALE);
         }
+        OffsetDateTime evidenceOccurredAt = latestEvidenceOccurredAt(revision.memoryId());
         return new DeliveredMemory(
                 revision.memoryId(),
                 item.memoryRevisionId(),
@@ -318,7 +353,8 @@ public class LocalV1ContextPackCoordinator {
                 item.policyRevisionNo(),
                 toWireMemoryType(revision.memoryType()),
                 revision.bodyText(),
-                item.score());
+                item.score(),
+                evidenceOccurredAt);
     }
 
     /** Only an explicit visibility change may be treated as "not deliverable"; anything else is damage. */
@@ -373,15 +409,22 @@ public class LocalV1ContextPackCoordinator {
             OffsetDateTime issuedAt,
             OffsetDateTime expiresAt,
             List<DeliveredMemory> delivered) {
+        OffsetDateTime issued = normalize(issuedAt);
         List<LocalV1ContextPackMemory> memories = delivered.stream()
-                .map(item -> new LocalV1ContextPackMemory(
-                        item.memoryId(),
-                        item.memoryRevisionId(),
-                        item.revisionNo(),
-                        item.policyRevisionNo(),
-                        item.memoryType(),
-                        item.bodyText(),
-                        item.score()))
+                .map(item -> {
+                    OffsetDateTime occurred = normalize(item.evidenceOccurredAt());
+                    int ageDays = evidenceAgeDays(issued, occurred);
+                    return new LocalV1ContextPackMemory(
+                            item.memoryId(),
+                            item.memoryRevisionId(),
+                            item.revisionNo(),
+                            item.policyRevisionNo(),
+                            item.memoryType(),
+                            item.bodyText(),
+                            item.score(),
+                            occurred,
+                            ageDays);
+                })
                 .toList();
         return new LocalV1ContextPackResult(
                 requestId,
@@ -391,7 +434,7 @@ public class LocalV1ContextPackCoordinator {
                 request.turnId(),
                 request.purpose(),
                 policySet,
-                utc(issuedAt),
+                issued,
                 utc(expiresAt),
                 false,
                 memories);
@@ -399,6 +442,26 @@ public class LocalV1ContextPackCoordinator {
 
     private static OffsetDateTime utc(OffsetDateTime value) {
         return value.withOffsetSameInstant(ZoneOffset.UTC);
+    }
+
+    private static OffsetDateTime normalize(OffsetDateTime value) {
+        return utc(value).truncatedTo(ChronoUnit.MICROS);
+    }
+
+    private static String manifestTimestamp(OffsetDateTime value) {
+        return normalize(value).toString();
+    }
+
+    private static int evidenceAgeDays(OffsetDateTime issuedAt, OffsetDateTime evidenceOccurredAt) {
+        if (evidenceOccurredAt.toInstant().isAfter(issuedAt.toInstant())) {
+            throw new LocalV1ContextPackException(LocalV1ContextPackException.Code.INTERNAL_FAILURE);
+        }
+        Duration elapsed = Duration.between(evidenceOccurredAt, issuedAt);
+        long days = elapsed.getSeconds() / SECONDS_PER_DAY;
+        if (days < 0 || days > Integer.MAX_VALUE) {
+            throw new LocalV1ContextPackException(LocalV1ContextPackException.Code.INTERNAL_FAILURE);
+        }
+        return (int) days;
     }
 
     // ── canonical hashing ──────────────────────────────────────────────────
@@ -421,6 +484,7 @@ public class LocalV1ContextPackCoordinator {
             fields.add(memory.memoryRevisionId().toString());
             fields.add(Long.toString(memory.revisionNo()));
             fields.add(Double.toString(memory.score()));
+            fields.add(manifestTimestamp(memory.evidenceOccurredAt()));
         }
         return fields;
     }
@@ -504,5 +568,6 @@ public class LocalV1ContextPackCoordinator {
             long policyRevisionNo,
             String memoryType,
             String bodyText,
-            double score) {}
+            double score,
+            OffsetDateTime evidenceOccurredAt) {}
 }

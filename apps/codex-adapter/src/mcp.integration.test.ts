@@ -269,6 +269,8 @@ describe("real MCP stdio + loopback CandidateSet gate", () => {
                   memoryType: "INTERPRETATION",
                   bodyText: CONTEXT_MEMORY_BODY,
                   score: 0.48,
+                  evidenceOccurredAt: "2026-08-12T09:30:01Z",
+                  evidenceAgeDays: 3,
                 },
               ];
           response.writeHead(200, { "Content-Type": "application/json" });

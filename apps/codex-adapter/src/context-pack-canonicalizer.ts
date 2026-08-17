@@ -51,6 +51,8 @@ export interface ContextPackMemory {
   memoryType: MemoryType;
   bodyText: string;
   score: number;
+  evidenceOccurredAt: string;
+  evidenceAgeDays: number;
 }
 
 /** The validated, closed success projection (never includes threadId/turnId/purpose/policyRevisionSet). */
@@ -147,10 +149,10 @@ function daysFromCivil(year: number, month: number, day: number): number {
 /**
  * Strictly validates an RFC3339/OffsetDateTime instant: every calendar component must be a real
  * date/time (month range, real day-of-month including leap years, hour/minute/second range, and
- * offset range) before it is converted to a comparable absolute epoch in milliseconds. Never
+ * offset range) before it is converted to a comparable absolute epoch in nanoseconds. Never
  * rewrites the value and never depends on Date.parse normalization.
  */
-function parseTimestamp(value: string): number {
+function parseTimestamp(value: string): bigint {
   const m = TIMESTAMP_RE.exec(value);
   if (m === null) fail();
 
@@ -171,15 +173,17 @@ function parseTimestamp(value: string): number {
   if (offsetHour > 23 || offsetMinute > 59) fail();
 
   const days = daysFromCivil(year, month, day);
-  const localSeconds = days * 86400 + hour * 3600 + minute * 60 + second;
-  const offsetSeconds =
-    (offsetSign === "-" ? -1 : 1) * (offsetHour * 3600 + offsetMinute * 60);
+  const localSeconds = BigInt(days) * 86400n
+    + BigInt(hour * 3600 + minute * 60 + second);
+  const offsetSeconds = BigInt(
+    (offsetSign === "-" ? -1 : 1) * (offsetHour * 3600 + offsetMinute * 60),
+  );
   const epochSeconds = localSeconds - offsetSeconds;
-  const millis = fraction === "" ? 0 : Math.floor(Number(fraction.padEnd(9, "0")) / 1e6);
-  return epochSeconds * 1000 + millis;
+  const nanos = BigInt(fraction.padEnd(9, "0"));
+  return epochSeconds * 1_000_000_000n + nanos;
 }
 
-function parseMemory(value: unknown): ContextPackMemory {
+function parseMemory(value: unknown, issuedAtNanos: bigint): ContextPackMemory {
   if (!isPlainObject(value)) fail();
   assertExactKeys(value, [
     "memoryId",
@@ -189,6 +193,8 @@ function parseMemory(value: unknown): ContextPackMemory {
     "memoryType",
     "bodyText",
     "score",
+    "evidenceOccurredAt",
+    "evidenceAgeDays",
   ]);
 
   if (!isValidUuid(value.memoryId)) fail();
@@ -222,6 +228,23 @@ function parseMemory(value: unknown): ContextPackMemory {
   const score = value.score;
   if (typeof score !== "number" || !Number.isFinite(score)) fail();
 
+  if (typeof value.evidenceOccurredAt !== "string") fail();
+  const evidenceOccurredAtNanos = parseTimestamp(value.evidenceOccurredAt);
+  if (evidenceOccurredAtNanos > issuedAtNanos) fail();
+
+  const evidenceAgeDays = value.evidenceAgeDays;
+  if (
+    typeof evidenceAgeDays !== "number" ||
+    !Number.isSafeInteger(evidenceAgeDays) ||
+    evidenceAgeDays < 0
+  ) {
+    fail();
+  }
+  const expectedAgeDays = Number(
+    (issuedAtNanos - evidenceOccurredAtNanos) / 86_400_000_000_000n,
+  );
+  if (evidenceAgeDays !== expectedAgeDays) fail();
+
   return {
     memoryId: value.memoryId,
     memoryRevisionId: value.memoryRevisionId,
@@ -230,6 +253,8 @@ function parseMemory(value: unknown): ContextPackMemory {
     memoryType: value.memoryType as MemoryType,
     bodyText: value.bodyText,
     score,
+    evidenceOccurredAt: value.evidenceOccurredAt,
+    evidenceAgeDays,
   };
 }
 
@@ -279,12 +304,12 @@ export function parseContextPackResponse(
   const expiresAt = raw.expiresAt;
   if (typeof issuedAt !== "string") fail();
   if (typeof expiresAt !== "string") fail();
-  const issuedAtMillis = parseTimestamp(issuedAt);
-  const expiresAtMillis = parseTimestamp(expiresAt);
-  if (expiresAtMillis <= issuedAtMillis) fail();
+  const issuedAtNanos = parseTimestamp(issuedAt);
+  const expiresAtNanos = parseTimestamp(expiresAt);
+  if (expiresAtNanos <= issuedAtNanos) fail();
 
   if (!Array.isArray(raw.memories)) fail();
-  const memories = raw.memories.map(parseMemory);
+  const memories = raw.memories.map((m) => parseMemory(m, issuedAtNanos));
   if (memories.length > 5) fail();
   if (resultCategory === "SUCCEEDED" && memories.length < 1) fail();
   if (resultCategory === "NO_RELEVANT_RESULT" && memories.length !== 0) fail();

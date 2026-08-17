@@ -69,6 +69,18 @@ export interface ContextPackMemory {
      * @memberof ContextPackMemory
      */
     score: number;
+    /**
+     *
+     * @type {Date}
+     * @memberof ContextPackMemory
+     */
+    evidenceOccurredAt: Date;
+    /**
+     *
+     * @type {number}
+     * @memberof ContextPackMemory
+     */
+    evidenceAgeDays: number;
 }
 
 
@@ -84,6 +96,8 @@ export function instanceOfContextPackMemory(value: object): value is ContextPack
     if (!('memoryType' in value) || value['memoryType'] === undefined) return false;
     if (!('bodyText' in value) || value['bodyText'] === undefined) return false;
     if (!('score' in value) || value['score'] === undefined) return false;
+    if (!('evidenceOccurredAt' in value) || value['evidenceOccurredAt'] === undefined) return false;
+    if (!('evidenceAgeDays' in value) || value['evidenceAgeDays'] === undefined) return false;
     return true;
 }
 
@@ -104,6 +118,8 @@ export function ContextPackMemoryFromJSONTyped(json: any, ignoreDiscriminator: b
         'memoryType': MemoryTypeFromJSON(json['memoryType']),
         'bodyText': json['bodyText'],
         'score': json['score'],
+        'evidenceOccurredAt': (new Date(json['evidenceOccurredAt'])),
+        'evidenceAgeDays': json['evidenceAgeDays'],
     };
 }
 
@@ -125,6 +141,8 @@ export function ContextPackMemoryToJSONTyped(value?: ContextPackMemory | null, i
         'memoryType': MemoryTypeToJSON(value['memoryType']),
         'bodyText': value['bodyText'],
         'score': value['score'],
+        'evidenceOccurredAt': value['evidenceOccurredAt'].toISOString(),
+        'evidenceAgeDays': value['evidenceAgeDays'],
     };
 }
 

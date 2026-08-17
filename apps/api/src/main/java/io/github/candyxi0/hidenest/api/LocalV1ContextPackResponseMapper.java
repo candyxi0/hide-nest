@@ -40,6 +40,8 @@ final class LocalV1ContextPackResponseMapper {
                 source.policyRevisionNo(),
                 MemoryType.valueOf(source.memoryType()),
                 source.bodyText(),
-                BigDecimal.valueOf(source.score()));
+                BigDecimal.valueOf(source.score()),
+                source.evidenceOccurredAt(),
+                (long) source.evidenceAgeDays());
     }
 }

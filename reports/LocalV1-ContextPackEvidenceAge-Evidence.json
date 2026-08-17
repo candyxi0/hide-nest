@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "status": "LOCAL_V1_CONTEXT_PACK_EVIDENCE_AGE_R1_READY_FOR_LOCAL_COMMIT",
+  "producerStartedAt": "2026-08-18T01:45:00+08:00",
+  "producerCompletedAt": "2026-08-18T02:22:00+08:00",
+  "baseline": {
+    "head": "5b9a1f91579640de7ad031e906dd18f6bc3d6f81",
+    "branch": "main"
+  },
+  "environment": {
+    "javaHome": "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.4-hotspot",
+    "javaVersion": "25.0.4",
+    "postgresImage": "pgvector/pgvector@sha256:2ac2c62ac8f030b414b19ea633a6d1d4d37c03abe52ce91887a4e5b4fbb5c73c",
+    "pgvectorVersion": "0.8.2"
+  },
+  "contract": {
+    "namedSchema": "ContextPackMemory",
+    "newOperations": 0,
+    "operationCount": 30,
+    "failureCodeCount": 50,
+    "eventTypeCount": 12,
+    "anonymousObjectResidual": 0,
+    "deepSearchImplemented": false
+  },
+  "feature": {
+    "evidenceOccurredAtSource": "LocalV1S2BQueryCoordinator.getFullEvidence(memoryId)",
+    "evidenceAgeDaysFormula": "floor((issuedAt - evidenceOccurredAt) / 86400s)",
+    "manifestBinding": ["requestId", "threadId", "turnId", "purpose", "resultCategory", "policySet", "memoryId", "memoryRevisionId", "revisionNo", "score", "evidenceOccurredAt"],
+    "ageDerivation": "deterministic from bound issuedAt and evidenceOccurredAt"
+  },
+  "tests": {
+    "targetedDb": {
+      "classes": [
+        {"name": "LocalV1ContextPackRetrievalTest", "tests": 20, "failed": 0, "errors": 0},
+        {"name": "LocalV1ContextPackEmptyTest", "tests": 2, "failed": 0, "errors": 0}
+      ]
+    },
+    "targetedHttp": {
+      "classes": [
+        {"name": "LocalV1ContextPackHttpIntegrationTest", "tests": 5, "failed": 0, "errors": 0}
+      ]
+    },
+    "contract": {
+      "classes": 12,
+      "tests": 46,
+      "failed": 0,
+      "errors": 0
+    },
+    "nodeFourGates": {
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "test": "PASS",
+      "build": "PASS"
+    },
+    "codexAdapterTestSummary": {
+      "files": 13,
+      "tests": 209,
+      "skipped": 1,
+      "failed": 0
+    },
+    "generationDeterminism": "GENERATION_CHECK_PASS",
+    "contractCompatibility": "COMPATIBILITY_PASS",
+    "gitDiffCheck": "PASS"
+  },
+  "boundaryChecks": {
+    "singleEvidenceAge": "PASS",
+    "multiEvidenceLatest": "PASS",
+    "justUnder24Hours": "0_DAYS",
+    "exactly24Hours": "1_DAY",
+    "futureEvidence": "REJECTED",
+    "futureEvidenceOneMicrosecond": "REJECTED",
+    "twentyFourHoursMinusOneMicrosecond": "0_DAYS",
+    "evidenceTampering": "REJECTED",
+    "crossMidnightReplay": "EXACT",
+    "reembedIncrement": 0,
+    "auditFactIncrement": 0
+  },
+  "migration": {
+    "new": null,
+    "unchanged": ["V001", "V002", "V003", "V004", "V005", "V006", "V007", "V008", "V009", "V010", "V011", "V012", "V013", "V014", "V015", "V016", "V017", "V018", "V019", "V020"]
+  },
+  "leakage": {
+    "query": 0,
+    "bodyText": 0,
+    "fullVector": 0,
+    "path": 0,
+    "token": 0,
+    "capability": 0,
+    "secret": 0,
+    "hostAddress": 0
+  },
+  "gitIndex": {
+    "staged": 0,
+    "outOfBounds": 0,
+    "diffCheck": "PASS"
+  },
+  "scopeExclusions": {
+    "migrationChanged": false,
+    "jooqGeneratedChanged": false,
+    "reactUiChanged": false,
+    "deploymentScriptsChanged": false,
+    "mcpWindowChanged": false,
+    "candidateSetChanged": false,
+    "failureCodeSetChanged": false
+  },
+  "gitWriteOperations": false,
+  "networkAccess": false
+}

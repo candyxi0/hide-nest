@@ -1156,6 +1156,8 @@ components:
         - memoryType
         - bodyText
         - score
+        - evidenceOccurredAt
+        - evidenceAgeDays
       properties:
         memoryId:
           type: string
@@ -1177,6 +1179,13 @@ components:
           type: string
         score:
           type: number
+        evidenceOccurredAt:
+          type: string
+          format: date-time
+        evidenceAgeDays:
+          type: integer
+          format: int64
+          minimum: 0
       additionalProperties: false
 
     DeepSearchRequest:

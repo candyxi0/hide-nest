@@ -320,6 +320,7 @@ class LocalV1ContextPackRetrievalTest {
             manifestFields.add(m.memoryRevisionId().toString());
             manifestFields.add(Long.toString(m.revisionNo()));
             manifestFields.add(Double.toString(m.score()));
+            manifestFields.add(m.evidenceOccurredAt().toString());
         }
         assertTrue(Arrays.equals(canonicalHash(manifestFields), delivery.manifestHash()));
 
@@ -332,6 +333,168 @@ class LocalV1ContextPackRetrievalTest {
         assertEquals(a, consideredIds[0]);
         assertTrue(Arrays.asList(consideredIds).containsAll(Arrays.asList(deliveredIds)));
         assertEquals("SUCCEEDED", trace.get("result_category", String.class));
+    }
+
+    // ── 5b. evidence age correctness and boundary ──────────────────────────
+
+    @Test
+    void evidenceAgeUsesLatestOccurredAtAndIsNonNegative() {
+        UUID actor = UUID.randomUUID();
+        UUID unit1 = UUID.randomUUID();
+        UUID unit2 = UUID.randomUUID();
+        List<EvidenceMessage> messages = List.of(
+                new EvidenceMessage(unit1, actor, 1L, "u1", OffsetDateTime.parse("2026-08-12T09:30:00Z"), "较早", sha256Hex("较早")),
+                new EvidenceMessage(unit2, actor, 2L, "u2", OffsetDateTime.parse("2026-08-14T10:00:00Z"), "最晚", sha256Hex("最晚")));
+        UUID memoryId = createMemory(basis(230), messages);
+
+        LocalV1ContextPackResult result = contextPack.create(requestFor("q-age-latest", basis(230)), key());
+        LocalV1ContextPackMemory delivered = result.memories().stream()
+                .filter(m -> m.memoryId().equals(memoryId))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(OffsetDateTime.parse("2026-08-14T10:00:00Z"), delivered.evidenceOccurredAt());
+        assertEquals(1, delivered.evidenceAgeDays());
+    }
+
+    @Test
+    void evidenceAgeBoundaryAt24Hours() {
+        UUID actor = UUID.randomUUID();
+        UUID unit = UUID.randomUUID();
+        // 23:59:59 before issuedAt -> 0 days
+        List<EvidenceMessage> justUnder = List.of(new EvidenceMessage(
+                unit, actor, 1L, "u1",
+                OffsetDateTime.parse("2026-08-15T00:00:01Z"), "body", sha256Hex("body")));
+        UUID underId = createMemory(basis(231), justUnder);
+        LocalV1ContextPackResult under = contextPack.create(requestFor("q-age-under", basis(231)), key());
+        LocalV1ContextPackMemory underMemory = under.memories().stream()
+                .filter(m -> m.memoryId().equals(underId))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(0, underMemory.evidenceAgeDays());
+
+        // Exactly 24 hours before issuedAt -> 1 day
+        List<EvidenceMessage> exactly = List.of(new EvidenceMessage(
+                UUID.randomUUID(), UUID.randomUUID(), 1L, "u2",
+                OffsetDateTime.parse("2026-08-15T00:00:00Z"), "body2", sha256Hex("body2")));
+        UUID exactId = createMemory(basis(232), exactly);
+        LocalV1ContextPackResult exact = contextPack.create(requestFor("q-age-exact", basis(232)), key());
+        LocalV1ContextPackMemory exactMemory = exact.memories().stream()
+                .filter(m -> m.memoryId().equals(exactId))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(1, exactMemory.evidenceAgeDays());
+    }
+
+    @Test
+    void futureEvidenceFailsClosed() {
+        UUID actor = UUID.randomUUID();
+        List<EvidenceMessage> future = List.of(new EvidenceMessage(
+                UUID.randomUUID(), actor, 1L, "u1",
+                OffsetDateTime.parse("2026-08-16T00:00:01Z"), "body", sha256Hex("body")));
+        UUID memoryId = createMemory(basis(233), future);
+        try {
+            LocalV1ContextPackException ex = assertThrows(
+                    LocalV1ContextPackException.class,
+                    () -> contextPack.create(requestFor("q-future", basis(233)), key()));
+            assertEquals(LocalV1ContextPackException.Code.INTERNAL_FAILURE, ex.code());
+        } finally {
+            archive(memoryId);
+        }
+    }
+
+    @Test
+    void futureEvidenceByOneMicrosecondFailsClosed() {
+        UUID actor = UUID.randomUUID();
+        List<EvidenceMessage> future = List.of(new EvidenceMessage(
+                UUID.randomUUID(), actor, 1L, "u1",
+                OffsetDateTime.parse("2026-08-16T00:00:00.000001Z"), "body", sha256Hex("body")));
+        UUID memoryId = createMemory(basis(237), future);
+        try {
+            LocalV1ContextPackException ex = assertThrows(
+                    LocalV1ContextPackException.class,
+                    () -> contextPack.create(requestFor("q-future-1us", basis(237)), key()));
+            assertEquals(LocalV1ContextPackException.Code.INTERNAL_FAILURE, ex.code());
+        } finally {
+            archive(memoryId);
+        }
+    }
+
+    @Test
+    void evidenceAgeBoundaryAt24HoursMinusOneMicrosecond() {
+        UUID actor = UUID.randomUUID();
+        List<EvidenceMessage> messages = List.of(new EvidenceMessage(
+                UUID.randomUUID(), actor, 1L, "u1",
+                OffsetDateTime.parse("2026-08-15T00:00:00.000001Z"), "body", sha256Hex("body")));
+        UUID memoryId = createMemory(basis(238), messages);
+        LocalV1ContextPackResult result = contextPack.create(requestFor("q-age-24h-1us", basis(238)), key());
+        LocalV1ContextPackMemory memory = result.memories().stream()
+                .filter(m -> m.memoryId().equals(memoryId))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(0, memory.evidenceAgeDays());
+    }
+
+    @Test
+    void replayAcrossNaturalDayUsesOriginalIssuedAtAndAgeDays() {
+        UUID actor = UUID.randomUUID();
+        List<EvidenceMessage> messages = List.of(new EvidenceMessage(
+                UUID.randomUUID(), actor, 1L, "u1",
+                OffsetDateTime.parse("2026-08-12T09:30:00Z"), "body", sha256Hex("body")));
+        createMemory(basis(234), messages);
+        LocalV1ContextPackRequest request = requestFor("q-replay-age", basis(234));
+        String idempotencyKey = "cp-replay-age-fixed";
+
+        // Create just before midnight and replay just after midnight, both inside the 10-minute expiry.
+        Clock createClock = Clock.fixed(Instant.parse("2026-08-16T23:59:00Z"), ZoneId.of("UTC"));
+        var createCoordinator = contextPackWith(createClock, s2b);
+        LocalV1ContextPackResult first = createCoordinator.create(request, idempotencyKey);
+        LocalV1ContextPackMemory firstMemory = first.memories().get(0);
+        int firstAgeDays = firstMemory.evidenceAgeDays();
+
+        int callsAfterFirstCreate = queryEmbedding.calls();
+        long tracesAfterFirstCreate = count("SELECT count(*) FROM runtime.retrieval_trace");
+        long deliveriesAfterFirstCreate = count("SELECT count(*) FROM runtime.context_delivery");
+        long itemsAfterFirstCreate = count("SELECT count(*) FROM runtime.context_pack_delivery_item");
+        long receiptsAfterFirstCreate = count("SELECT count(*) FROM runtime.idempotency_receipt");
+
+        Clock replayClock = Clock.fixed(Instant.parse("2026-08-17T00:01:00Z"), ZoneId.of("UTC"));
+        var replayCoordinator = contextPackWith(replayClock, s2b);
+        LocalV1ContextPackResult replay = replayCoordinator.create(request, idempotencyKey);
+        LocalV1ContextPackMemory replayMemory = replay.memories().get(0);
+
+        assertEquals(first.requestId(), replay.requestId());
+        assertEquals(first.deliveryId(), replay.deliveryId());
+        assertEquals(first.issuedAt(), replay.issuedAt());
+        assertEquals(first.expiresAt(), replay.expiresAt());
+        assertEquals(firstMemory.evidenceOccurredAt(), replayMemory.evidenceOccurredAt());
+        assertEquals(firstAgeDays, replayMemory.evidenceAgeDays());
+
+        assertEquals(callsAfterFirstCreate, queryEmbedding.calls(), "replay must not re-embed");
+        assertEquals(tracesAfterFirstCreate, count("SELECT count(*) FROM runtime.retrieval_trace"), "replay must not add trace");
+        assertEquals(deliveriesAfterFirstCreate, count("SELECT count(*) FROM runtime.context_delivery"), "replay must not add delivery");
+        assertEquals(itemsAfterFirstCreate, count("SELECT count(*) FROM runtime.context_pack_delivery_item"), "replay must not add item");
+        assertEquals(receiptsAfterFirstCreate, count("SELECT count(*) FROM runtime.idempotency_receipt"), "replay must not add receipt");
+    }
+
+    @Test
+    void replayRejectsEvidenceTimeTampering() {
+        UUID actor = UUID.randomUUID();
+        UUID unit = UUID.randomUUID();
+        List<EvidenceMessage> messages = List.of(new EvidenceMessage(
+                unit, actor, 1L, "u1",
+                OffsetDateTime.parse("2026-08-12T09:30:00Z"), "body", sha256Hex("body")));
+        createMemory(basis(236), messages);
+        LocalV1ContextPackRequest request = requestFor("q-tamper-evidence", basis(236));
+        String key = key();
+        contextPack.create(request, key);
+
+        dsl.execute(
+                "UPDATE evidence.source_unit SET occurred_at=?::timestamptz WHERE source_unit_id=?::uuid",
+                OffsetDateTime.parse("2026-08-13T09:30:00Z"), unit);
+        LocalV1ContextPackException ex = assertThrows(
+                LocalV1ContextPackException.class, () -> contextPack.create(request, key));
+        assertEquals(LocalV1ContextPackException.Code.INTERNAL_FAILURE, ex.code());
     }
 
     // ── 6. trace/delivery/receipt failure injection full rollback ──────────
@@ -860,35 +1023,57 @@ class LocalV1ContextPackRetrievalTest {
         return deterministicId("memory:", submissionId);
     }
 
-    private static LocalV1CloseoutSubmission buildSubmission(UUID submissionId, String bodyText) {
-        UUID threadId = UUID.randomUUID();
-        UUID confirmationUnit = UUID.randomUUID();
-        String bodyHash = sha256Hex(bodyText);
+    private UUID createMemory(double[] vector, List<EvidenceMessage> messages) {
+        String bodyText = "合成记忆正文-" + UUID.randomUUID();
+        bodyEmbedding.put(bodyText, vector);
+        UUID submissionId = UUID.randomUUID();
+        projection.submit(buildSubmission(submissionId, bodyText, messages));
+        return deterministicId("memory:", submissionId);
+    }
 
+    private static LocalV1CloseoutSubmission buildSubmission(UUID submissionId, String bodyText) {
         UUID msg1Unit = deterministicId("msg1:", submissionId);
         UUID msg2Unit = deterministicId("msg2:", submissionId);
         UUID actor1 = deterministicId("a1:", submissionId);
         UUID actor2 = deterministicId("a2:", submissionId);
-        UUID anchor1 = deterministicId("anchor1:", submissionId);
         String msg1 = "协作者：只保存必要证据";
         String msg2 = "小林：已确认本版";
+        List<EvidenceMessage> messages = List.of(
+                new EvidenceMessage(
+                        msg1Unit, actor1, 1L, "unit-1",
+                        OffsetDateTime.parse("2026-08-12T09:30:00Z"), msg1, sha256Hex(msg1)),
+                new EvidenceMessage(
+                        msg2Unit, actor2, 2L, "unit-2",
+                        OffsetDateTime.parse("2026-08-12T09:30:01Z"), msg2, sha256Hex(msg2)));
+        return buildSubmission(submissionId, bodyText, messages);
+    }
 
-        EvidenceMessage m1 = new EvidenceMessage(
-                msg1Unit, actor1, 1L, "unit-1",
-                OffsetDateTime.parse("2026-08-12T09:30:00Z"), msg1, sha256Hex(msg1));
-        EvidenceMessage m2 = new EvidenceMessage(
-                msg2Unit, actor2, 2L, "unit-2",
-                OffsetDateTime.parse("2026-08-12T09:30:01Z"), msg2, sha256Hex(msg2));
-        List<EvidenceMessage> messages = List.of(m1, m2);
+    private static LocalV1CloseoutSubmission buildSubmission(
+            UUID submissionId, String bodyText, List<EvidenceMessage> messages) {
+        UUID threadId = UUID.randomUUID();
+        UUID confirmationUnit = UUID.randomUUID();
+        String bodyHash = sha256Hex(bodyText);
+
+        UUID anchor1 = deterministicId("anchor1:", submissionId);
+        long messageCount = messages.size();
+        List<AnchorUnit> anchorUnits = new ArrayList<>(messages.size());
+        for (int i = 0; i < messages.size(); i++) {
+            EvidenceMessage message = messages.get(i);
+            anchorUnits.add(new AnchorUnit(
+                    message.sourceUnitId(),
+                    0L,
+                    (long) message.bodyText().codePointCount(0, message.bodyText().length()),
+                    (long) (i + 1)));
+        }
+
         String manifestHash = LocalV1CloseoutCanonicalizer.threadManifestHash(
-                new ThreadReaderManifest("local-v1-synthetic-v1", 1L, 2L, true, "", messages));
+                new ThreadReaderManifest("local-v1-synthetic-v1", 1L, messageCount, true, "", messages));
         ThreadReaderManifest manifest =
-                new ThreadReaderManifest("local-v1-synthetic-v1", 1L, 2L, true, manifestHash, messages);
-        HideSelection hideSelection = new HideSelection(actor2, "INTERPRETATION", bodyText, bodyHash);
+                new ThreadReaderManifest("local-v1-synthetic-v1", 1L, messageCount, true, manifestHash, messages);
+        HideSelection hideSelection = new HideSelection(
+                messages.get(messages.size() - 1).actorId(), "INTERPRETATION", bodyText, bodyHash);
         UserConfirmation placeholder = new UserConfirmation("CONFIRM", "", confirmationUnit);
-        List<SourceAnchor> anchors = List.of(new SourceAnchor(anchor1, List.of(
-                new AnchorUnit(msg1Unit, 0L, (long) msg1.codePointCount(0, msg1.length()), 1L),
-                new AnchorUnit(msg2Unit, 0L, (long) msg2.codePointCount(0, msg2.length()), 2L))));
+        List<SourceAnchor> anchors = List.of(new SourceAnchor(anchor1, anchorUnits));
 
         LocalV1CloseoutSubmission provisional = new LocalV1CloseoutSubmission(
                 submissionId, threadId, hideSelection, placeholder, anchors, manifest, "");

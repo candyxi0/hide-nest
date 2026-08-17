@@ -36,6 +36,8 @@ function memory(overrides?: Partial<ContextPackMemory>): ContextPackMemory {
     memoryType: "INTERPRETATION",
     bodyText: "记忆正文",
     score: 0.48,
+    evidenceOccurredAt: "2026-08-12T09:30:01Z",
+    evidenceAgeDays: 3,
     ...overrides,
   };
 }
@@ -223,7 +225,10 @@ describe("parseContextPackResponse rejections", () => {
     const result = parseContextPackResponse(
       request,
       {
-        ...validResponse([memory()], request),
+        ...validResponse(
+          [memory({ evidenceOccurredAt: "2024-02-28T23:59:59.000Z", evidenceAgeDays: 0 })],
+          request,
+        ),
         issuedAt: "2024-02-29T23:59:59.123456789+08:00",
         expiresAt: "2024-03-01T00:00:00.000Z",
       },
@@ -323,5 +328,113 @@ describe("parseContextPackResponse rejections", () => {
     expect(() =>
       parseContextPackResponse(request, validResponse([memory({ bodyText: 123 as never })], request)),
     ).toThrow();
+  });
+
+  it("accepts a memory with valid evidenceOccurredAt and evidenceAgeDays", () => {
+    const request = makeRequest();
+    const result = parseContextPackResponse(
+      request,
+      validResponse([memory({ evidenceOccurredAt: "2026-08-15T00:00:01Z", evidenceAgeDays: 0 })], request),
+    );
+    expect(result.memories[0].evidenceOccurredAt).toBe("2026-08-15T00:00:01Z");
+    expect(result.memories[0].evidenceAgeDays).toBe(0);
+  });
+
+  it("rejects a memory with missing or extra evidence fields", () => {
+    const request = makeRequest();
+    const base = memory();
+    const missingOccurred = { ...base } as Record<string, unknown>;
+    delete missingOccurred["evidenceOccurredAt"];
+    const missingAge = { ...base } as Record<string, unknown>;
+    delete missingAge["evidenceAgeDays"];
+    expect(() =>
+      parseContextPackResponse(request, validResponse([missingOccurred as never], request)),
+    ).toThrow();
+    expect(() =>
+      parseContextPackResponse(request, validResponse([missingAge as never], request)),
+    ).toThrow();
+    expect(() =>
+      parseContextPackResponse(request, validResponse([{ ...base, extra: 1 } as never], request)),
+    ).toThrow();
+  });
+
+  it("rejects future evidenceOccurredAt", () => {
+    const request = makeRequest();
+    expect(() =>
+      parseContextPackResponse(
+        request,
+        validResponse([memory({ evidenceOccurredAt: "2026-08-16T00:00:01Z", evidenceAgeDays: 0 })], request),
+      ),
+    ).toThrow();
+  });
+
+  it("rejects future evidenceOccurredAt 1 microsecond after issuedAt", () => {
+    const request = makeRequest();
+    expect(() =>
+      parseContextPackResponse(
+        request,
+        validResponse([memory({ evidenceOccurredAt: "2026-08-16T00:00:00.000001Z", evidenceAgeDays: 0 })], request),
+      ),
+    ).toThrow();
+  });
+
+  it("computes 0 days at 24 hours minus 1 microsecond", () => {
+    const request = makeRequest();
+    const result = parseContextPackResponse(
+      request,
+      validResponse([memory({ evidenceOccurredAt: "2026-08-15T00:00:00.000001Z", evidenceAgeDays: 0 })], request),
+    );
+    expect(result.memories[0].evidenceAgeDays).toBe(0);
+  });
+
+  it("computes 1 day at exactly 24 hours", () => {
+    const request = makeRequest();
+    const result = parseContextPackResponse(
+      request,
+      validResponse([memory({ evidenceOccurredAt: "2026-08-15T00:00:00Z", evidenceAgeDays: 1 })], request),
+    );
+    expect(result.memories[0].evidenceAgeDays).toBe(1);
+  });
+
+  it("rejects negative evidenceAgeDays", () => {
+    const request = makeRequest();
+    expect(() =>
+      parseContextPackResponse(
+        request,
+        validResponse([memory({ evidenceOccurredAt: "2026-08-12T09:30:01Z", evidenceAgeDays: -1 })], request),
+      ),
+    ).toThrow();
+  });
+
+  it("rejects evidenceAgeDays inconsistent with evidenceOccurredAt", () => {
+    const request = makeRequest();
+    expect(() =>
+      parseContextPackResponse(
+        request,
+        validResponse([memory({ evidenceOccurredAt: "2026-08-15T00:00:00Z", evidenceAgeDays: 0 })], request),
+      ),
+    ).toThrow();
+    expect(() =>
+      parseContextPackResponse(
+        request,
+        validResponse([memory({ evidenceOccurredAt: "2026-08-15T00:00:01Z", evidenceAgeDays: 1 })], request),
+      ),
+    ).toThrow();
+  });
+
+  it("computes age boundary correctly: 23:59:59 is 0 days and 24:00:00 is 1 day", () => {
+    const request = makeRequest();
+    expect(() =>
+      parseContextPackResponse(
+        request,
+        validResponse([memory({ evidenceOccurredAt: "2026-08-15T00:00:01Z", evidenceAgeDays: 0 })], request),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      parseContextPackResponse(
+        request,
+        validResponse([memory({ evidenceOccurredAt: "2026-08-15T00:00:00Z", evidenceAgeDays: 1 })], request),
+      ),
+    ).not.toThrow();
   });
 });
