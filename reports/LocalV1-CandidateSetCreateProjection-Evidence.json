@@ -1,0 +1,62 @@
+{
+  "status": "LOCAL_V1_CANDIDATE_SET_CREATE_PROJECTION_R1A_READY_FOR_LOCAL_COMMIT",
+  "frozenParentCommit": "56e8a86dcce99777427f53682e8f5871a6fc4a37",
+  "r1aFix": {
+    "manifestClosedKeySet": "PASS",
+    "manifestStrictTypes": "PASS",
+    "manifestZeroExtraKeys": "PASS",
+    "correctUuidInUnrelatedFieldAttack": "REJECTED",
+    "wrongStatusResultRetryableAttack": "REJECTED",
+    "legalJsonbKeyOrderNormalized": "PASS"
+  },
+  "manifestAttacks": {
+    "wrongRequestId": "REJECTED",
+    "wrongRequestIdWithNoteCorrectUuid": "REJECTED",
+    "extraField": "REJECTED",
+    "statusString200": "REJECTED",
+    "retryableStringFalse": "REJECTED",
+    "resultCategoryWrong": "REJECTED"
+  },
+  "verification": {
+    "targetedTestCount": 26,
+    "targetedTests": "26/26_PASS",
+    "offlineCompile": "PASS",
+    "architectureTests": "29/29_PASS",
+    "fullMavenCleanVerify": "NOT_RUN_REUSE_R1_PASS",
+    "gitDiffCheck": "PASS"
+  },
+  "modificationCounts": {
+    "production": 1,
+    "test": 1,
+    "report": 2
+  },
+  "integrity": {
+    "v001V020Changes": 0,
+    "generatedChanges": 0,
+    "contractsChanges": 0,
+    "reactPrototypeChanges": 0,
+    "mcpChanges": 0,
+    "gitIndex": "MATCH",
+    "staged": 0,
+    "outOfScope": 0,
+    "dockerNewContainers": 0,
+    "dockerNewVolumes": 0,
+    "dockerNewNetworks": 0,
+    "payloadNewFiles": 0,
+    "leftoverProcesses": 0,
+    "networkAccess": false,
+    "gitWriteOperation": false
+  },
+  "leaks": {
+    "bodyText": 0,
+    "query": 0,
+    "fullVector": 0,
+    "path": 0,
+    "token": 0,
+    "capability": 0,
+    "secret": 0,
+    "homeServerAddress": 0
+  },
+  "reviseSupersedeBoundary": "ROUTED_TO_POST_LOCAL_V1_GOVERNANCE",
+  "reportPath": "D:\\myproject\\hide-nest\\reports\\LocalV1-CandidateSetCreateProjection-执行报告.md"
+}
