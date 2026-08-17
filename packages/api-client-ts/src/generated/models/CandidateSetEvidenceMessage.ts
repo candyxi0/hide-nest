@@ -33,6 +33,12 @@ export interface CandidateSetEvidenceMessage {
     actorId: string;
     /**
      * 
+     * @type {CandidateSetEvidenceMessageSpeakerRoleEnum}
+     * @memberof CandidateSetEvidenceMessage
+     */
+    speakerRole: CandidateSetEvidenceMessageSpeakerRoleEnum;
+    /**
+     * 
      * @type {number}
      * @memberof CandidateSetEvidenceMessage
      */
@@ -63,12 +69,24 @@ export interface CandidateSetEvidenceMessage {
     bodyHash: string;
 }
 
+
+/**
+ * @export
+ */
+export const CandidateSetEvidenceMessageSpeakerRoleEnum = {
+    Xiaolin: 'XIAOLIN',
+    Hide: 'HIDE'
+} as const;
+export type CandidateSetEvidenceMessageSpeakerRoleEnum = typeof CandidateSetEvidenceMessageSpeakerRoleEnum[keyof typeof CandidateSetEvidenceMessageSpeakerRoleEnum];
+
+
 /**
  * Check if a given object implements the CandidateSetEvidenceMessage interface.
  */
 export function instanceOfCandidateSetEvidenceMessage(value: object): value is CandidateSetEvidenceMessage {
     if (!('sourceUnitId' in value) || value['sourceUnitId'] === undefined) return false;
     if (!('actorId' in value) || value['actorId'] === undefined) return false;
+    if (!('speakerRole' in value) || value['speakerRole'] === undefined) return false;
     if (!('ordinal' in value) || value['ordinal'] === undefined) return false;
     if (!('externalUnitRef' in value) || value['externalUnitRef'] === undefined) return false;
     if (!('occurredAt' in value) || value['occurredAt'] === undefined) return false;
@@ -89,6 +107,7 @@ export function CandidateSetEvidenceMessageFromJSONTyped(json: any, ignoreDiscri
         
         'sourceUnitId': json['sourceUnitId'],
         'actorId': json['actorId'],
+        'speakerRole': json['speakerRole'],
         'ordinal': json['ordinal'],
         'externalUnitRef': json['externalUnitRef'],
         'occurredAt': (new Date(json['occurredAt'])),
@@ -110,6 +129,7 @@ export function CandidateSetEvidenceMessageToJSONTyped(value?: CandidateSetEvide
         
         'sourceUnitId': value['sourceUnitId'],
         'actorId': value['actorId'],
+        'speakerRole': value['speakerRole'],
         'ordinal': value['ordinal'],
         'externalUnitRef': value['externalUnitRef'],
         'occurredAt': value['occurredAt'].toISOString(),

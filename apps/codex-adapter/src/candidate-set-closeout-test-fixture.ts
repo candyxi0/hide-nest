@@ -63,20 +63,20 @@ export function candidateSetTestRaw(kind: "three-create" | "mixed" | "revise") {
     evidenceSegments: [
       {
         messages: [
-          { speakerKey: "xiaolin", ordinal: 10, occurredAt: "2026-08-17T12:00:00+08:00", bodyText: "证据甲" },
-          { speakerKey: "hide", ordinal: 11, occurredAt: "2026-08-17T12:00:01.120000000+08:00", bodyText: "证据乙😀" },
-          { speakerKey: "xiaolin", ordinal: 12, occurredAt: "2026-08-17T12:00:02+08:00", bodyText: "证据丙" },
+          { speakerKey: "xiaolin", speakerRole: "XIAOLIN", ordinal: 10, occurredAt: "2026-08-17T12:00:00+08:00", bodyText: "证据甲" },
+          { speakerKey: "hide", speakerRole: "HIDE", ordinal: 11, occurredAt: "2026-08-17T12:00:01.120000000+08:00", bodyText: "证据乙😀" },
+          { speakerKey: "xiaolin", speakerRole: "XIAOLIN", ordinal: 12, occurredAt: "2026-08-17T12:00:02+08:00", bodyText: "证据丙" },
         ],
       },
       {
         messages: [
-          { speakerKey: "xiaolin", ordinal: 20, occurredAt: "2026-08-17T04:00:20Z", bodyText: "证据丁" },
-          { speakerKey: "hide", ordinal: 21, occurredAt: "2026-08-17T04:00:21Z", bodyText: "证据戊" },
+          { speakerKey: "xiaolin", speakerRole: "XIAOLIN", ordinal: 20, occurredAt: "2026-08-17T04:00:20Z", bodyText: "证据丁" },
+          { speakerKey: "hide", speakerRole: "HIDE", ordinal: 21, occurredAt: "2026-08-17T04:00:21Z", bodyText: "证据戊" },
         ],
       },
       {
         messages: [
-          { speakerKey: "xiaolin", ordinal: 30, occurredAt: "2026-08-17T04:00:30Z", bodyText: "证据己" },
+          { speakerKey: "xiaolin", speakerRole: "XIAOLIN", ordinal: 30, occurredAt: "2026-08-17T04:00:30Z", bodyText: "证据己" },
         ],
       },
     ],

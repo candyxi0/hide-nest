@@ -270,7 +270,12 @@ class LocalV1CandidateSetDecisionCoreTest {
     }
 
     private EvidenceMessage message(UUID unitId, UUID actorId, long ordinal, String text) {
-        return new EvidenceMessage(unitId, actorId, ordinal, "msg-" + unitId, OffsetDateTime.now(CLK), text, sha(text));
+        return message(unitId, actorId, "XIAOLIN", ordinal, text);
+    }
+
+    private EvidenceMessage message(UUID unitId, UUID actorId, String role, long ordinal, String text) {
+        return new EvidenceMessage(
+                unitId, actorId, role, ordinal, "msg-" + unitId, OffsetDateTime.now(CLK), text, sha(text));
     }
 
     private AnchorSpec fullAnchor(UUID anchorId, UUID unitId, String text) {
@@ -1483,7 +1488,13 @@ class LocalV1CandidateSetDecisionCoreTest {
                         UUID.randomUUID(), 2, "REJECTED", "SUPERSEDE", "HIDE_PROPOSED", "HIDE",
                         null, null, actor, List.of(),
                         m2.memoryId(), m2.currentRevisionId(), 1L, 1L));
-        var request = seal(setId, "key-" + setId, UUID.randomUUID(), List.of(), List.of(), candidates);
+        var request = seal(
+                setId,
+                "key-" + setId,
+                UUID.randomUUID(),
+                List.of(message(UUID.randomUUID(), actor, "XIAOLIN", 1, "rejected perspective identity")),
+                List.of(),
+                candidates);
         assertEquals("CANONICAL_COMMITTED", coord.submit(request).status());
 
         String join = " FROM memory.candidate_set_member m "
@@ -1504,11 +1515,19 @@ class LocalV1CandidateSetDecisionCoreTest {
     void allRejectedWritesNoEvidence() throws Exception {
         UUID setId = UUID.randomUUID();
         UUID actor = UUID.randomUUID();
+        UUID unit = UUID.randomUUID();
+        String body = "rejected perspective identity";
 
         List<Candidate> candidates = List.of(
                 createCandidate(UUID.randomUUID(), 1, "REJECTED", "CREATE", "HIDE_PROPOSED", "HIDE", null, null, actor, List.of()),
                 createCandidate(UUID.randomUUID(), 2, "REJECTED", "CREATE", "HIDE_PROPOSED", "HIDE", null, null, actor, List.of()));
-        var request = seal(setId, "key-" + setId, UUID.randomUUID(), List.of(), List.of(), candidates);
+        var request = seal(
+                setId,
+                "key-" + setId,
+                UUID.randomUUID(),
+                List.of(message(unit, actor, "XIAOLIN", 1, body)),
+                List.of(),
+                candidates);
 
         long srcBefore = count("SELECT count(*) FROM evidence.source");
         long unitBefore = count("SELECT count(*) FROM evidence.source_unit");
@@ -1543,6 +1562,7 @@ class LocalV1CandidateSetDecisionCoreTest {
         UUID rejectedOnlyActor = UUID.randomUUID();
         UUID acceptedUnit = UUID.randomUUID();
         UUID rejectedUnit = UUID.randomUUID();
+        UUID rejectedPerspectiveUnit = UUID.randomUUID();
         UUID acceptedAnchor = UUID.randomUUID();
         UUID rejectedAnchor = UUID.randomUUID();
         String acceptedBody = "accepted evidence";
@@ -1561,7 +1581,8 @@ class LocalV1CandidateSetDecisionCoreTest {
                 UUID.randomUUID(),
                 List.of(
                         message(acceptedUnit, acceptedActor, 1, acceptedBody),
-                        message(rejectedUnit, rejectedOnlyActor, 2, rejectedBody)),
+                        message(rejectedUnit, rejectedOnlyActor, 2, rejectedBody),
+                        message(rejectedPerspectiveUnit, rejectedPerspective, 3, "rejected perspective")),
                 List.of(
                         fullAnchor(acceptedAnchor, acceptedUnit, acceptedBody),
                         fullAnchor(rejectedAnchor, rejectedUnit, rejectedBody)),
@@ -1630,7 +1651,7 @@ class LocalV1CandidateSetDecisionCoreTest {
                 1,
                 new FinalConfirmation("CONFIRM_SET", 1, new byte[32]),
                 new LocalV1CandidateSetRequest.EvidencePool(
-                        List.of(new EvidenceMessage(unit, actor, 1, "msg", OffsetDateTime.now(CLK), "body", bodyHashInput)),
+                        List.of(new EvidenceMessage(unit, actor, "XIAOLIN", 1, "msg", OffsetDateTime.now(CLK), "body", bodyHashInput)),
                         List.of(new AnchorSpec(anchor, List.of(new AnchorUnit(unit, 0L, 4L, 1L))))),
                 List.of(new Candidate(
                         UUID.randomUUID(), 1, "ACCEPTED", "CREATE", "HIDE_PROPOSED", "HIDE",
@@ -1694,7 +1715,7 @@ class LocalV1CandidateSetDecisionCoreTest {
                 UUID.randomUUID(), "k", new byte[32], UUID.randomUUID(), "s", 1,
                 new FinalConfirmation("CONFIRM_SET", 1, new byte[32]),
                 new LocalV1CandidateSetRequest.EvidencePool(
-                        List.of(new EvidenceMessage(unit, actor, 1, "msg", OffsetDateTime.now(CLK), body, badHash)),
+                        List.of(new EvidenceMessage(unit, actor, "XIAOLIN", 1, "msg", OffsetDateTime.now(CLK), body, badHash)),
                         List.of(fullAnchor(anchor, unit, body))),
                 List.of(createCandidate(UUID.randomUUID(), 1, "ACCEPTED", "CREATE", "HIDE_PROPOSED", "HIDE", "one", "Claim", actor, List.of(anchor)))));
 
@@ -2303,6 +2324,114 @@ class LocalV1CandidateSetDecisionCoreTest {
         assertEquals(
                 "foreign-" + actor,
                 scalar("SELECT stable_ref FROM memory.actor_ref WHERE actor_id='" + actor + "'"));
+    }
+
+    // ── 32. speaker role is independent from candidate perspective ──────
+
+    @Test
+    @Order(32)
+    void speakerRoleDeterminesLabelsAcrossBothPerspectives() throws Exception {
+        UUID xiaolinActor = UUID.randomUUID();
+        UUID hideActor = UUID.randomUUID();
+        UUID threadId = UUID.randomUUID();
+
+        UUID firstSet = UUID.randomUUID();
+        UUID firstXiaolinUnit = UUID.randomUUID();
+        UUID firstHideUnit = UUID.randomUUID();
+        UUID firstAnchor = UUID.randomUUID();
+        String xiaolinBody = "小林证据";
+        String hideBody = "hide证据";
+        AnchorSpec firstAnchorSpec = new AnchorSpec(
+                firstAnchor,
+                List.of(
+                        new AnchorUnit(firstXiaolinUnit, 0L, (long) xiaolinBody.length(), 1L),
+                        new AnchorUnit(firstHideUnit, 0L, (long) hideBody.length(), 2L)));
+        var hidePerspective = seal(
+                firstSet,
+                "key-" + firstSet,
+                threadId,
+                List.of(
+                        message(firstXiaolinUnit, xiaolinActor, "XIAOLIN", 1, xiaolinBody),
+                        message(firstHideUnit, hideActor, "HIDE", 2, hideBody)),
+                List.of(firstAnchorSpec),
+                List.of(createCandidate(
+                        UUID.randomUUID(), 1, "ACCEPTED", "CREATE", "HIDE_PROPOSED", "HIDE",
+                        "hide perspective", "Claim", hideActor, List.of(firstAnchor))));
+
+        UUID secondSet = UUID.randomUUID();
+        UUID secondXiaolinUnit = UUID.randomUUID();
+        UUID secondHideUnit = UUID.randomUUID();
+        UUID secondAnchor = UUID.randomUUID();
+        AnchorSpec secondAnchorSpec = new AnchorSpec(
+                secondAnchor,
+                List.of(
+                        new AnchorUnit(secondXiaolinUnit, 0L, (long) xiaolinBody.length(), 1L),
+                        new AnchorUnit(secondHideUnit, 0L, (long) hideBody.length(), 2L)));
+        var xiaolinPerspective = seal(
+                secondSet,
+                "key-" + secondSet,
+                threadId,
+                List.of(
+                        message(secondXiaolinUnit, xiaolinActor, "XIAOLIN", 3, xiaolinBody),
+                        message(secondHideUnit, hideActor, "HIDE", 4, hideBody)),
+                List.of(secondAnchorSpec),
+                List.of(createCandidate(
+                        UUID.randomUUID(), 1, "ACCEPTED", "CREATE", "HIDE_PROPOSED", "HIDE",
+                        "xiaolin perspective", "Claim", xiaolinActor, List.of(secondAnchor))));
+
+        assertEquals("CANONICAL_COMMITTED", coord.submit(hidePerspective).status());
+        assertEquals("CANONICAL_COMMITTED", coord.submit(xiaolinPerspective).status());
+        assertEquals("小林", scalar(
+                "SELECT display_label FROM memory.actor_ref WHERE actor_id='" + xiaolinActor + "'"));
+        assertEquals("hide", scalar(
+                "SELECT display_label FROM memory.actor_ref WHERE actor_id='" + hideActor + "'"));
+    }
+
+    // ── 33. conflicting role and missing perspective role fail closed ────
+
+    @Test
+    @Order(33)
+    void conflictingRoleAndUnboundPerspectiveAreRejectedBeforeFacts() throws Exception {
+        UUID actor = UUID.randomUUID();
+        UUID unit1 = UUID.randomUUID();
+        UUID unit2 = UUID.randomUUID();
+        UUID anchor = UUID.randomUUID();
+        String body1 = "role one";
+        String body2 = "role two";
+        AnchorSpec anchorSpec = new AnchorSpec(
+                anchor,
+                List.of(
+                        new AnchorUnit(unit1, 0L, (long) body1.length(), 1L),
+                        new AnchorUnit(unit2, 0L, (long) body2.length(), 2L)));
+
+        UUID conflictingSet = UUID.randomUUID();
+        var conflicting = seal(
+                conflictingSet,
+                "key-" + conflictingSet,
+                UUID.randomUUID(),
+                List.of(
+                        message(unit1, actor, "XIAOLIN", 1, body1),
+                        message(unit2, actor, "HIDE", 2, body2)),
+                List.of(anchorSpec),
+                List.of(createCandidate(
+                        UUID.randomUUID(), 1, "ACCEPTED", "CREATE", "HIDE_PROPOSED", "HIDE",
+                        "conflicting role", "Claim", actor, List.of(anchor))));
+        assertRequestRejected(conflicting);
+        assertEquals(0, count("SELECT count(*) FROM memory.candidate_set WHERE candidate_set_id='" + conflictingSet + "'"));
+
+        UUID unboundSet = UUID.randomUUID();
+        UUID unboundPerspective = UUID.randomUUID();
+        var unbound = seal(
+                unboundSet,
+                "key-" + unboundSet,
+                UUID.randomUUID(),
+                List.of(message(UUID.randomUUID(), actor, "XIAOLIN", 1, body1)),
+                List.of(),
+                List.of(createCandidate(
+                        UUID.randomUUID(), 1, "REJECTED", "CREATE", "HIDE_PROPOSED", "HIDE",
+                        null, null, unboundPerspective, List.of())));
+        assertRequestRejected(unbound);
+        assertEquals(0, count("SELECT count(*) FROM memory.candidate_set WHERE candidate_set_id='" + unboundSet + "'"));
     }
 
     // ── raw helpers ───────────────────────────────────────────────────────

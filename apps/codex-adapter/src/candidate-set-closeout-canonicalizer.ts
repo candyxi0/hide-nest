@@ -10,7 +10,6 @@ import {
   normalizeOccurredAt,
   numberField,
   sha256Hex,
-  type EvidenceSegmentInput,
   type MemoryType,
 } from "./closeout-canonicalizer.js";
 
@@ -43,6 +42,23 @@ const CANONICAL_MEMORY_TYPE: Record<MemoryType, CandidateSetCanonicalMemoryType>
   PRINCIPLE: "Principle",
 };
 
+/** Closed speaker-role enum for the CandidateSet evidence messages. Decoupled from perspective. */
+export const SPEAKER_ROLES = ["XIAOLIN", "HIDE"] as const;
+export type SpeakerRole = (typeof SPEAKER_ROLES)[number];
+
+/** CandidateSet-specific evidence message input: carries the explicit speaker role. */
+export interface CandidateSetEvidenceMessageInput {
+  speakerKey: string;
+  speakerRole: SpeakerRole;
+  ordinal: number;
+  occurredAt: string;
+  bodyText: string;
+}
+
+export interface CandidateSetEvidenceSegmentInput {
+  messages: CandidateSetEvidenceMessageInput[];
+}
+
 export interface CandidateSetCandidateInput {
   candidateKey: string;
   disposition: CandidateDisposition;
@@ -66,13 +82,14 @@ export interface CandidateSetCloseoutInput {
   scopeRef: string;
   setVersion: number;
   userConfirmed: true;
-  evidenceSegments: EvidenceSegmentInput[];
+  evidenceSegments: CandidateSetEvidenceSegmentInput[];
   candidates: CandidateSetCandidateInput[];
 }
 
 export interface CandidateSetEvidenceMessage {
   sourceUnitId: string;
   actorId: string;
+  speakerRole: SpeakerRole;
   ordinal: number;
   externalUnitRef: string;
   occurredAt: string;
@@ -182,6 +199,13 @@ export function candidateSetConfirmationHash(request: CandidateSetCloseoutReques
     canonical += nullableNumberField(candidate.expectedRevisionNo);
     canonical += nullableNumberField(candidate.expectedPolicyRevisionNo);
   }
+  // Evidence speaker roles bind the confirmation to the "who spoke" dimension, decoupled from
+  // perspective. Mirrors the Java confirmationHash addition exactly.
+  canonical += numberField(request.evidencePool.messages.length);
+  for (const message of request.evidencePool.messages) {
+    canonical += field(message.sourceUnitId);
+    canonical += field(message.speakerRole);
+  }
   return sha256Hex(canonical);
 }
 
@@ -199,6 +223,7 @@ export function candidateSetRequestHash(request: CandidateSetCloseoutRequest): s
   for (const message of request.evidencePool.messages) {
     canonical += field(message.sourceUnitId);
     canonical += field(message.actorId);
+    canonical += field(message.speakerRole);
     canonical += numberField(message.ordinal);
     canonical += field(message.externalUnitRef);
     canonical += field(message.occurredAt);
@@ -256,6 +281,7 @@ export function buildCandidateSetCloseoutRequest(
     segment.messages.map((message) => ({
       sourceUnitId: deriveCandidateSetSourceUnitId(candidateSetId, message.ordinal),
       actorId: deriveActorId(input.threadKey, message.speakerKey),
+      speakerRole: message.speakerRole,
       ordinal: message.ordinal,
       externalUnitRef: externalUnitRef(input.threadKey, message.ordinal),
       occurredAt: normalizeOccurredAt(message.occurredAt),

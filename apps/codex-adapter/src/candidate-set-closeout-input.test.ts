@@ -30,6 +30,7 @@ function candidate(overrides: Record<string, unknown> = {}) {
 function message(ordinal: number, speakerKey = "xiaolin", bodyText = `证据-${ordinal}`) {
   return {
     speakerKey,
+    speakerRole: speakerKey === "hide" ? "HIDE" : "XIAOLIN",
     ordinal,
     occurredAt: "2026-08-17T12:00:00+08:00",
     bodyText,
@@ -229,5 +230,35 @@ describe("CandidateSet closed input and atomic candidates", () => {
     raw.evidenceSegments[0].messages[0].bodyText = "mutated";
     expect(input.candidates[0].memoryText).toBe("小林喜欢粉色");
     expect(input.evidenceSegments[0].messages[0].bodyText).toBe("证据-10");
+  });
+
+  it("requires speakerRole and rejects missing/null/unknown values", () => {
+    const missing = validRaw();
+    delete (missing.evidenceSegments[0].messages[0] as Record<string, unknown>).speakerRole;
+    reject(missing);
+
+    const nullRole = validRaw();
+    (nullRole.evidenceSegments[0].messages[0] as Record<string, unknown>).speakerRole = null;
+    reject(nullRole);
+
+    const unknownRole = validRaw();
+    (unknownRole.evidenceSegments[0].messages[0] as Record<string, unknown>).speakerRole = "ALIEN";
+    reject(unknownRole);
+  });
+
+  it("rejects the same speakerKey mapped to conflicting speakerRole", () => {
+    const raw = validRaw();
+    // message 10 and message 12 both use speakerKey "xiaolin"; flip message 12 to HIDE.
+    (raw.evidenceSegments[0].messages[2] as Record<string, unknown>).speakerRole = "HIDE";
+    reject(raw);
+  });
+
+  it("accepts a HIDE-perspective candidate while evidence speakers keep their own roles", () => {
+    const raw = validRaw();
+    raw.candidates = [candidate({ perspectiveSpeakerKey: "hide", memoryText: "hide 的视角记忆" })];
+    const input = validateCandidateSetCloseoutInput(raw);
+    expect(input.candidates[0].perspectiveSpeakerKey).toBe("hide");
+    expect(input.evidenceSegments[0].messages[0].speakerRole).toBe("XIAOLIN");
+    expect(input.evidenceSegments[0].messages[1].speakerRole).toBe("HIDE");
   });
 });

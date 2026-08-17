@@ -3,18 +3,20 @@ import {
   CANDIDATE_DISPOSITIONS,
   CANDIDATE_ORIGIN_KINDS,
   FINAL_AUTHOR_KINDS,
+  SPEAKER_ROLES,
   type CandidateAction,
   type CandidateDisposition,
   type CandidateOriginKind,
   type CandidateSetCandidateInput,
   type CandidateSetCloseoutInput,
+  type CandidateSetEvidenceMessageInput,
+  type CandidateSetEvidenceSegmentInput,
   type FinalAuthorKind,
+  type SpeakerRole,
 } from "./candidate-set-closeout-canonicalizer.js";
 import {
   MEMORY_TYPES,
   normalizeOccurredAt,
-  type EvidenceMessageInput,
-  type EvidenceSegmentInput,
   type MemoryType,
 } from "./closeout-canonicalizer.js";
 
@@ -28,7 +30,7 @@ const TOP_LEVEL_FIELDS = [
   "candidates",
 ] as const;
 const SEGMENT_FIELDS = ["messages"] as const;
-const MESSAGE_FIELDS = ["speakerKey", "ordinal", "occurredAt", "bodyText"] as const;
+const MESSAGE_FIELDS = ["speakerKey", "speakerRole", "ordinal", "occurredAt", "bodyText"] as const;
 const CANDIDATE_FIELDS = [
   "candidateKey",
   "disposition",
@@ -141,10 +143,11 @@ function nullablePositiveInteger(value: unknown, label: string): number | null {
   return value === null ? null : safeInteger(value, 1, label);
 }
 
-function validateMessage(value: unknown): EvidenceMessageInput {
+function validateMessage(value: unknown): CandidateSetEvidenceMessageInput {
   if (!isPlainObject(value)) throw new CandidateSetInputError("evidence message must be an object");
   assertExactKeys(value, MESSAGE_FIELDS);
   const speakerKey = stringWithin(value.speakerKey, 1, 64, "speakerKey");
+  const speakerRole = oneOf<SpeakerRole>(value.speakerRole, SPEAKER_ROLES, "speakerRole");
   const ordinal = safeInteger(value.ordinal, 0, "ordinal");
   if (typeof value.occurredAt !== "string") {
     throw new CandidateSetInputError("invalid occurredAt");
@@ -163,10 +166,10 @@ function validateMessage(value: unknown): EvidenceMessageInput {
   ) {
     throw new CandidateSetInputError("invalid evidence bodyText");
   }
-  return { speakerKey, ordinal, occurredAt: value.occurredAt, bodyText: value.bodyText };
+  return { speakerKey, speakerRole, ordinal, occurredAt: value.occurredAt, bodyText: value.bodyText };
 }
 
-function validateSegment(value: unknown): EvidenceSegmentInput {
+function validateSegment(value: unknown): CandidateSetEvidenceSegmentInput {
   if (!isPlainObject(value)) throw new CandidateSetInputError("evidence segment must be an object");
   assertExactKeys(value, SEGMENT_FIELDS);
   if (!Array.isArray(value.messages) || value.messages.length < 1 || value.messages.length > 100) {
@@ -183,7 +186,7 @@ function validateSegment(value: unknown): EvidenceSegmentInput {
 
 function validateCandidate(
   value: unknown,
-  evidenceSegments: EvidenceSegmentInput[],
+  evidenceSegments: CandidateSetEvidenceSegmentInput[],
 ): CandidateSetCandidateInput {
   if (!isPlainObject(value)) throw new CandidateSetInputError("candidate must be an object");
   assertExactKeys(value, CANDIDATE_FIELDS);
@@ -260,6 +263,12 @@ function validateCandidate(
   if (disposition === "REJECTED" && evidenceSegmentIndexes.length !== 0) {
     throw new CandidateSetInputError("rejected candidate must not reference evidence");
   }
+  const perspectiveInPool = evidenceSegments.some((segment) =>
+    segment.messages.some((message) => message.speakerKey === perspectiveSpeakerKey),
+  );
+  if (!perspectiveInPool) {
+    throw new CandidateSetInputError("perspective speaker must occur in the evidence pool");
+  }
   if (disposition === "ACCEPTED") {
     if (memoryText === null || memoryText.trim().length === 0 || memoryType === null) {
       throw new CandidateSetInputError("accepted candidate requires memoryText and memoryType");
@@ -325,6 +334,18 @@ export function validateCandidateSetCloseoutInput(raw: unknown): CandidateSetClo
     throw new CandidateSetInputError("invalid evidenceSegments");
   }
   const evidenceSegments = raw.evidenceSegments.map(validateSegment);
+
+  // A single speakerKey must map to a single speakerRole across the whole request.
+  const speakerRoleByKey = new Map<string, SpeakerRole>();
+  for (const segment of evidenceSegments) {
+    for (const message of segment.messages) {
+      const prior = speakerRoleByKey.get(message.speakerKey);
+      if (prior !== undefined && prior !== message.speakerRole) {
+        throw new CandidateSetInputError("speakerKey must map to a single speakerRole");
+      }
+      speakerRoleByKey.set(message.speakerKey, message.speakerRole);
+    }
+  }
 
   let messageCount = 0;
   let byteCount = 0;

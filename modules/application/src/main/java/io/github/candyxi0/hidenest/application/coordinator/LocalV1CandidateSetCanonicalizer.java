@@ -63,6 +63,13 @@ public final class LocalV1CandidateSetCanonicalizer {
             nullableNumber(sb, c.expectedRevisionNo());
             nullableNumber(sb, c.expectedPolicyRevisionNo());
         }
+        // Evidence speaker roles bind the confirmation to the "who spoke" dimension, decoupled
+        // from perspective. Mirrors the TypeScript confirmationHash addition exactly.
+        number(sb, request.evidencePool().messages().size());
+        for (var m : request.evidencePool().messages()) {
+            field(sb, m.sourceUnitId().toString());
+            field(sb, m.speakerRole());
+        }
         return sha256(sb.toString());
     }
 
@@ -85,6 +92,7 @@ public final class LocalV1CandidateSetCanonicalizer {
         for (var m : request.evidencePool().messages()) {
             field(sb, m.sourceUnitId().toString());
             field(sb, m.actorId().toString());
+            field(sb, m.speakerRole());
             number(sb, m.ordinal());
             field(sb, m.externalUnitRef());
             field(sb, m.occurredAt().toInstant().toString());

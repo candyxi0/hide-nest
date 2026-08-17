@@ -803,6 +803,7 @@ components:
       required:
         - sourceUnitId
         - actorId
+        - speakerRole
         - ordinal
         - externalUnitRef
         - occurredAt
@@ -815,6 +816,11 @@ components:
         actorId:
           type: string
           format: uuid
+        speakerRole:
+          type: string
+          enum:
+            - XIAOLIN
+            - HIDE
         ordinal:
           type: integer
           format: int64

@@ -24,7 +24,7 @@ final class LocalV1CandidateSetRequestMapper {
             Set.of("decision", "confirmedSetVersion", "confirmationHash");
     private static final Set<String> EVIDENCE_POOL_FIELDS = Set.of("messages", "anchors");
     private static final Set<String> EVIDENCE_MESSAGE_FIELDS = Set.of(
-            "sourceUnitId", "actorId", "ordinal", "externalUnitRef",
+            "sourceUnitId", "actorId", "speakerRole", "ordinal", "externalUnitRef",
             "occurredAt", "bodyText", "bodyHash");
     private static final Set<String> EVIDENCE_ANCHOR_FIELDS = Set.of("anchorId", "units");
     private static final Set<String> ANCHOR_UNIT_FIELDS =
@@ -38,6 +38,7 @@ final class LocalV1CandidateSetRequestMapper {
     private static final Set<String> VALID_ACTIONS = Set.of("CREATE", "REVISE", "SUPERSEDE");
     private static final Set<String> VALID_ORIGINS = Set.of("HIDE_PROPOSED", "USER_EDITED", "USER_ADDED");
     private static final Set<String> VALID_AUTHORS = Set.of("HIDE", "USER");
+    private static final Set<String> VALID_SPEAKER_ROLES = Set.of("XIAOLIN", "HIDE");
     private static final int MAX_MEMORY_TEXT = 16000;
 
     private LocalV1CandidateSetRequestMapper() {}
@@ -100,9 +101,14 @@ final class LocalV1CandidateSetRequestMapper {
                 throw schema();
             }
             rejectUnknownFields(element, EVIDENCE_MESSAGE_FIELDS);
+            String speakerRole = requiredText(element, "speakerRole");
+            if (!VALID_SPEAKER_ROLES.contains(speakerRole)) {
+                throw schema();
+            }
             messages.add(new LocalV1CandidateSetRequest.EvidenceMessage(
                     requiredUuid(element, "sourceUnitId"),
                     requiredUuid(element, "actorId"),
+                    speakerRole,
                     requiredLong(element, "ordinal"),
                     requiredText(element, "externalUnitRef"),
                     requiredDateTime(element, "occurredAt"),

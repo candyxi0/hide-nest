@@ -545,6 +545,16 @@ class LocalV1CandidateSetHttpIntegrationTest {
         badHex.put("requestHash", "a".repeat(63));
         assertProblem(post(path, badHex.toString(), TOKEN, true), 422, "REQUEST_SCHEMA_INVALID");
 
+        // Missing and unknown speakerRole must fail closed at the strict HTTP mapper.
+        ObjectNode missingRole = (ObjectNode) JSON.readTree(built.json());
+        ((ObjectNode) missingRole.path("evidencePool").path("messages").get(0)).remove("speakerRole");
+        assertProblem(post(path, missingRole.toString(), TOKEN, true), 422, "REQUEST_SCHEMA_INVALID");
+
+        ObjectNode unknownRole = (ObjectNode) JSON.readTree(built.json());
+        ((ObjectNode) unknownRole.path("evidencePool").path("messages").get(0))
+                .put("speakerRole", "OTHER");
+        assertProblem(post(path, unknownRole.toString(), TOKEN, true), 422, "REQUEST_SCHEMA_INVALID");
+
         // Wrong content-type
         HttpRequest.Builder wrongCt = HttpRequest.newBuilder(base.resolve(path))
                 .timeout(Duration.ofSeconds(20))
@@ -756,7 +766,7 @@ class LocalV1CandidateSetHttpIntegrationTest {
         OffsetDateTime occurredAt = OffsetDateTime.parse("2026-08-12T09:30:00Z");
 
         var evidenceMessage = new LocalV1CandidateSetRequest.EvidenceMessage(
-                sourceUnitId, actorId, 1L, "unit-ref", occurredAt, bodyText, bodyHash);
+                sourceUnitId, actorId, "XIAOLIN", 1L, "unit-ref", occurredAt, bodyText, bodyHash);
         var anchorUnit = new LocalV1CandidateSetRequest.AnchorUnit(sourceUnitId, null, null, 1L);
         var anchorSpec = new LocalV1CandidateSetRequest.AnchorSpec(anchorId, List.of(anchorUnit));
         var evidencePool = new LocalV1CandidateSetRequest.EvidencePool(
@@ -829,6 +839,7 @@ class LocalV1CandidateSetHttpIntegrationTest {
             ObjectNode msg = messages.addObject();
             msg.put("sourceUnitId", m.sourceUnitId().toString());
             msg.put("actorId", m.actorId().toString());
+            msg.put("speakerRole", m.speakerRole());
             msg.put("ordinal", m.ordinal());
             msg.put("externalUnitRef", m.externalUnitRef());
             msg.put("occurredAt", m.occurredAt().toInstant().toString());

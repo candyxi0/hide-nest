@@ -321,7 +321,12 @@ class LocalV1CandidateSetCreateProjectionTest {
                         null, null, actor, List.of(), null, null, null, null, "r1"),
                 new Candidate(UUID.randomUUID(), 2, "REJECTED", "CREATE", "HIDE_PROPOSED", "HIDE",
                         null, null, actor, List.of(), null, null, null, null, "r2"));
-        UUID set = seed(setId, threadId(), List.of(), List.of(), candidates);
+        UUID set = seed(
+                setId,
+                threadId(),
+                List.of(message(UUID.randomUUID(), actor, 1, "rejected perspective identity")),
+                List.of(),
+                candidates);
 
         long memBefore = count("SELECT count(*) FROM memory.memory_record");
         int embedBefore = embedding.callCount();
@@ -1030,7 +1035,7 @@ class LocalV1CandidateSetCreateProjectionTest {
     }
 
     private EvidenceMessage message(UUID unitId, UUID actorId, long ordinal, String text) {
-        return new EvidenceMessage(unitId, actorId, ordinal, "msg-" + unitId, OffsetDateTime.now(CLOCK), text, sha(text));
+        return new EvidenceMessage(unitId, actorId, "XIAOLIN", ordinal, "msg-" + unitId, OffsetDateTime.now(CLOCK), text, sha(text));
     }
 
     private AnchorSpec fullAnchor(UUID anchorId, UUID unitId, String text) {

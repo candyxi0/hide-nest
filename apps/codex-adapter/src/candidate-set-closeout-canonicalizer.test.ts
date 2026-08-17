@@ -77,20 +77,20 @@ export function canonicalVectorRaw(kind: "three-create" | "mixed" | "revise") {
     evidenceSegments: [
       {
         messages: [
-          { speakerKey: "xiaolin", ordinal: 10, occurredAt: "2026-08-17T12:00:00+08:00", bodyText: "证据甲" },
-          { speakerKey: "hide", ordinal: 11, occurredAt: "2026-08-17T12:00:01.120000000+08:00", bodyText: "证据乙😀" },
-          { speakerKey: "xiaolin", ordinal: 12, occurredAt: "2026-08-17T12:00:02+08:00", bodyText: "证据丙" },
+          { speakerKey: "xiaolin", speakerRole: "XIAOLIN", ordinal: 10, occurredAt: "2026-08-17T12:00:00+08:00", bodyText: "证据甲" },
+          { speakerKey: "hide", speakerRole: "HIDE", ordinal: 11, occurredAt: "2026-08-17T12:00:01.120000000+08:00", bodyText: "证据乙😀" },
+          { speakerKey: "xiaolin", speakerRole: "XIAOLIN", ordinal: 12, occurredAt: "2026-08-17T12:00:02+08:00", bodyText: "证据丙" },
         ],
       },
       {
         messages: [
-          { speakerKey: "xiaolin", ordinal: 20, occurredAt: "2026-08-17T04:00:20Z", bodyText: "证据丁" },
-          { speakerKey: "hide", ordinal: 21, occurredAt: "2026-08-17T04:00:21Z", bodyText: "证据戊" },
+          { speakerKey: "xiaolin", speakerRole: "XIAOLIN", ordinal: 20, occurredAt: "2026-08-17T04:00:20Z", bodyText: "证据丁" },
+          { speakerKey: "hide", speakerRole: "HIDE", ordinal: 21, occurredAt: "2026-08-17T04:00:21Z", bodyText: "证据戊" },
         ],
       },
       {
         messages: [
-          { speakerKey: "xiaolin", ordinal: 30, occurredAt: "2026-08-17T04:00:30Z", bodyText: "证据己" },
+          { speakerKey: "xiaolin", speakerRole: "XIAOLIN", ordinal: 30, occurredAt: "2026-08-17T04:00:30Z", bodyText: "证据己" },
         ],
       },
     ],
@@ -166,22 +166,22 @@ describe("CandidateSet canonical hashes and closed wire shape", () => {
         kind: "three-create" as const,
         candidateSetId: "d2d78c18-33d4-3354-b29b-6c22176f485e",
         reviewSessionId: "a6a8095d-2025-37d2-a814-a20578667243",
-        confirmationHash: "a50d987133e955d8ab3e4cdb4881f3d03293944ac8d774a80ab60de6ffece2a7",
-        requestHash: "6828d65f9a581ec9ca3625c5ae69e339a50f0f6c7df6dc90c41f01b4fd9dde03",
+        confirmationHash: "cf346eb57b3efbc5f898cece4160e12b4ab1c15aa19c2b27957c65ab9a59cce0",
+        requestHash: "03c6f6f38f8792b8862ace7bb9e6fd3234408bbc1de7eb7dba29ed2fa56309c2",
       },
       {
         kind: "mixed" as const,
         candidateSetId: "46fb397b-37a3-32f8-b9bd-18f668be3e60",
         reviewSessionId: "f98a5d00-19fe-3bd6-8765-212a73ed2452",
-        confirmationHash: "8e74889ba1115b6a3c8e4eb75bf700338285d5aeb23bf4cb5b727fc77b52c956",
-        requestHash: "56245df55b71fbdf7e1c6178e18a064d03344b70949968a1ca42d4b712aab728",
+        confirmationHash: "d43b98a0d16782a4fe5946bf9171682d8f6dc838c4b1f180b667634693be24d4",
+        requestHash: "b52a4911d3475298291f8efd5e1789b312a8bf3716dd6e17b15d9200aecd093a",
       },
       {
         kind: "revise" as const,
         candidateSetId: "43129a95-1443-3279-bf10-7d747c65c013",
         reviewSessionId: "1e89669c-d552-361f-a896-c2d4874a9c44",
-        confirmationHash: "904476d12c276b57bac8fe9ad5f0aa8bf6f600bdd29467e9774b7492c061678d",
-        requestHash: "0b46a51d75daaf0c598bf5fbe80768e47c4ae8f14ae6c39e7fceea43d1a4bf7d",
+        confirmationHash: "b8a36a6ccad55e9a48d318b1d9af4fbf00ebc41ec4a5cb6ad52aed23946f4083",
+        requestHash: "cabad28d366a88d9648fb27346c6f815f8139e8cafaceac3f68d6d99d4b122f1",
       },
     ];
     for (const vector of vectors) {
@@ -209,6 +209,20 @@ describe("CandidateSet canonical hashes and closed wire shape", () => {
     const first = buildCandidateSetCloseoutRequest(validateCandidateSetCloseoutInput(firstRaw));
     const second = buildCandidateSetCloseoutRequest(validateCandidateSetCloseoutInput(secondRaw));
     expect(first.finalConfirmation.confirmationHash).toBe(second.finalConfirmation.confirmationHash);
+    expect(first.requestHash).not.toBe(second.requestHash);
+  });
+
+  it("binds speakerRole into both confirmationHash and requestHash", () => {
+    const firstRaw = canonicalVectorRaw("mixed");
+    const secondRaw = structuredClone(firstRaw);
+    for (const segment of secondRaw.evidenceSegments) {
+      for (const message of segment.messages) {
+        if (message.speakerKey === "xiaolin") message.speakerRole = "HIDE";
+      }
+    }
+    const first = buildCandidateSetCloseoutRequest(validateCandidateSetCloseoutInput(firstRaw));
+    const second = buildCandidateSetCloseoutRequest(validateCandidateSetCloseoutInput(secondRaw));
+    expect(first.finalConfirmation.confirmationHash).not.toBe(second.finalConfirmation.confirmationHash);
     expect(first.requestHash).not.toBe(second.requestHash);
   });
 

@@ -58,6 +58,7 @@ public record LocalV1CandidateSetRequest(
     public record EvidenceMessage(
             UUID sourceUnitId,
             UUID actorId,
+            String speakerRole,
             long ordinal,
             String externalUnitRef,
             OffsetDateTime occurredAt,

@@ -71,6 +71,7 @@ public class LocalV1CandidateSetBatchCoordinator {
     private static final Set<String> VALID_ACTIONS = Set.of("CREATE", "REVISE", "SUPERSEDE");
     private static final Set<String> VALID_ORIGINS = Set.of("HIDE_PROPOSED", "USER_EDITED", "USER_ADDED");
     private static final Set<String> VALID_AUTHORS = Set.of("HIDE", "USER");
+    private static final Set<String> VALID_SPEAKER_ROLES = Set.of("XIAOLIN", "HIDE");
 
     private final EvidenceReferencePort evidencePort;
     private final MemoryGovernancePort memoryPort;
@@ -219,6 +220,19 @@ public class LocalV1CandidateSetBatchCoordinator {
             perspectiveActors.add(c.perspectiveActorId());
         }
 
+        // actorId -> speakerRole from the evidence pool; fail closed on missing/conflicting role.
+        Map<UUID, String> actorRoleById = new HashMap<>();
+        for (EvidenceMessage message : request.evidencePool().messages()) {
+            String role = message.speakerRole();
+            if (role == null || !VALID_SPEAKER_ROLES.contains(role)) {
+                throw new LocalV1CandidateSetException(LocalV1CandidateSetException.Code.REQUEST_SCHEMA_INVALID);
+            }
+            String prior = actorRoleById.putIfAbsent(message.actorId(), role);
+            if (prior != null && !prior.equals(role)) {
+                throw new LocalV1CandidateSetException(LocalV1CandidateSetException.Code.REQUEST_SCHEMA_INVALID);
+            }
+        }
+
         // 1. Actor refs: perspective actors (Decision identity) + accepted evidence actors only.
         if (hasAccepted) {
             ensureActorRef(
@@ -228,11 +242,15 @@ public class LocalV1CandidateSetBatchCoordinator {
         allActors.addAll(acceptedEvidenceActors);
         allActors.addAll(perspectiveActors);
         for (UUID actorId : allActors) {
+            String role = actorRoleById.get(actorId);
+            if (role == null) {
+                throw new LocalV1CandidateSetException(LocalV1CandidateSetException.Code.REQUEST_SCHEMA_INVALID);
+            }
             ensureActorRef(new ActorRef(
                     actorId,
                     "SYNTHETIC",
                     "cs-a-" + actorId,
-                    perspectiveActors.contains(actorId) ? "小林" : "hide",
+                    roleToLabel(role),
                     now));
         }
 
@@ -447,6 +465,15 @@ public class LocalV1CandidateSetBatchCoordinator {
         }
     }
 
+    private static String roleToLabel(String role) {
+        return switch (role) {
+            case "XIAOLIN" -> "小林";
+            case "HIDE" -> "hide";
+            default -> throw new LocalV1CandidateSetException(
+                    LocalV1CandidateSetException.Code.REQUEST_SCHEMA_INVALID);
+        };
+    }
+
     private void writeCandidate(
             Candidate candidate,
             UUID candidateSetId,
@@ -572,9 +599,17 @@ public class LocalV1CandidateSetBatchCoordinator {
         // R1-05/R2-01: closed input — duplicate message ID, bodyHash mismatch, non-empty closed
         // AnchorSpec units, per-anchor ordinal/sourceUnitId/offset closure, non-existent message.
         Map<UUID, EvidenceMessage> messageById = new HashMap<>();
+        Map<UUID, String> actorRoles = new HashMap<>();
         Set<UUID> messageIds = new HashSet<>();
         for (EvidenceMessage message : request.evidencePool().messages()) {
-            if (message.sourceUnitId() == null || !messageIds.add(message.sourceUnitId())) {
+            if (message.sourceUnitId() == null
+                    || message.actorId() == null
+                    || !VALID_SPEAKER_ROLES.contains(message.speakerRole())
+                    || !messageIds.add(message.sourceUnitId())) {
+                throw new LocalV1CandidateSetException(LocalV1CandidateSetException.Code.REQUEST_SCHEMA_INVALID);
+            }
+            String priorRole = actorRoles.putIfAbsent(message.actorId(), message.speakerRole());
+            if (priorRole != null && !priorRole.equals(message.speakerRole())) {
                 throw new LocalV1CandidateSetException(LocalV1CandidateSetException.Code.REQUEST_SCHEMA_INVALID);
             }
             if (message.bodyText() == null
@@ -632,6 +667,12 @@ public class LocalV1CandidateSetBatchCoordinator {
                     || !VALID_AUTHORS.contains(candidate.finalAuthorKind())
                     || candidate.perspectiveActorId() == null
                     || candidate.evidenceAnchorIds() == null) {
+                throw new LocalV1CandidateSetException(LocalV1CandidateSetException.Code.REQUEST_SCHEMA_INVALID);
+            }
+            // Accepted candidates bind perspective to their own evidence below. Rejected
+            // candidates intentionally carry no evidence mapping, but their decision actor must
+            // still have an explicit role somewhere in the frozen request evidence pool.
+            if (!actorRoles.containsKey(candidate.perspectiveActorId())) {
                 throw new LocalV1CandidateSetException(LocalV1CandidateSetException.Code.REQUEST_SCHEMA_INVALID);
             }
             boolean accepted = "ACCEPTED".equals(candidate.disposition());

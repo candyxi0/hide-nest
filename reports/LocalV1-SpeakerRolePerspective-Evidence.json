@@ -1,0 +1,87 @@
+{
+  "status": "LOCAL_V1_SPEAKER_ROLE_PERSPECTIVE_DECOUPLED_READY_FOR_HIDE_REVIEW",
+  "baseline": {
+    "head": "6cf8c69ffe50508014df76eb7eef740a933c2786",
+    "indexTree": "e2a04c16bcc559b988aae4b68a275f99221f7ac4",
+    "endHeadMatch": true,
+    "endIndexMatch": true,
+    "staged": 0
+  },
+  "speakerSemantics": {
+    "closedRoles": ["XIAOLIN", "HIDE"],
+    "missingNullUnknownRejected": true,
+    "rolePerspectiveDecoupled": true,
+    "xiaolinDisplayLabel": "小林",
+    "hideDisplayLabel": "hide",
+    "arbitrarySpeakerKeySupported": true,
+    "sameKeyRoleConflictRejected": true,
+    "sameActorRoleConflictRejected": true,
+    "unboundPerspectiveRejected": true,
+    "speakerRoleInRequestHash": true,
+    "speakerRoleInConfirmationHash": true,
+    "sameValueReplay": "EXACT"
+  },
+  "targetedTests": {
+    "candidateSetDecisionCore": {"tests": 33, "failures": 0, "errors": 0, "skipped": 0},
+    "candidateSetCreateProjection": {"tests": 26, "failures": 0, "errors": 0, "skipped": 0},
+    "candidateSetHttp": {"tests": 16, "failures": 0, "errors": 0, "skipped": 0},
+    "total": {"tests": 75, "failures": 0, "errors": 0, "skipped": 0}
+  },
+  "node": {
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "test": "PASS",
+    "build": "PASS",
+    "codexAdapter": {"passed": 200, "skipped": 1},
+    "nestConsole": {"passed": 45, "skipped": 0},
+    "uiContractFixtures": {"passed": 10, "skipped": 0}
+  },
+  "openApi": {
+    "generationCheck": "PASS",
+    "compatibility": "PASS",
+    "formalBaselineByteIdentical": true,
+    "sha256": "7EE5CB5DF4CC13F8800AE35C870EB9079170030FBE9EE6CF41E3742988EF81D0",
+    "operations": 30,
+    "failureCodes": 50,
+    "eventTypes": 12
+  },
+  "maven": {
+    "fullOfflineCleanVerifyInvocation": "FAILED_KNOWN_DELETION_FLAKE",
+    "failure": "LocalV1DeletionHttpIntegrationTest.sharedEvidenceFixtureDeleteFlow expected 202 but received 500",
+    "isolatedDeletionRegression": {"tests": 12, "failures": 0, "errors": 0, "skipped": 0},
+    "workerSupplement": {"tests": 5, "failures": 0, "errors": 0, "skipped": 0},
+    "architectureSupplement": {"tests": 29, "failures": 0, "errors": 0, "skipped": 0},
+    "compositeVerdict": "COMPOSITE_PASS_WITH_ISOLATED_EXISTING_FLAKE",
+    "surefireXml": {"files": 51, "tests": 602, "failures": 0, "errors": 0, "skipped": 1}
+  },
+  "protectedScopes": {
+    "migrationsV001ToV020": "MATCH",
+    "databaseGenerated": "MATCH",
+    "reactPrototype": "MATCH",
+    "contextPack": "MATCH",
+    "outOfScopeTrackedChanges": 0
+  },
+  "workspace": {
+    "trackedModifiedBeforeReports": 17,
+    "taskReportFiles": 2,
+    "qaTemporaryFilesPreserved": 1,
+    "generatedWhitespaceException": "packages/api-client-ts/src/generated/models/CandidateSetEvidenceMessage.ts:41",
+    "gitWrites": 0,
+    "networkUsed": false
+  },
+  "cleanup": {
+    "newDockerContainers": 0,
+    "newDockerVolumes": 0,
+    "newDockerNetworks": 0,
+    "leftoverTaskProcesses": 0
+  },
+  "leakage": {
+    "body": 0,
+    "token": 0,
+    "capability": 0,
+    "secret": 0,
+    "homeHostAddress": 0,
+    "internalIdentityInDom": 0
+  },
+  "existingWrongSyntheticMemory": "POST_DEPLOY_DELETE_AND_RECREATE_NOT_EXECUTED"
+}

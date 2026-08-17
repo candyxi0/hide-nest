@@ -78,18 +78,21 @@ function validArgs(overrides: Record<string, unknown> = {}) {
         messages: [
           {
             speakerKey: "xiaolin",
+            speakerRole: "XIAOLIN",
             ordinal: 10,
             occurredAt: "2026-08-17T12:00:00+08:00",
             bodyText: `${EVIDENCE_CANARY}一`,
           },
           {
             speakerKey: "hide",
+            speakerRole: "HIDE",
             ordinal: 11,
             occurredAt: "2026-08-17T12:00:01+08:00",
             bodyText: "合成证据二",
           },
           {
             speakerKey: "xiaolin",
+            speakerRole: "XIAOLIN",
             ordinal: 12,
             occurredAt: "2026-08-17T12:00:02+08:00",
             bodyText: "合成证据三",
@@ -100,6 +103,7 @@ function validArgs(overrides: Record<string, unknown> = {}) {
         messages: [
           {
             speakerKey: "xiaolin",
+            speakerRole: "XIAOLIN",
             ordinal: 20,
             occurredAt: "2026-08-17T12:00:20+08:00",
             bodyText: "合成证据四",
