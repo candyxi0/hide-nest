@@ -185,7 +185,7 @@ components:
             $ref: "#/components/schemas/ProblemDetail"
 
   # ────────────────────────────────────────────────────────
-  # Schemas (44 total: 9 enums + 35 API/DTO schemas)
+  # Schemas (68 total: 15 enums + 53 API/DTO schemas)
   # ────────────────────────────────────────────────────────
   schemas:
     # ─── Shared enums (9) ──────────────────────────────────
@@ -244,6 +244,22 @@ components:
         - CANONICAL_COMMITTED
         - INDEX_READY
         - FINAL_FAILED
+
+    CandidateSetSubmissionPhase:
+      type: string
+      enum:
+        - NO_CANDIDATES
+        - DECISIONS_COMMITTED
+        - CANONICAL_COMMITTED
+        - INDEX_READY
+
+    CandidateSetProjectionPhase:
+      type: string
+      enum:
+        - REJECTED
+        - DECISIONS_COMMITTED
+        - CANONICAL_COMMITTED
+        - INDEX_READY
 
     SourceAvailability:
       type: string
@@ -762,31 +778,297 @@ components:
             additionalProperties: false
       additionalProperties: false
 
+    # ─── CandidateSet DTOs ──────────────────────────────────
+    CandidateSetFinalConfirmation:
+      type: object
+      required:
+        - decision
+        - confirmedSetVersion
+        - confirmationHash
+      properties:
+        decision:
+          type: string
+          const: CONFIRM_SET
+        confirmedSetVersion:
+          type: integer
+          format: int64
+          minimum: 1
+        confirmationHash:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+      additionalProperties: false
+
+    CandidateSetEvidenceMessage:
+      type: object
+      required:
+        - sourceUnitId
+        - actorId
+        - ordinal
+        - externalUnitRef
+        - occurredAt
+        - bodyText
+        - bodyHash
+      properties:
+        sourceUnitId:
+          type: string
+          format: uuid
+        actorId:
+          type: string
+          format: uuid
+        ordinal:
+          type: integer
+          format: int64
+          minimum: 1
+        externalUnitRef:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        bodyText:
+          type: string
+          maxLength: 16000
+        bodyHash:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+      additionalProperties: false
+
+    CandidateSetAnchorUnit:
+      type: object
+      required:
+        - sourceUnitId
+        - ordinal
+      properties:
+        sourceUnitId:
+          type: string
+          format: uuid
+        fromOffset:
+          type: integer
+          format: int64
+          minimum: 0
+        toOffset:
+          type: integer
+          format: int64
+          minimum: 0
+        ordinal:
+          type: integer
+          format: int64
+          minimum: 1
+      additionalProperties: false
+
+    CandidateSetEvidenceAnchor:
+      type: object
+      required:
+        - anchorId
+        - units
+      properties:
+        anchorId:
+          type: string
+          format: uuid
+        units:
+          type: array
+          items:
+            $ref: "#/components/schemas/CandidateSetAnchorUnit"
+          minItems: 1
+      additionalProperties: false
+
+    CandidateSetEvidencePool:
+      type: object
+      required:
+        - messages
+        - anchors
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/CandidateSetEvidenceMessage"
+        anchors:
+          type: array
+          items:
+            $ref: "#/components/schemas/CandidateSetEvidenceAnchor"
+      additionalProperties: false
+
+    CandidateDisposition:
+      type: string
+      enum:
+        - ACCEPTED
+        - REJECTED
+
+    CandidateAction:
+      type: string
+      enum:
+        - CREATE
+        - REVISE
+        - SUPERSEDE
+
+    CandidateOriginKind:
+      type: string
+      enum:
+        - HIDE_PROPOSED
+        - USER_EDITED
+        - USER_ADDED
+
+    CandidateAuthorKind:
+      type: string
+      enum:
+        - HIDE
+        - USER
+
+    CandidateSetCandidate:
+      type: object
+      required:
+        - candidateId
+        - ordinal
+        - disposition
+        - action
+        - originKind
+        - finalAuthorKind
+        - perspectiveActorId
+        - evidenceAnchorIds
+      properties:
+        candidateId:
+          type: string
+          format: uuid
+        ordinal:
+          type: integer
+          format: int64
+          minimum: 1
+        disposition:
+          $ref: "#/components/schemas/CandidateDisposition"
+        action:
+          $ref: "#/components/schemas/CandidateAction"
+        originKind:
+          $ref: "#/components/schemas/CandidateOriginKind"
+        finalAuthorKind:
+          $ref: "#/components/schemas/CandidateAuthorKind"
+        memoryText:
+          type: string
+          maxLength: 16000
+        memoryType:
+          $ref: "#/components/schemas/MemoryType"
+        perspectiveActorId:
+          type: string
+          format: uuid
+        evidenceAnchorIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        targetMemoryId:
+          type: string
+          format: uuid
+        expectedMemoryRevisionId:
+          type: string
+          format: uuid
+        expectedRevisionNo:
+          type: integer
+          format: int64
+          minimum: 1
+        expectedPolicyRevisionNo:
+          type: integer
+          format: int64
+          minimum: 1
+        hideReason:
+          type: string
+      additionalProperties: false
+
     ReviewFinalSubmissionRequest:
       type: object
       required:
-        - submissionId
+        - candidateSetId
+        - requestHash
         - threadId
-        - userDecisions
-        - threadReaderManifest
-        - confirmationProof
+        - scopeRef
+        - setVersion
+        - finalConfirmation
+        - evidencePool
+        - candidates
       properties:
-        submissionId:
+        candidateSetId:
           type: string
           format: uuid
+        requestHash:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
         threadId:
           type: string
           format: uuid
-        userDecisions:
+        scopeRef:
+          type: string
+          minLength: 1
+          maxLength: 256
+        setVersion:
+          type: integer
+          format: int64
+          minimum: 1
+        finalConfirmation:
+          $ref: "#/components/schemas/CandidateSetFinalConfirmation"
+        evidencePool:
+          $ref: "#/components/schemas/CandidateSetEvidencePool"
+        candidates:
           type: array
           items:
-            type: object
-            additionalProperties: false
-        threadReaderManifest:
-          type: object
-          additionalProperties: false
-        confirmationProof:
+            $ref: "#/components/schemas/CandidateSetCandidate"
+          maxItems: 8
+      additionalProperties: false
+
+    CandidateSetProjectionItem:
+      type: object
+      required:
+        - candidateId
+        - ordinal
+        - disposition
+        - action
+        - phase
+      properties:
+        candidateId:
           type: string
+          format: uuid
+        ordinal:
+          type: integer
+          format: int64
+        disposition:
+          $ref: "#/components/schemas/CandidateDisposition"
+        action:
+          $ref: "#/components/schemas/CandidateAction"
+        phase:
+          $ref: "#/components/schemas/CandidateSetProjectionPhase"
+        memoryId:
+          type: string
+          format: uuid
+        memoryRevisionId:
+          type: string
+          format: uuid
+        revisionNo:
+          type: integer
+          format: int64
+      additionalProperties: false
+
+    CandidateSetSubmissionResponse:
+      type: object
+      required:
+        - requestId
+        - resultCategory
+        - candidateSetId
+        - phase
+        - candidates
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        resultCategory:
+          $ref: "#/components/schemas/ResultCategory"
+        candidateSetId:
+          type: string
+          format: uuid
+        reviewSessionId:
+          type: string
+          format: uuid
+        phase:
+          $ref: "#/components/schemas/CandidateSetSubmissionPhase"
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/CandidateSetProjectionItem"
       additionalProperties: false
 
     # ─── Context Pack DTOs ─────────────────────────────────
@@ -1772,7 +2054,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AsyncAcceptedResponse"
+                $ref: "#/components/schemas/CandidateSetSubmissionResponse"
         "401":
           $ref: "#/components/responses/ProblemUnauthorized"
         "403":

@@ -271,7 +271,7 @@
       "successResponses": [
         {
           "status": 202,
-          "schema": "AsyncAcceptedResponse"
+          "schema": "CandidateSetSubmissionResponse"
         }
       ],
       "problemStatuses": [
@@ -1260,6 +1260,46 @@
         "type": "response",
         "source": "Task15A-R2 §4.2",
         "description": "Async accepted result: requestId (required), resultCategory (required), runId (required), statusUrl (required), phase=RECEIVED (required). Must not claim canonical or index completion via 202."
+      },
+      {
+        "name": "CandidateSetFinalConfirmation",
+        "type": "model",
+        "source": "Task36B2-2.3"
+      },
+      {
+        "name": "CandidateSetEvidenceMessage",
+        "type": "model",
+        "source": "Task36B2-2.3"
+      },
+      {
+        "name": "CandidateSetAnchorUnit",
+        "type": "model",
+        "source": "Task36B2-2.3"
+      },
+      {
+        "name": "CandidateSetEvidenceAnchor",
+        "type": "model",
+        "source": "Task36B2-2.3"
+      },
+      {
+        "name": "CandidateSetEvidencePool",
+        "type": "model",
+        "source": "Task36B2-2.3"
+      },
+      {
+        "name": "CandidateSetCandidate",
+        "type": "model",
+        "source": "Task36B2-2.3"
+      },
+      {
+        "name": "CandidateSetProjectionItem",
+        "type": "model",
+        "source": "Task36B2-2.4"
+      },
+      {
+        "name": "CandidateSetSubmissionResponse",
+        "type": "response",
+        "source": "Task36B2-2.4"
       }
     ],
     "sharedEnums": [
@@ -1331,8 +1371,28 @@
         ],
         "source": "S04-3.3"
       },
-      {
-        "name": "SourceAvailability",
+    {
+      "name": "CandidateSetSubmissionPhase",
+      "values": [
+        "NO_CANDIDATES",
+        "DECISIONS_COMMITTED",
+        "CANONICAL_COMMITTED",
+        "INDEX_READY"
+      ],
+      "source": "Task36B2-2.4"
+    },
+    {
+      "name": "CandidateSetProjectionPhase",
+      "values": [
+        "REJECTED",
+        "DECISIONS_COMMITTED",
+        "CANONICAL_COMMITTED",
+        "INDEX_READY"
+      ],
+      "source": "Task36B2-2.4"
+    },
+    {
+      "name": "SourceAvailability",
         "values": [
           "AVAILABLE",
           "UNAVAILABLE"
@@ -1349,6 +1409,40 @@
           "DISABLED"
         ],
         "source": "S07-2.6"
+      },
+      {
+        "name": "CandidateDisposition",
+        "values": [
+          "ACCEPTED",
+          "REJECTED"
+        ],
+        "source": "Task36B2-2.3"
+      },
+      {
+        "name": "CandidateAction",
+        "values": [
+          "CREATE",
+          "REVISE",
+          "SUPERSEDE"
+        ],
+        "source": "Task36B2-2.3"
+      },
+      {
+        "name": "CandidateOriginKind",
+        "values": [
+          "HIDE_PROPOSED",
+          "USER_EDITED",
+          "USER_ADDED"
+        ],
+        "source": "Task36B2-2.3"
+      },
+      {
+        "name": "CandidateAuthorKind",
+        "values": [
+          "HIDE",
+          "USER"
+        ],
+        "source": "Task36B2-2.3"
       },
       {
         "name": "FailureCode",
@@ -1539,7 +1633,7 @@
         }
       }
     ],
-    "totalSchemaCount": 49
+  "totalSchemaCount": 72
   },
   "failureCodes": [
     {
@@ -2680,10 +2774,10 @@
     "remoteApiOperations": 30,
     "localExcludedOperations": 3,
     "privateExcludedEndpoints": 2,
-    "apiSchemas": 43,
-    "sharedEnums": 9,
+  "apiSchemas": 53,
+  "sharedEnums": 15,
     "eventSchemas": 4,
-    "totalSchemaCount": 56,
+  "totalSchemaCount": 72,
     "failureCodes": 50,
     "asyncStages": 5,
     "eventTypes": 12,

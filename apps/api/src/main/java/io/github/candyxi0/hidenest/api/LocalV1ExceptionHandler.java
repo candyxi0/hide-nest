@@ -1,5 +1,6 @@
 package io.github.candyxi0.hidenest.api;
 
+import io.github.candyxi0.hidenest.application.coordinator.LocalV1CandidateSetException;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1CloseoutException;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1ContextPackException;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1DeletionException;
@@ -14,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -29,6 +31,7 @@ public final class LocalV1ExceptionHandler {
         MethodArgumentTypeMismatchException.class,
         MissingServletRequestParameterException.class,
         HttpMessageNotReadableException.class,
+        HttpMediaTypeNotSupportedException.class,
         MethodArgumentNotValidException.class
     })
     ResponseEntity<ProblemDetail> requestInvalid(Exception ignored, HttpServletRequest request) {
@@ -58,6 +61,48 @@ public final class LocalV1ExceptionHandler {
                     FailureCode.PAYLOAD_STORE_UNAVAILABLE,
                     "已保存证据当前无法完整读取",
                     true);
+            default -> integrityFailure(request);
+        };
+    }
+
+    @ExceptionHandler(LocalV1CandidateSetException.class)
+    ResponseEntity<ProblemDetail> candidateSet(LocalV1CandidateSetException exception, HttpServletRequest request) {
+        return switch (exception.code()) {
+            case IDEMPOTENCY_KEY_REQUIRED -> problem(
+                    request,
+                    HttpStatus.BAD_REQUEST,
+                    ResultCategory.FAILED,
+                    FailureCode.IDEMPOTENCY_KEY_REQUIRED,
+                    "本机候选集请求缺少幂等键",
+                    false);
+            case IDEMPOTENCY_KEY_REUSED -> problem(
+                    request,
+                    HttpStatus.CONFLICT,
+                    ResultCategory.FAILED,
+                    FailureCode.IDEMPOTENCY_KEY_REUSED,
+                    "本机候选集幂等键已被不同请求复用",
+                    false);
+            case REQUEST_SCHEMA_INVALID -> problem(
+                    request,
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    ResultCategory.FAILED,
+                    FailureCode.REQUEST_SCHEMA_INVALID,
+                    "本机候选集请求不符合契约约束",
+                    false);
+            case EXPECTED_REVISION_STALE -> problem(
+                    request,
+                    HttpStatus.CONFLICT,
+                    ResultCategory.STALE,
+                    FailureCode.EXPECTED_REVISION_STALE,
+                    "本机候选集目标记忆版本已变更",
+                    false);
+            case POLICY_REVISION_STALE -> problem(
+                    request,
+                    HttpStatus.CONFLICT,
+                    ResultCategory.STALE,
+                    FailureCode.POLICY_REVISION_STALE,
+                    "本机候选集治理策略已变更",
+                    false);
             default -> integrityFailure(request);
         };
     }

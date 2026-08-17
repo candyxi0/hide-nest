@@ -9,6 +9,7 @@ package io.github.candyxi0.hidenest.application.coordinator;
 public class LocalV1CandidateSetException extends RuntimeException {
 
     public enum Code {
+        IDEMPOTENCY_KEY_REQUIRED,
         IDEMPOTENCY_KEY_REUSED,
         REQUEST_SCHEMA_INVALID,
         REVIEW_SESSION_NOT_OPEN,

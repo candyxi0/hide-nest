@@ -19,10 +19,10 @@ import {
     ActionResultResponseToJSON,
 } from '../models/ActionResultResponse.js';
 import {
-    type AsyncAcceptedResponse,
-    AsyncAcceptedResponseFromJSON,
-    AsyncAcceptedResponseToJSON,
-} from '../models/AsyncAcceptedResponse.js';
+    type CandidateSetSubmissionResponse,
+    CandidateSetSubmissionResponseFromJSON,
+    CandidateSetSubmissionResponseToJSON,
+} from '../models/CandidateSetSubmissionResponse.js';
 import {
     type ProblemDetail,
     ProblemDetailFromJSON,
@@ -285,17 +285,17 @@ export class ReviewSessionsApi extends runtime.BaseAPI {
     /**
      * Submit review final. Capability: NOT_REQUIRED (小林确认来自 review manifest + ThreadReader + 注册设备证明).
      */
-    async submitReviewFinalRaw(requestParameters: SubmitReviewFinalRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AsyncAcceptedResponse>> {
+    async submitReviewFinalRaw(requestParameters: SubmitReviewFinalRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CandidateSetSubmissionResponse>> {
         const requestOptions = await this.submitReviewFinalRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => AsyncAcceptedResponseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => CandidateSetSubmissionResponseFromJSON(jsonValue));
     }
 
     /**
      * Submit review final. Capability: NOT_REQUIRED (小林确认来自 review manifest + ThreadReader + 注册设备证明).
      */
-    async submitReviewFinal(requestParameters: SubmitReviewFinalRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AsyncAcceptedResponse> {
+    async submitReviewFinal(requestParameters: SubmitReviewFinalRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CandidateSetSubmissionResponse> {
         const response = await this.submitReviewFinalRaw(requestParameters, initOverrides);
         return await response.value();
     }

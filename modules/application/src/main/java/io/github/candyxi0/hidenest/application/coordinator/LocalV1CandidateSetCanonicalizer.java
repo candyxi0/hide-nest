@@ -20,6 +20,17 @@ public final class LocalV1CandidateSetCanonicalizer {
     private LocalV1CandidateSetCanonicalizer() {}
 
     /**
+     * Deterministic review session identity for a CandidateSet.
+     *
+     * <p>This is the single authoritative derivation; every caller (batch coordinator, HTTP
+     * facade, MCP, tests) must use this method. No second copy of the derivation is allowed.</p>
+     */
+    public static UUID reviewSessionId(UUID candidateSetId) {
+        return UUID.nameUUIDFromBytes(
+                ("candidate-set:review:" + candidateSetId).getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
      * Final confirmation hash. Binds setVersion plus every candidate's final fields ordered by
      * ordinal — identity, disposition, action, origin/author attribution, target and evidence
      * refs — so a tampered candidate, an old setVersion, a reordered member or a doctored

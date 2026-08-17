@@ -168,7 +168,7 @@ public class LocalV1CandidateSetBatchCoordinator {
         UUID candidateSetId = request.candidateSetId();
         OffsetDateTime now = OffsetDateTime.now(clock);
 
-        UUID reviewSessionId = deterministicId("candidate-set:review", candidateSetId);
+        UUID reviewSessionId = LocalV1CandidateSetCanonicalizer.reviewSessionId(candidateSetId);
         UUID sourceId = deterministicId("candidate-set:source", candidateSetId);
         UUID sourcePolicyId = deterministicId("candidate-set:policy", candidateSetId);
         UUID hideSystemActorId = deterministicId("candidate-set:hide-actor", candidateSetId);
@@ -430,6 +430,7 @@ public class LocalV1CandidateSetBatchCoordinator {
                     candidate.candidateId(),
                     candidate.ordinal(),
                     candidate.disposition(),
+                    candidate.action(),
                     futureMemoryId(candidateSetId, candidate)));
         }
         return new LocalV1CandidateSetResult(candidateSetId, reviewSessionId, "CANONICAL_COMMITTED", outcomes);
@@ -785,7 +786,7 @@ public class LocalV1CandidateSetBatchCoordinator {
                 "CANONICAL_COMMITTED",
                 request.candidates().stream()
                         .map(c -> new CandidateOutcome(
-                                c.candidateId(), c.ordinal(), c.disposition(), futureMemoryId(candidateSetId, c)))
+                                c.candidateId(), c.ordinal(), c.disposition(), c.action(), futureMemoryId(candidateSetId, c)))
                         .toList());
     }
 

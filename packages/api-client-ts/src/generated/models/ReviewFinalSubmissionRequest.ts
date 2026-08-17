@@ -13,6 +13,28 @@
  */
 
 import { mapValues } from '../runtime.js';
+import type { CandidateSetCandidate } from './CandidateSetCandidate.js';
+import {
+    CandidateSetCandidateFromJSON,
+    CandidateSetCandidateFromJSONTyped,
+    CandidateSetCandidateToJSON,
+    CandidateSetCandidateToJSONTyped,
+} from './CandidateSetCandidate.js';
+import type { CandidateSetEvidencePool } from './CandidateSetEvidencePool.js';
+import {
+    CandidateSetEvidencePoolFromJSON,
+    CandidateSetEvidencePoolFromJSONTyped,
+    CandidateSetEvidencePoolToJSON,
+    CandidateSetEvidencePoolToJSONTyped,
+} from './CandidateSetEvidencePool.js';
+import type { CandidateSetFinalConfirmation } from './CandidateSetFinalConfirmation.js';
+import {
+    CandidateSetFinalConfirmationFromJSON,
+    CandidateSetFinalConfirmationFromJSONTyped,
+    CandidateSetFinalConfirmationToJSON,
+    CandidateSetFinalConfirmationToJSONTyped,
+} from './CandidateSetFinalConfirmation.js';
+
 /**
  * 
  * @export
@@ -24,7 +46,13 @@ export interface ReviewFinalSubmissionRequest {
      * @type {string}
      * @memberof ReviewFinalSubmissionRequest
      */
-    submissionId: string;
+    candidateSetId: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ReviewFinalSubmissionRequest
+     */
+    requestHash: string;
     /**
      * 
      * @type {string}
@@ -33,33 +61,48 @@ export interface ReviewFinalSubmissionRequest {
     threadId: string;
     /**
      * 
-     * @type {Array<object>}
-     * @memberof ReviewFinalSubmissionRequest
-     */
-    userDecisions: Array<object>;
-    /**
-     * 
-     * @type {object}
-     * @memberof ReviewFinalSubmissionRequest
-     */
-    threadReaderManifest: object;
-    /**
-     * 
      * @type {string}
      * @memberof ReviewFinalSubmissionRequest
      */
-    confirmationProof: string;
+    scopeRef: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof ReviewFinalSubmissionRequest
+     */
+    setVersion: number;
+    /**
+     * 
+     * @type {CandidateSetFinalConfirmation}
+     * @memberof ReviewFinalSubmissionRequest
+     */
+    finalConfirmation: CandidateSetFinalConfirmation;
+    /**
+     * 
+     * @type {CandidateSetEvidencePool}
+     * @memberof ReviewFinalSubmissionRequest
+     */
+    evidencePool: CandidateSetEvidencePool;
+    /**
+     * 
+     * @type {Array<CandidateSetCandidate>}
+     * @memberof ReviewFinalSubmissionRequest
+     */
+    candidates: Array<CandidateSetCandidate>;
 }
 
 /**
  * Check if a given object implements the ReviewFinalSubmissionRequest interface.
  */
 export function instanceOfReviewFinalSubmissionRequest(value: object): value is ReviewFinalSubmissionRequest {
-    if (!('submissionId' in value) || value['submissionId'] === undefined) return false;
+    if (!('candidateSetId' in value) || value['candidateSetId'] === undefined) return false;
+    if (!('requestHash' in value) || value['requestHash'] === undefined) return false;
     if (!('threadId' in value) || value['threadId'] === undefined) return false;
-    if (!('userDecisions' in value) || value['userDecisions'] === undefined) return false;
-    if (!('threadReaderManifest' in value) || value['threadReaderManifest'] === undefined) return false;
-    if (!('confirmationProof' in value) || value['confirmationProof'] === undefined) return false;
+    if (!('scopeRef' in value) || value['scopeRef'] === undefined) return false;
+    if (!('setVersion' in value) || value['setVersion'] === undefined) return false;
+    if (!('finalConfirmation' in value) || value['finalConfirmation'] === undefined) return false;
+    if (!('evidencePool' in value) || value['evidencePool'] === undefined) return false;
+    if (!('candidates' in value) || value['candidates'] === undefined) return false;
     return true;
 }
 
@@ -73,11 +116,14 @@ export function ReviewFinalSubmissionRequestFromJSONTyped(json: any, ignoreDiscr
     }
     return {
         
-        'submissionId': json['submissionId'],
+        'candidateSetId': json['candidateSetId'],
+        'requestHash': json['requestHash'],
         'threadId': json['threadId'],
-        'userDecisions': json['userDecisions'],
-        'threadReaderManifest': json['threadReaderManifest'],
-        'confirmationProof': json['confirmationProof'],
+        'scopeRef': json['scopeRef'],
+        'setVersion': json['setVersion'],
+        'finalConfirmation': CandidateSetFinalConfirmationFromJSON(json['finalConfirmation']),
+        'evidencePool': CandidateSetEvidencePoolFromJSON(json['evidencePool']),
+        'candidates': ((json['candidates'] as Array<any>).map(CandidateSetCandidateFromJSON)),
     };
 }
 
@@ -92,11 +138,14 @@ export function ReviewFinalSubmissionRequestToJSONTyped(value?: ReviewFinalSubmi
 
     return {
         
-        'submissionId': value['submissionId'],
+        'candidateSetId': value['candidateSetId'],
+        'requestHash': value['requestHash'],
         'threadId': value['threadId'],
-        'userDecisions': value['userDecisions'],
-        'threadReaderManifest': value['threadReaderManifest'],
-        'confirmationProof': value['confirmationProof'],
+        'scopeRef': value['scopeRef'],
+        'setVersion': value['setVersion'],
+        'finalConfirmation': CandidateSetFinalConfirmationToJSON(value['finalConfirmation']),
+        'evidencePool': CandidateSetEvidencePoolToJSON(value['evidencePool']),
+        'candidates': ((value['candidates'] as Array<any>).map(CandidateSetCandidateToJSON)),
     };
 }
 
