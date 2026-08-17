@@ -242,7 +242,7 @@ describe("time normalization", () => {
   it("normalizes RFC3339 with offset to a UTC instant string", () => {
     expect(normalizeOccurredAt("2026-08-13T12:34:56.123+08:00")).toBe("2026-08-13T04:34:56.123Z");
     expect(normalizeOccurredAt("2026-08-13T04:34:56Z")).toBe("2026-08-13T04:34:56Z");
-    expect(normalizeOccurredAt("2026-08-13T04:34:56.500000000Z")).toBe("2026-08-13T04:34:56.5Z");
+    expect(normalizeOccurredAt("2026-08-13T04:34:56.500000000Z")).toBe("2026-08-13T04:34:56.500Z");
   });
 
   it("throws on malformed occurredAt", () => {

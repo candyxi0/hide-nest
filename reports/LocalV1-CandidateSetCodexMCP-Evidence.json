@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "status": "LOCAL_V1_CANDIDATE_SET_CODEX_MCP_REAL_API_SMOKE_PASS_READY_FOR_HIDE_REVIEW",
+  "generatedAt": "2026-08-17T17:25:27.1010185+08:00",
+  "baseline": {
+    "head": "0c5b23aa84ac881ff21b2ea0d921cd267e557550",
+    "indexTree": "f13cdefb0cc3585c8f4e39b2f3d535f062d43eb1",
+    "headMatch": true,
+    "indexMatch": true
+  },
+  "scope": {
+    "codexAdapterPaths": 13,
+    "actorIdentityRepairPaths": 5,
+    "reportPaths": 2,
+    "taskPaths": 20,
+    "modified": 9,
+    "untrackedTaskFiles": 11,
+    "staged": 0,
+    "outOfScopeTracked": 0,
+    "qaTemporaryDirectoryExcluded": true
+  },
+  "gates": {
+    "candidateSetTargeted": { "tests": 31, "failures": 0, "errors": 0, "skipped": 0 },
+    "mavenOfflineCleanVerify": "PASS",
+    "mavenModules": 13,
+    "surefire": { "files": 50, "tests": 592, "failures": 0, "errors": 0, "skipped": 1 },
+    "architecture": { "tests": 29, "failures": 0, "errors": 0, "skipped": 0 },
+    "portBoundary": { "tests": 13, "failures": 0, "errors": 0, "skipped": 0 },
+    "codexAdapter": {
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "test": "PASS",
+      "build": "PASS",
+      "testsPassed": 196,
+      "testsSkipped": 1
+    },
+    "rootNode": {
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "test": "PASS",
+      "build": "PASS",
+      "adapterPassed": 196,
+      "adapterSkipped": 1,
+      "consolePassed": 45,
+      "uiPassed": 10
+    },
+    "diffWhitespace": "PASS"
+  },
+  "realSmoke": {
+    "status": "PASS",
+    "flywayHistory": 20,
+    "mcpInitialize": "PASS",
+    "toolsList": "PASS",
+    "toolCount": 2,
+    "schemasClosed": 2,
+    "oldSingleMemoryInput": "REJECTED_ZERO_EFFECT",
+    "firstThreeCreate": "INDEX_READY",
+    "firstFacts": {
+      "candidateSets": 1,
+      "reviewSessions": 1,
+      "members": 3,
+      "decisions": 4,
+      "userConfirmDecisions": 3,
+      "hideSelectDecisions": 1,
+      "memories": 3,
+      "revisions": 3,
+      "vectors": 3,
+      "sourceUnits": 4,
+      "payloads": 4,
+      "anchors": 2,
+      "anchorUnits": 4,
+      "mappings": 4
+    },
+    "sharedEvidenceMapping": "1:1,2:2,3:1",
+    "replay": "EXACT_ZERO_DELTA_NO_REEMBED",
+    "contextPackRegression": "PASS",
+    "mixed": "PASS",
+    "revise": "DECISIONS_COMMITTED_ZERO_MEMORY_VECTOR",
+    "supersede": "DECISIONS_COMMITTED_ZERO_MEMORY_VECTOR",
+    "mixedAction": "DECISIONS_COMMITTED_ZERO_MEMORY_VECTOR",
+    "allRejected": "PASS_ZERO_MEMORY_VECTOR",
+    "empty": "PASS_RECEIPT_ONLY",
+    "sameKeyDifferentValue": "REJECTED_ZERO_EFFECT",
+    "concurrency": "ONE_FACT_EACH",
+    "vectorFailure": "ISOLATED_CANONICAL_COMMITTED",
+    "vectorRecovery": "INDEX_READY_ONE_MISSING_ONLY",
+    "embeddingCalls": 11,
+    "embeddedTexts": 11,
+    "mcpStderrBytes": 0,
+    "candidateSetCapabilitySent": 0,
+    "browserCalls": 0
+  },
+  "actorIdentityDefectRepair": {
+    "rootCause": "SAME_THREAD_DETERMINISTIC_ACTOR_REINSERTED",
+    "resolution": "ATOMIC_INSERT_IF_ABSENT_THEN_EXACT_IDENTITY_VERIFY",
+    "productionFiles": 3,
+    "testFiles": 2,
+    "sameIdentityAcrossCandidateSets": "PASS_ONE_ACTOR_FACT",
+    "identityCollision": "REQUEST_SCHEMA_INVALID_ZERO_BATCH_FACTS",
+    "newFormalFailureCodes": 0,
+    "openApiChanges": 0,
+    "migrationChanges": 0,
+    "generatedChanges": 0,
+    "reactChanges": 0
+  },
+  "security": {
+    "secretValuesPersisted": 0,
+    "secretValuesInCommandLine": 0,
+    "secretValuesInEvidence": 0,
+    "capabilityHeaderLiteralCount": 0,
+    "networkPulls": 0
+  },
+  "cleanup": {
+    "dockerDelta": { "containers": 0, "volumes": 0, "networks": 0 },
+    "taskLabelContainersAfter": 0,
+    "payloadFilesAfter": 0,
+    "temporaryHarnessAfter": 0,
+    "sessionProcessesAfter": 0,
+    "cleanupFailures": 0
+  },
+  "artifacts": {
+    "smokeScriptSha256": "83816a3c4cde53e99e4a177089e58202b20da81358a4e7a44ac568683b0ab809",
+    "externalSmokeEvidenceSha256": "6bf843e03b2c4a7110494edeca398cc3fa250c6ad9fea064b10fc2093ad93d9f",
+    "report": "reports/LocalV1-CandidateSetCodexMCP-执行报告.md",
+    "evidence": "reports/LocalV1-CandidateSetCodexMCP-Evidence.json"
+  },
+  "git": {
+    "staged": 0,
+    "outOfScopeTracked": 0,
+    "writes": 0,
+    "commit": false,
+    "push": false
+  }
+}

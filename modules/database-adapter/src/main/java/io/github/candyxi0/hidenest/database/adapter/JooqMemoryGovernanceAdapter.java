@@ -374,6 +374,23 @@ public class JooqMemoryGovernanceAdapter implements MemoryGovernancePort {
     }
 
     @Override
+    public ActorRef insertActorRefIfAbsent(ActorRef actorRef) {
+        dsl.insertInto(ACTOR_REF)
+                .set(ACTOR_REF.ACTOR_ID, actorRef.actorId())
+                .set(ACTOR_REF.ACTOR_KIND, actorRef.actorKind())
+                .set(ACTOR_REF.STABLE_REF, actorRef.stableRef())
+                .set(ACTOR_REF.DISPLAY_LABEL, actorRef.displayLabel())
+                .set(ACTOR_REF.CREATED_AT, actorRef.createdAt())
+                .onConflictDoNothing()
+                .execute();
+        ActorRef byId = findActorRefById(actorRef.actorId());
+        if (byId != null) {
+            return byId;
+        }
+        return findActorRefByKindAndStableRef(actorRef.actorKind(), actorRef.stableRef());
+    }
+
+    @Override
     public ActorRef findActorRefById(UUID actorId) {
         var r = dsl.selectFrom(ACTOR_REF)
                 .where(ACTOR_REF.ACTOR_ID.eq(actorId))

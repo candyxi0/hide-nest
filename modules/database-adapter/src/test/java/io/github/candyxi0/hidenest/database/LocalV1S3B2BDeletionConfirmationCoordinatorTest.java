@@ -685,6 +685,7 @@ class LocalV1S3B2BDeletionConfirmationCoordinatorTest {
         @Override public void insertChangeEvent(io.github.candyxi0.hidenest.memory.domain.ChangeEvent e) { delegate.insertChangeEvent(e); }
         @Override public io.github.candyxi0.hidenest.memory.domain.MemoryRevision lockMemoryRevisionForWrite(UUID id) { return delegate.lockMemoryRevisionForWrite(id); }
         @Override public void insertActorRef(io.github.candyxi0.hidenest.memory.domain.ActorRef a) { delegate.insertActorRef(a); }
+        @Override public io.github.candyxi0.hidenest.memory.domain.ActorRef insertActorRefIfAbsent(io.github.candyxi0.hidenest.memory.domain.ActorRef a) { return delegate.insertActorRefIfAbsent(a); }
         @Override public io.github.candyxi0.hidenest.memory.domain.ActorRef findActorRefById(UUID id) { return delegate.findActorRefById(id); }
         @Override public io.github.candyxi0.hidenest.memory.domain.ActorRef findActorRefByKindAndStableRef(String k, String r) { return delegate.findActorRefByKindAndStableRef(k, r); }
     }

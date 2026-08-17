@@ -79,6 +79,15 @@ public interface MemoryGovernancePort {
     /** Insert an actor ref. */
     void insertActorRef(ActorRef actorRef);
 
+    /**
+     * Atomically insert an actor ref when absent and return the persisted identity fact.
+     *
+     * <p>If either the primary actor id or the {@code (actorKind, stableRef)} identity already
+     * exists, the existing fact is returned without mutation. The application layer must compare
+     * the returned immutable identity fields and fail closed on any mismatch.</p>
+     */
+    ActorRef insertActorRefIfAbsent(ActorRef actorRef);
+
     /** Find actor ref by primary key. */
     ActorRef findActorRefById(UUID actorId);
 

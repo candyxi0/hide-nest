@@ -140,7 +140,7 @@ export function nameUuidFromBytes(bytes: Buffer): string {
   ].join("-");
 }
 
-function deriveUuid(parts: readonly (string | number)[]): string {
+export function deriveUuid(parts: readonly (string | number)[]): string {
   // Length-prefixed (UTF-8 byte length) encoding makes every component unambiguous, so dynamic
   // strings cannot collide across a separator boundary (e.g. ("a:b","c") vs ("a","b:c")).
   const name = parts.map((p) => field(String(p))).join("");
@@ -227,8 +227,9 @@ export function normalizeOccurredAt(value: string): string {
     hour > 23 ||
     minute > 59 ||
     second > 59 ||
-    offsetHour > 23 ||
-    offsetMinute > 59
+    offsetHour > 18 ||
+    offsetMinute > 59 ||
+    (offsetHour === 18 && offsetMinute !== 0)
   ) {
     throw new Error("occurredAt has an out-of-range component");
   }
@@ -251,7 +252,10 @@ export function normalizeOccurredAt(value: string): string {
   const ss = String(d.getUTCSeconds()).padStart(2, "0");
   let fraction = "";
   if (nanos > 0) {
-    fraction = "." + String(nanos).padStart(9, "0").replace(/0+$/, "");
+    // java.time.Instant.toString() renders a non-zero fraction in 3/6/9 digit groups, retaining
+    // zeros inside the selected group (for example 120ms -> ".120Z", not ".12Z").
+    const digits = nanos % 1_000_000 === 0 ? 3 : nanos % 1_000 === 0 ? 6 : 9;
+    fraction = "." + String(nanos).padStart(9, "0").slice(0, digits);
   }
   return `${yyyy}-${MM}-${dd}T${HH}:${mm}:${ss}${fraction}Z`;
 }

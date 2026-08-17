@@ -221,14 +221,14 @@ public class LocalV1CandidateSetBatchCoordinator {
 
         // 1. Actor refs: perspective actors (Decision identity) + accepted evidence actors only.
         if (hasAccepted) {
-            memoryPort.insertActorRef(
+            ensureActorRef(
                     new ActorRef(hideSystemActorId, "SYNTHETIC", "cs-hide-" + candidateSetId, "hide", now));
         }
         Set<UUID> allActors = new LinkedHashSet<>();
         allActors.addAll(acceptedEvidenceActors);
         allActors.addAll(perspectiveActors);
         for (UUID actorId : allActors) {
-            memoryPort.insertActorRef(new ActorRef(
+            ensureActorRef(new ActorRef(
                     actorId,
                     "SYNTHETIC",
                     "cs-a-" + actorId,
@@ -434,6 +434,17 @@ public class LocalV1CandidateSetBatchCoordinator {
                     futureMemoryId(candidateSetId, candidate)));
         }
         return new LocalV1CandidateSetResult(candidateSetId, reviewSessionId, "CANONICAL_COMMITTED", outcomes);
+    }
+
+    private void ensureActorRef(ActorRef expected) {
+        ActorRef persisted = memoryPort.insertActorRefIfAbsent(expected);
+        if (persisted == null
+                || !expected.actorId().equals(persisted.actorId())
+                || !expected.actorKind().equals(persisted.actorKind())
+                || !expected.stableRef().equals(persisted.stableRef())
+                || !expected.displayLabel().equals(persisted.displayLabel())) {
+            throw new LocalV1CandidateSetException(LocalV1CandidateSetException.Code.REQUEST_SCHEMA_INVALID);
+        }
     }
 
     private void writeCandidate(

@@ -23,6 +23,7 @@ import io.github.candyxi0.hidenest.database.adapter.JooqMemoryGovernanceAdapter;
 import io.github.candyxi0.hidenest.database.adapter.JooqRuntimeTransactionAdapter;
 import io.github.candyxi0.hidenest.database.adapter.SpringTransactionExecutor;
 import io.github.candyxi0.hidenest.evidence.port.PayloadStore;
+import io.github.candyxi0.hidenest.memory.domain.ActorRef;
 import io.github.candyxi0.hidenest.memory.port.CandidateSetGovernancePort;
 import io.github.candyxi0.hidenest.memory.port.MemoryGovernancePort;
 import io.github.candyxi0.hidenest.payload.LocalPayloadStore;
@@ -2225,6 +2226,83 @@ class LocalV1CandidateSetDecisionCoreTest {
                 List.of(createCandidate(
                         UUID.randomUUID(), 1, "ACCEPTED", "CREATE", "HIDE_PROPOSED", "HIDE", "one", "Claim", actor, List.of(nullUnitAnchor.anchorId()))));
         assertRequestRejected(nullUnitRequest);
+    }
+
+    // ── 30. same thread actor identity is reusable across candidate sets ───
+
+    @Test
+    @Order(30)
+    void sameActorIdentityAcrossCandidateSetsIsReusedExactly() throws Exception {
+        UUID actor = UUID.randomUUID();
+        UUID threadId = UUID.randomUUID();
+
+        UUID firstSet = UUID.randomUUID();
+        UUID firstUnit = UUID.randomUUID();
+        UUID firstAnchor = UUID.randomUUID();
+        String firstBody = "same-thread first candidate set";
+        var first = seal(
+                firstSet,
+                "key-" + firstSet,
+                threadId,
+                List.of(message(firstUnit, actor, 1, firstBody)),
+                List.of(fullAnchor(firstAnchor, firstUnit, firstBody)),
+                List.of(createCandidate(
+                        UUID.randomUUID(), 1, "ACCEPTED", "CREATE", "HIDE_PROPOSED", "HIDE",
+                        "first memory", "Claim", actor, List.of(firstAnchor))));
+
+        UUID secondSet = UUID.randomUUID();
+        UUID secondUnit = UUID.randomUUID();
+        UUID secondAnchor = UUID.randomUUID();
+        String secondBody = "same-thread second candidate set";
+        var second = seal(
+                secondSet,
+                "key-" + secondSet,
+                threadId,
+                List.of(message(secondUnit, actor, 2, secondBody)),
+                List.of(fullAnchor(secondAnchor, secondUnit, secondBody)),
+                List.of(createCandidate(
+                        UUID.randomUUID(), 1, "ACCEPTED", "CREATE", "HIDE_PROPOSED", "HIDE",
+                        "second memory", "Claim", actor, List.of(secondAnchor))));
+
+        assertEquals("CANONICAL_COMMITTED", coord.submit(first).status());
+        assertEquals("CANONICAL_COMMITTED", coord.submit(second).status());
+        assertEquals(1, count("SELECT count(*) FROM memory.actor_ref WHERE actor_id='" + actor + "'"));
+        assertEquals(1, count("SELECT count(*) FROM memory.candidate_set WHERE candidate_set_id='" + firstSet + "'"));
+        assertEquals(1, count("SELECT count(*) FROM memory.candidate_set WHERE candidate_set_id='" + secondSet + "'"));
+    }
+
+    // ── 31. actor id collision with different identity fails closed ────────
+
+    @Test
+    @Order(31)
+    void actorIdentityCollisionIsRejectedWithoutBatchFacts() throws Exception {
+        UUID actor = UUID.randomUUID();
+        mp.insertActorRef(new ActorRef(
+                actor, "SYNTHETIC", "foreign-" + actor, "小林", OffsetDateTime.now(CLK)));
+
+        UUID setId = UUID.randomUUID();
+        UUID unit = UUID.randomUUID();
+        UUID anchor = UUID.randomUUID();
+        String body = "actor collision evidence";
+        var request = seal(
+                setId,
+                "key-" + setId,
+                UUID.randomUUID(),
+                List.of(message(unit, actor, 1, body)),
+                List.of(fullAnchor(anchor, unit, body)),
+                List.of(createCandidate(
+                        UUID.randomUUID(), 1, "ACCEPTED", "CREATE", "HIDE_PROPOSED", "HIDE",
+                        "collision memory", "Claim", actor, List.of(anchor))));
+        long filesBefore = filesCount();
+
+        LocalV1CandidateSetException failure =
+                assertThrows(LocalV1CandidateSetException.class, () -> coord.submit(request));
+        assertEquals(LocalV1CandidateSetException.Code.REQUEST_SCHEMA_INVALID, failure.code());
+        assertEquals(0, count("SELECT count(*) FROM memory.candidate_set WHERE candidate_set_id='" + setId + "'"));
+        assertEquals(filesBefore, filesCount());
+        assertEquals(
+                "foreign-" + actor,
+                scalar("SELECT stable_ref FROM memory.actor_ref WHERE actor_id='" + actor + "'"));
     }
 
     // ── raw helpers ───────────────────────────────────────────────────────
