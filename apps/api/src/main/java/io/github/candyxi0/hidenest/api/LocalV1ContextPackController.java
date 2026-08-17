@@ -14,7 +14,7 @@ import tools.jackson.databind.JsonNode;
 
 /** Loopback-only, bearer-gated context pack retrieval entry for Local V1. */
 @RestController
-@Profile("local-v1-synthetic")
+@Profile({"local-v1-synthetic", "local-private"})
 public final class LocalV1ContextPackController {
 
     private final LocalV1ContextPackCoordinator coordinator;

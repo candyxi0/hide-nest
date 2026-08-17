@@ -33,7 +33,7 @@ import tools.jackson.databind.JsonNode;
 
 /** Loopback-only, capability-gated permanent-deletion write entry for Local V1. */
 @RestController
-@Profile("local-v1-synthetic")
+@Profile({"local-v1-synthetic", "local-private"})
 public final class LocalV1DeletionWriteController {
 
     private final LocalV1DeletionWriteCoordinator coordinator;

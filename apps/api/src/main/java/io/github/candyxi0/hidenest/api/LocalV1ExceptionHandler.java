@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
-@Profile("local-v1-synthetic")
+@Profile({"local-v1-synthetic", "local-private"})
 public final class LocalV1ExceptionHandler {
 
     @ExceptionHandler({
@@ -266,6 +266,14 @@ public final class LocalV1ExceptionHandler {
                     false);
             default -> integrityFailure(request);
         };
+    }
+
+    @ExceptionHandler({
+        org.springframework.web.servlet.NoHandlerFoundException.class,
+        org.springframework.web.servlet.resource.NoResourceFoundException.class
+    })
+    ResponseEntity<ProblemDetail> noHandlerFound(Exception ignored, HttpServletRequest request) {
+        return notFound(request);
     }
 
     @ExceptionHandler(Exception.class)

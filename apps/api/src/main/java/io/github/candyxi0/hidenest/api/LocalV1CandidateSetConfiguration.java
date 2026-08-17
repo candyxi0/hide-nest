@@ -28,7 +28,7 @@ import org.springframework.context.annotation.Profile;
  * {@link LocalV1ReadConfiguration}; this configuration only defines CandidateSet-specific beans.
  */
 @Configuration(proxyBeanMethods = false)
-@Profile("local-v1-synthetic")
+@Profile({"local-v1-synthetic", "local-private"})
 public class LocalV1CandidateSetConfiguration {
 
     @Bean

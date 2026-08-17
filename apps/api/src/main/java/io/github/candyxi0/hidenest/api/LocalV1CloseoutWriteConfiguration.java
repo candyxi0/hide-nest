@@ -27,7 +27,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Explicit assembly for the synthetic, loopback-only Local V1 closeout write vertical. */
 @Configuration(proxyBeanMethods = false)
-@Profile("local-v1-synthetic")
+@Profile({"local-v1-synthetic", "local-private"})
 public class LocalV1CloseoutWriteConfiguration {
 
     private static final String SERVICE_MODEL_ID = "bge-small-zh-v1.5-f16";

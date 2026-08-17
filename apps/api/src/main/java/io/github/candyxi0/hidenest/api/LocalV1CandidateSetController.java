@@ -28,7 +28,7 @@ import tools.jackson.databind.JsonNode;
 
 /** Loopback-only, bearer-gated CandidateSet final submission entry for Local V1. */
 @RestController
-@Profile("local-v1-synthetic")
+@Profile({"local-v1-synthetic", "local-private"})
 public final class LocalV1CandidateSetController {
 
     private final LocalV1CandidateSetCloseoutCoordinator coordinator;

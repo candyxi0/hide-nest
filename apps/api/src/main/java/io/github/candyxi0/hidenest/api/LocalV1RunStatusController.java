@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Loopback-only run status read entry for Local V1. */
 @RestController
-@Profile("local-v1-synthetic")
+@Profile({"local-v1-synthetic", "local-private"})
 public final class LocalV1RunStatusController {
 
     private final LocalV1CloseoutVectorProjectionCoordinator coordinator;

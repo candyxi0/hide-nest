@@ -24,7 +24,7 @@ import org.springframework.context.annotation.Profile;
 
 /** Explicit assembly for the synthetic, loopback-only Local V1 permanent-deletion write vertical. */
 @Configuration(proxyBeanMethods = false)
-@Profile("local-v1-synthetic")
+@Profile({"local-v1-synthetic", "local-private"})
 public class LocalV1DeletionWriteConfiguration {
 
     @Bean
@@ -96,12 +96,4 @@ public class LocalV1DeletionWriteConfiguration {
                 clock);
     }
 
-    @Bean
-    LocalV1SharedEvidenceFixtureCoordinator localV1SharedEvidenceFixtureCoordinator(
-            io.github.candyxi0.hidenest.application.coordinator.LocalV1S1WindowCloseCoordinator s1,
-            DSLContext dsl,
-            PayloadStore payloadStore,
-            Clock clock) {
-        return new LocalV1SharedEvidenceFixtureCoordinator(s1, dsl, payloadStore, clock);
-    }
 }

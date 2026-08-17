@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Profile;
 
 /** Explicit assembly for the synthetic, loopback-only Local V1 context pack retrieval vertical. */
 @Configuration(proxyBeanMethods = false)
-@Profile("local-v1-synthetic")
+@Profile({"local-v1-synthetic", "local-private"})
 public class LocalV1ContextPackConfiguration {
 
     @Bean

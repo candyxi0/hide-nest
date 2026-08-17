@@ -20,7 +20,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Synthetic local read gate only; this is not a production session or authorization boundary. */
 @Component
-@Profile("local-v1-synthetic")
+@Profile({"local-v1-synthetic", "local-private"})
 public final class LocalV1SyntheticReadGate extends OncePerRequestFilter {
 
     private static final Pattern ALLOWED_PATH = Pattern.compile(
@@ -92,12 +92,12 @@ public final class LocalV1SyntheticReadGate extends OncePerRequestFilter {
         }
         String authorization = request.getHeader("Authorization");
         if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
-            writeProblem(response, requestId, 401, FailureCode.ACCESS_DENIED, "本机合成访问凭据缺失");
+            writeProblem(response, requestId, 401, FailureCode.ACCESS_DENIED, "本机访问凭据缺失");
             return;
         }
         byte[] supplied = authorization.substring(BEARER_PREFIX.length()).getBytes(StandardCharsets.UTF_8);
         if (!MessageDigest.isEqual(expectedToken, supplied)) {
-            writeProblem(response, requestId, 403, FailureCode.ACCESS_DENIED, "本机合成访问凭据无效");
+            writeProblem(response, requestId, 403, FailureCode.ACCESS_DENIED, "本机访问凭据无效");
             return;
         }
         chain.doFilter(request, response);

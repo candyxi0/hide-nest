@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Profile;
 
 /** HDM-007/008 are unfinished, so there is no default-profile anonymous read surface. */
 @Configuration(proxyBeanMethods = false)
-@Profile("!local-v1-synthetic")
+@Profile("!local-v1-synthetic & !local-private")
 public class DefaultProfileFailClosedConfiguration {
 
     @Bean

@@ -26,7 +26,7 @@ import tools.jackson.databind.ObjectMapper;
  * This is a local synthetic gate, not a production session or authorization boundary.</p>
  */
 @Component
-@Profile("local-v1-synthetic")
+@Profile({"local-v1-synthetic", "local-private"})
 @Order(1)
 public final class LocalV1CandidateSetWriteGate extends OncePerRequestFilter {
 
@@ -62,12 +62,12 @@ public final class LocalV1CandidateSetWriteGate extends OncePerRequestFilter {
 
         String authorization = request.getHeader("Authorization");
         if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
-            writeProblem(response, requestId, 401, FailureCode.ACCESS_DENIED, "本机合成访问凭据缺失");
+            writeProblem(response, requestId, 401, FailureCode.ACCESS_DENIED, "本机访问凭据缺失");
             return;
         }
         byte[] supplied = authorization.substring(BEARER_PREFIX.length()).getBytes(StandardCharsets.UTF_8);
         if (!MessageDigest.isEqual(expectedToken, supplied)) {
-            writeProblem(response, requestId, 403, FailureCode.ACCESS_DENIED, "本机合成访问凭据无效");
+            writeProblem(response, requestId, 403, FailureCode.ACCESS_DENIED, "本机访问凭据无效");
             return;
         }
 

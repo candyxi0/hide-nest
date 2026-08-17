@@ -20,7 +20,7 @@ import tools.jackson.databind.JsonNode;
 
 /** Loopback-only, capability-gated closeout write entry for Local V1. */
 @RestController
-@Profile("local-v1-synthetic")
+@Profile({"local-v1-synthetic", "local-private"})
 public final class LocalV1CloseoutWriteController {
 
     private final LocalV1CloseoutVectorProjectionCoordinator coordinator;

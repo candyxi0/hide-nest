@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "1.0",
+  "task": "Task37-LocalV1本地私有模式启用工单",
+  "successState": "LOCAL_V1_PRIVATE_MODE_READY_FOR_HARDWARE_HANDOFF",
+  "generatedAt": "2026-08-17T20:29:37+08:00",
+  "git": {
+    "head": "620a786886da1d372d2c022e493faaba06e87051",
+    "indexTree": "609c0668cff12e6197b43125596c4270f83e513f",
+    "indexMatchesHead": true,
+    "stagedCount": 0,
+    "outOfScopeChanges": 0
+  },
+  "constraints": {
+    "LOCAL_PRIVATE_SINGLE_USER_TAILSCALE_SSH_TUNNEL_ONLY": true,
+    "NO_PUBLIC_LISTENER": true,
+    "LEGACY_SYNTHETIC_NAMES_RETAINED_FOR_COMPATIBILITY": true,
+    "HARDWARE_DEPLOYMENT_NOT_STARTED": true
+  },
+  "testResults": {
+    "task37TargetedTests": {
+      "class": "io.github.candyxi0.hidenest.api.LocalV1PrivateModeHttpIntegrationTest",
+      "status": "PASS",
+      "testsRun": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "apiModuleTests": {
+      "status": "PASS",
+      "testsRun": 71,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "mavenOfflineCleanVerify": {
+      "status": "PASS",
+      "command": "./mvnw.cmd -o clean verify (JDK 25)",
+      "testsRun": 600,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "totalTime": "5:33 min"
+    },
+    "architectureTests": {
+      "status": "PASS",
+      "testsRun": 29,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "bodyTextScanHash": "df84709c46551276f1ef1bb194b2f1d72817ff83c62a45429bf4b3c49abc5de0"
+    }
+  },
+  "qualityGates": {
+    "gitDiffCheck": {
+      "status": "PASS",
+      "whitespaceErrors": 0,
+      "lineEndingWarnings": 4
+    },
+    "secretScan": {
+      "status": "PASS",
+      "syntheticTokenOccurrencesInSource": 8,
+      "syntheticTokenOccurrencesInReports": 0,
+      "capabilityOccurrencesInSource": 8,
+      "capabilityOccurrencesInReports": 0,
+      "note": "All test token/capability occurrences are confined to integration test source files; none in reports or generated artifacts."
+    },
+    "bodyScan": {
+      "status": "PASS",
+      "bodyTextLeakCount": 0
+    },
+    "hostAddressScan": {
+      "status": "PASS",
+      "tailscaleIpLeakCount": 0,
+      "lanIpLeakCount": 0,
+      "publicIpLeakCount": 0
+    },
+    "docker": {
+      "newContainers": 0,
+      "newVolumes": 0,
+      "newNetworks": 0,
+      "leftoverProcesses": 0
+    }
+  },
+  "changedFiles": {
+    "allowedScope": [
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/DefaultProfileFailClosedConfiguration.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1CandidateSetConfiguration.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1CandidateSetController.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1CandidateSetWriteGate.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1CloseoutWriteConfiguration.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1CloseoutWriteController.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1CloseoutWriteGate.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1ContextPackConfiguration.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1ContextPackController.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1DeletionGate.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1DeletionWriteConfiguration.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1DeletionWriteController.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1ExceptionHandler.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1MemoryDetailController.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1MemoryEvidenceController.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1MemoryListController.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1ReadConfiguration.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1ResponseHeadersAdvice.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1RunStatusController.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1SyntheticReadGate.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1LoopbackEnvironmentPostProcessor.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1PrivateStartupGuardConfiguration.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1SyntheticFixtureConfiguration.java",
+      "apps/api/src/main/resources/META-INF/spring/org.springframework.boot.env.EnvironmentPostProcessor.imports",
+      "apps/api/src/main/resources/application-local-private.properties",
+      "apps/api/src/test/java/io/github/candyxi0/hidenest/api/LocalV1PrivateModeHttpIntegrationTest.java",
+      "reports/LocalV1-PrivateMode-执行报告.md",
+      "reports/LocalV1-PrivateMode-Evidence.json"
+    ]
+  },
+  "frozenItems": {
+    "migrationsV001ToV020": "UNCHANGED",
+    "contractsGenerated": "UNCHANGED",
+    "reactPrototype": "UNCHANGED",
+    "mcpTools": "UNCHANGED",
+    "nodeBuild": "NOT_RUN_UNCHANGED",
+    "openapiGenerateCheck": "NOT_RUN_UNCHANGED",
+    "jooqGenerateCheck": "NOT_RUN_UNCHANGED"
+  },
+  "networking": {
+    "internetUsed": false,
+    "gitWriteOperation": false,
+    "hardwareDeployment": "NOT_STARTED"
+  }
+}

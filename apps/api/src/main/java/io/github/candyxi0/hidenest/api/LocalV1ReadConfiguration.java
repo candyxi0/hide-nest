@@ -14,9 +14,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 
-/** Explicit assembly for the synthetic, loopback-only Local V1 read vertical. */
+/** Explicit assembly for the loopback-only Local V1 read vertical. */
 @Configuration(proxyBeanMethods = false)
-@Profile("local-v1-synthetic")
+@Profile({"local-v1-synthetic", "local-private"})
 public class LocalV1ReadConfiguration {
 
     @Bean
@@ -64,17 +64,17 @@ public class LocalV1ReadConfiguration {
         try {
             InetAddress resolved = InetAddress.getByName(requireNonBlank(address, "server address"));
             if (!resolved.isLoopbackAddress()) {
-                throw new IllegalStateException("Local V1 synthetic API requires an explicit loopback server address");
+                throw new IllegalStateException("Local V1 API requires an explicit loopback server address");
             }
         } catch (java.net.UnknownHostException exception) {
-            throw new IllegalStateException("Local V1 synthetic API server address is invalid", exception);
+            throw new IllegalStateException("Local V1 API server address is invalid", exception);
         }
     }
 
     static void requireHighEntropyToken(String token) {
-        String value = requireNonBlank(token, "synthetic token");
+        String value = requireNonBlank(token, "token");
         if (value.length() < 43 || value.chars().distinct().count() < 16) {
-            throw new IllegalStateException("Local V1 synthetic bearer does not meet the entropy floor");
+            throw new IllegalStateException("Local V1 bearer does not meet the entropy floor");
         }
     }
 
