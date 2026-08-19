@@ -351,6 +351,12 @@ describe("real MCP stdio + loopback CandidateSet gate", () => {
     });
     expect(candidateTool?.description).toContain("Embedding 不负责切分");
     expect(candidateTool?.description).toContain("最小必要证据段");
+    const contextTool = list.tools.find((tool) => tool.name === CONTEXT_PACK_TOOL_NAME);
+    expect(contextTool?.description).toContain("回答前静默调用");
+    expect(contextTool?.description).toContain("之前、上次、又、还是、回家、记得");
+    expect(contextTool?.description).toContain("偏好、边界、关系、承诺、计划或长期项目");
+    expect(contextTool?.description).toContain("不要每轮机械调用");
+    expect(contextTool?.description).toContain("低相关、重复或冲突的记忆宁可不用");
   });
 
   it("CandidateSet tools/call returns only safe fields and drives one real loopback POST", async () => {
