@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "status": "ITERATION1_MEMORY_EVIDENCE_MCP_R1_READY_FOR_LOCAL_COMMIT",
+  "producerStartedAt": "2026-08-20T13:40:00+08:00",
+  "producerCompletedAt": "2026-08-20T15:47:00+08:00",
+  "baseline": {
+    "head": "195fd953a62252bf9de51a9bdac57314b1ad4c01",
+    "branch": "main"
+  },
+  "scope": {
+    "modified": [
+      "apps/codex-adapter/src/mcp.ts",
+      "apps/codex-adapter/src/mcp.integration.test.ts"
+    ],
+    "added": [
+      "apps/codex-adapter/src/memory-evidence-input.ts",
+      "apps/codex-adapter/src/memory-evidence-input.test.ts",
+      "apps/codex-adapter/src/memory-evidence-canonicalizer.ts",
+      "apps/codex-adapter/src/memory-evidence-canonicalizer.test.ts",
+      "apps/codex-adapter/src/memory-evidence-client.ts",
+      "apps/codex-adapter/src/memory-evidence-client.test.ts",
+      "apps/codex-adapter/src/memory-evidence-tool.ts",
+      "apps/codex-adapter/src/memory-evidence-tool.test.ts",
+      "reports/Iteration1-MemoryEvidenceMCP-执行报告.md",
+      "reports/Iteration1-MemoryEvidenceMCP-Evidence.json"
+    ]
+  },
+  "tool": {
+    "name": "hide_nest_get_memory_evidence_synthetic",
+    "readOnly": true,
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputFields": ["memoryId", "memoryRevisionId", "revisionNo"],
+    "inputClosed": true,
+    "inputAllRequired": true,
+    "mcpToolCountTotal": 3,
+    "mcpReadOnlyToolCount": 1,
+    "descriptionScope": "local-private-already-bound-by-ContextPack"
+  },
+  "r1": {
+    "touchedPaths": [
+      "apps/codex-adapter/src/memory-evidence-canonicalizer.ts",
+      "apps/codex-adapter/src/memory-evidence-canonicalizer.test.ts",
+      "apps/codex-adapter/src/memory-evidence-client.ts",
+      "apps/codex-adapter/src/memory-evidence-tool.test.ts",
+      "apps/codex-adapter/src/mcp.ts",
+      "apps/codex-adapter/src/mcp.integration.test.ts"
+    ],
+    "r1_01_semanticBlockSorting": {
+      "rawResponseOrder": "relation.createdAt-respected",
+      "normalisedBy": "firstOrdinal-ascending",
+      "tieBreak": "anchorId-localeCompare",
+      "formalReversedB20to21BeforeA1to2": "PASS",
+      "threeSegmentRandomRelationOrder": "PASS",
+      "anchorReflowNotMasked": "REJECTED",
+      "sameFirstOrdinalOverlap": "REJECTED",
+      "globalOrdinalSortMasking": "NOT_POSSIBLE"
+    },
+    "r1_02_descriptionScope": {
+      "oldSyntheticOnlyText": "removed",
+      "newText": "仅用于当前本地私有 Nest 中、已由 ContextPack 返回并完成三字段绑定的已保存记忆",
+      "oldTextResidual": 0
+    },
+    "r1_03_configErrorClassification": {
+      "nonLoopbackBaseUrl": "LOCAL_CONFIGURATION_MISSING",
+      "httpReach": 0,
+      "urlInErrorMessage": 0,
+      "actorKindNonEmpty": "REJECTED",
+      "actorStableRefNonEmpty": "REJECTED"
+    }
+  },
+  "http": {
+    "operation": "GET /v1/memories/{memoryId}/evidence?revisionId={memoryRevisionId}",
+    "method": "GET",
+    "headersSent": ["Authorization: Bearer"],
+    "capabilitySent": 0,
+    "cookieSent": 0,
+    "idempotencyKeySent": 0,
+    "redirect": "manual-rejected",
+    "timeoutMs": 10000,
+    "maxResponseBytes": 5242880,
+    "streamingCap": true,
+    "contentTypeGate": ["application/json", "application/problem+json"]
+  },
+  "projection": {
+    "topLevelKeys": ["requestId", "resultCategory", "memoryId", "currentRevisionId", "revisionNo", "evidenceItems"],
+    "itemKeys": ["anchorId", "sourceUnitId", "ordinal", "actorId", "actorKind", "actorStableRef", "displayLabel", "occurredAt", "bodyText"],
+    "successStatus": "EVIDENCE_READY",
+    "resultCategoryAccepted": ["SUCCEEDED"],
+    "maxEvidenceItems": 100,
+    "internalActorFieldsProjected": 0,
+    "bodyTextTransformation": "none"
+  },
+  "tests": {
+    "codexAdapterTestSummary": {
+      "files": 17,
+      "tests": 275,
+      "skipped": 1,
+      "failed": 0
+    },
+    "newFiles": 4,
+    "newTests": 66,
+    "nodeFourGates": {
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "test": "PASS",
+      "build": "PASS"
+    },
+    "rootTypecheck": "NOT_RUN_REUSE_TASK42A_PASS",
+    "rootLint": "NOT_RUN_REUSE_TASK42A_PASS",
+    "rootTest": "NOT_RUN_REUSE_TASK42A_PASS",
+    "rootBuild": "NOT_RUN_REUSE_TASK42A_PASS",
+    "gitDiffCheck": "PASS"
+  },
+  "attackMatrix": {
+    "singleSegmentSingleMessage": "PASS",
+    "singleSegmentConsecutiveMultiMessage": "PASS",
+    "multiSegmentDispersed": "PASS",
+    "threeFieldBinding": "PASS",
+    "strictZeroExtraFields": "PASS",
+    "identityMismatchMemoryId": "REJECTED",
+    "identityMismatchRevisionId": "REJECTED",
+    "identityMismatchRevisionNo": "REJECTED",
+    "topLevelMissingExtraWrongType": "REJECTED",
+    "itemMissingExtraWrongType": "REJECTED",
+    "duplicateSourceUnit": "REJECTED",
+    "anchorReflow": "REJECTED",
+    "ordinalDuplicate": "REJECTED",
+    "ordinalGap": "REJECTED",
+    "ordinalReverse": "REJECTED",
+    "crossSegmentOverlap": "REJECTED",
+    "adjacentFakeSegmentation": "REJECTED",
+    "illegalCalendarDate": "REJECTED",
+    "legalLeapDay": "ACCEPTED",
+    "formalReversedBlockOrder": "PASS",
+    "threeSegmentRandomRelationOrder": "PASS",
+    "anchorReflowNotMaskedByGlobalSort": "REJECTED",
+    "sameFirstOrdinalOverlap": "REJECTED",
+    "emptyActorKind": "REJECTED",
+    "emptyActorStableRef": "REJECTED"
+  },
+  "transport": {
+    "redirect": "REJECTED",
+    "timeoutBeforeHeaders": "REJECTED",
+    "timeoutDuringBody": "REJECTED",
+    "disconnect": "REJECTED",
+    "wrongContentType": "REJECTED",
+    "declaredOverLimit": "REJECTED",
+    "streamingOverLimit": "REJECTED",
+    "malformedJson": "REJECTED",
+    "problem401": "SAFE_FIELDS_ONLY",
+    "problem403": "SAFE_FIELDS_ONLY",
+    "nonLoopbackBaseUrl": "LOCAL_CONFIGURATION_MISSING",
+    "problem404": "SAFE_FIELDS_ONLY",
+    "problem500": "SAFE_FIELDS_ONLY"
+  },
+  "regression": {
+    "candidateSetCloseout": "PASS",
+    "contextPackRetrieval": "PASS",
+    "mcpToolCount": 3
+  },
+  "scopeExclusions": {
+    "javaChanged": 0,
+    "databaseChanged": 0,
+    "migrationChanged": 0,
+    "openapiChanged": 0,
+    "jooqGeneratedChanged": 0,
+    "reactUiChanged": 0,
+    "deploymentChanged": 0,
+    "candidateSetSemanticsChanged": false,
+    "contextPackSemanticsChanged": false,
+    "playwrightArtifactsChanged": false,
+    "gitConfigChanged": false
+  },
+  "leakage": {
+    "bodyText": 0,
+    "token": 0,
+    "capability": 0,
+    "secret": 0,
+    "baseUrl": 0,
+    "absolutePath": 0
+  },
+  "gitIndex": {
+    "headMatch": true,
+    "staged": 0,
+    "outOfBounds": 0,
+    "diffCheck": "PASS"
+  },
+  "networkAccess": false,
+  "gitWriteOperations": false,
+  "familyApiSmoke": "NOT_RUN"
+}
