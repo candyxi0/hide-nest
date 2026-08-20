@@ -889,4 +889,150 @@ describe("永久删除原型接线", () => {
     expect("indexedDB" in window).toBe(false);
     setItem.mockRestore();
   });
+
+  it("延迟 list refetch 反证：成功后立即移除旧行，成功反馈可见", async () => {
+    let poll = 0;
+    let listCalls = 0;
+    let releaseRefetch: ((value: Response) => void) | null = null;
+    server.use(
+      http.get("*/v1/deletion-runs/:runId", () => {
+        poll += 1;
+        return HttpResponse.json(poll === 1 ? { ...runResponse, phase: "RECEIVED" } : runResponse);
+      }),
+      http.get("*/v1/memories", () => {
+        listCalls += 1;
+        if (listCalls === 1) return HttpResponse.json(listResponse);
+        // Hold the post-deletion refetch open so the cache window is observable.
+        return new Promise<Response>((resolve) => { releaseRefetch = resolve; });
+      }),
+    );
+    const { user, client } = await openDeleteDrawer();
+    const dialog = await screen.findByRole("dialog", { name: "永久删除影响预览" });
+    await user.click(await within(dialog).findByRole("button", { name: "永久删除这 1 条记忆" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(window.location.pathname).toBe("/memories");
+    const feedback = screen.getByText("已永久删除 1 条记忆。");
+    expect(feedback).toBeVisible();
+    expect(feedback.closest("[role=status]")).not.toBeNull();
+    expect(feedback.closest("[aria-live=polite]")).not.toBeNull();
+
+    // While the refetch is still held open, the deleted row is already gone from cache and DOM.
+    const listEntries = client.getQueriesData<{ items: Array<{ memoryId: string }> }>({ queryKey: ["local-v1-memories"] });
+    expect(listEntries.length).toBeGreaterThan(0);
+    for (const [, data] of listEntries) {
+      if (data?.items) {
+        expect(data.items.map((item) => item.memoryId)).not.toContain(memoryId);
+      }
+    }
+    expect(screen.queryByRole("button", { name: /暖灰的规范正文/ })).not.toBeInTheDocument();
+
+    releaseRefetch!(HttpResponse.json({ ...listResponse, items: [] }));
+  });
+
+  it("refetch 失败反证：旧行不复活，成功反馈仍说明删除完成", async () => {
+    let poll = 0;
+    let listCalls = 0;
+    server.use(
+      http.get("*/v1/deletion-runs/:runId", () => {
+        poll += 1;
+        return HttpResponse.json(poll === 1 ? { ...runResponse, phase: "RECEIVED" } : runResponse);
+      }),
+      http.get("*/v1/memories", () => {
+        listCalls += 1;
+        if (listCalls === 1) return HttpResponse.json(listResponse);
+        return new HttpResponse(null, { status: 503 });
+      }),
+    );
+    const { user } = await openDeleteDrawer();
+    const dialog = await screen.findByRole("dialog", { name: "永久删除影响预览" });
+    await user.click(await within(dialog).findByRole("button", { name: "永久删除这 1 条记忆" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    // The deleted row must not resurrect even though the list refetch failed.
+    expect(screen.queryByRole("button", { name: /暖灰的规范正文/ })).not.toBeInTheDocument();
+    // The one-shot feedback still states the deletion completed.
+    expect(screen.getByText("已永久删除 1 条记忆。")).toBeVisible();
+    // List failure is presented via the existing safe error path.
+    expect(await screen.findByText("读取完整性检查没有通过")).toBeVisible();
+  });
+
+  it.each([
+    ["FINAL_FAILED", { ...runResponse, phase: "FINAL_FAILED", failureCode: "DELETION_EXECUTION_FAILED", retryable: false }],
+    ["STALE", { ...runResponse, phase: "FINAL_FAILED", failureCode: "DELETION_EXECUTION_STALE", retryable: false }],
+  ])("失败终态 %s 不清场：无成功反馈、无缓存移除、无导航", async (_label, run) => {
+    server.use(http.get("*/v1/deletion-runs/:runId", () => HttpResponse.json(run)));
+    const { user, client } = await openDeleteDrawer();
+    const dialog = await screen.findByRole("dialog", { name: "永久删除影响预览" });
+    await user.click(await within(dialog).findByRole("button", { name: "永久删除这 1 条记忆" }));
+    await within(dialog).findByText(/永久删除执行失败/);
+
+    expect(screen.queryByText("已永久删除 1 条记忆。")).not.toBeInTheDocument();
+    expect(window.location.pathname).toContain(memoryId);
+    expect(client.getQueryData(["local-v1-memory", memoryId])).toBeDefined();
+    const listData = client.getQueryData<{ items: Array<{ memoryId: string }> }>(["local-v1-memories", "", "ALL"]);
+    expect(listData?.items.map((item) => item.memoryId)).toContain(memoryId);
+  });
+
+  it("轮询超时不清场：无成功反馈、无缓存移除、无导航", async () => {
+    server.use(http.get("*/v1/deletion-runs/:runId", () => HttpResponse.json({ ...runResponse, phase: "RECEIVED" })));
+    const { user, client } = await openDeleteDrawer();
+    const dialog = await screen.findByRole("dialog", { name: "永久删除影响预览" });
+    await user.click(await within(dialog).findByRole("button", { name: "永久删除这 1 条记忆" }));
+    await within(dialog).findByText(/执行状态尚未收敛/, {}, { timeout: 10000 });
+
+    expect(screen.queryByText("已永久删除 1 条记忆。")).not.toBeInTheDocument();
+    expect(window.location.pathname).toContain(memoryId);
+    expect(client.getQueryData(["local-v1-memory", memoryId])).toBeDefined();
+    const listData = client.getQueryData<{ items: Array<{ memoryId: string }> }>(["local-v1-memories", "", "ALL"]);
+    expect(listData?.items.map((item) => item.memoryId)).toContain(memoryId);
+  }, 15000);
+
+  it("一次性反馈：重新选择其他记忆或普通 refetch 不重复，且不写持久存储", async () => {
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    const memoryB = "99999999-9999-4999-8999-9999999999bb";
+    let poll = 0;
+    let deleted = false;
+    server.use(
+      http.get("*/v1/deletion-runs/:runId", () => {
+        poll += 1;
+        if (poll >= 2) deleted = true;
+        return HttpResponse.json(poll === 1 ? { ...runResponse, phase: "RECEIVED" } : runResponse);
+      }),
+      http.get("*/v1/memories", () => HttpResponse.json(deleted ? {
+        ...listResponse,
+        items: [{
+          memoryId: memoryB,
+          currentRevisionId: revisionId,
+          revisionNo: 1,
+          state: "ACTIVE",
+          isolated: false,
+          memoryType: "EVENT",
+          perspective: "xiaolin:33333333-3333-4333-8333-333333333333",
+          title: "另一条记忆",
+          summary: "仍保留的条目",
+          sourceAvailability: "AVAILABLE",
+          uncertaintyCode: "CONFIRMED",
+          updatedAt: "2026-08-12T09:00:00Z",
+        }],
+      } : listResponse)),
+    );
+    const { user } = await openDeleteDrawer();
+    const dialog = await screen.findByRole("dialog", { name: "永久删除影响预览" });
+    await user.click(await within(dialog).findByRole("button", { name: "永久删除这 1 条记忆" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByText("已永久删除 1 条记忆。")).toBeVisible();
+
+    // A normal refetch converging on the server truth must not duplicate the feedback.
+    await screen.findByText("另一条记忆");
+    expect(screen.getAllByText("已永久删除 1 条记忆。")).toHaveLength(1);
+
+    // Selecting another memory clears the one-shot feedback instead of replaying it.
+    await user.click(screen.getByRole("button", { name: /另一条记忆/ }));
+    expect(screen.queryByText("已永久删除 1 条记忆。")).not.toBeInTheDocument();
+    expect(setItem).not.toHaveBeenCalled();
+    expect("indexedDB" in window).toBe(false);
+    setItem.mockRestore();
+  });
 });

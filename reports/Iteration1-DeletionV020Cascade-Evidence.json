@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "status": "ITERATION1_DELETION_V020_CASCADE_READY_FOR_HIDE_REVIEW",
+  "completedAt": "2026-08-20T12:10:08.6116236+08:00",
+  "baseline": {
+    "head": "1b2e753ebee1b222311a80cfc0fa8ea5ecb19dba",
+    "branch": "main",
+    "staged": 0,
+    "task41AHashes": {
+      "apps/nest-console/src/App.tsx": "63dc967429e4bc7138da84ade3e4d0ae5e5e9aa21604d7be655b8214e848d67c",
+      "apps/nest-console/src/app.css": "bcd78476e4a28c289da77a3f1e3bf25794523443d8126d6fe318c0f85fea19b3",
+      "apps/nest-console/src/test/App.test.tsx": "8509c8d739d74a3dca1ab80597ba38a1a008af0d7e4f466208ef63b1bada245b",
+      "reports/Iteration1-DeleteFeedback-执行报告.md": "704ea08ca5878a5a581f2ba1670611f4cb79dfbc5298c000fa2f87c12847fd1b"
+    },
+    "task41AHashResult": "MATCH"
+  },
+  "rootCause": {
+    "sqlState": "23503",
+    "constraint": "candidate_evidence_mapping_anchor_fk",
+    "referencingTable": "memory.candidate_evidence_mapping",
+    "referencedTable": "evidence.source_anchor"
+  },
+  "migration": {
+    "new": "V021__candidate_evidence_mapping_erasure.sql",
+    "emptyDatabaseCount": 21,
+    "v020ToV021UpgradeCount": 1,
+    "repeatCount": 0,
+    "tableCount": "MATCH",
+    "v001ToV020": "MATCH",
+    "usesCascade": false,
+    "dropsConstraint": false,
+    "disablesImmutableGate": false,
+    "broadDeleteGrant": false,
+    "canonicalFailureCodeChanges": 0
+  },
+  "erasureGate": {
+    "diagnostic": "HDM021_CANDIDATE_EVIDENCE_MAPPING_ERASURE_DENIED",
+    "sqlState": "23514",
+    "publicExecute": false,
+    "apiMappingDelete": false,
+    "workerMappingDelete": false,
+    "requiresCurrentTransactionMarker": true,
+    "requiresCurrentTransactionRun": true,
+    "requiresConfirmedClosureDecisionFenceBinding": true,
+    "requiresSourceAnchorDeleteCandidateMember": true
+  },
+  "functionalEvidence": {
+    "exclusiveAnchorMappingErasure": "PASS",
+    "sharedAnchorMappingRetention": "PASS",
+    "lastSharedReferenceMappingErasure": "PASS",
+    "candidateSetRootMemberRetention": "PASS",
+    "noMarkerDelete": "REJECTED_23514_HDM021",
+    "mappingUpdate": "REJECTED_23514_HDM021",
+    "fakeMarker": "REJECTED_23514_HDM021",
+    "wrongClosureOrAnchor": "REJECTED_23514_HDM021",
+    "retainSharedMarker": "REJECTED_23514_HDM021",
+    "mappingRollbackInjection": "PASS",
+    "anchorRollbackInjection": "PASS",
+    "revisionRollbackInjection": "PASS",
+    "memoryRollbackInjection": "PASS",
+    "confirmedFenceNoRunFormalReplay": "PASS",
+    "finalRunState": "COMPLETED",
+    "decisionFenceClosureDuplicateFacts": [0, 0, 0],
+    "differentValueReplay": "REJECTED_NO_FACT_EXPANSION",
+    "completedReplay": "EXACT_ZERO_FACT_DELTA"
+  },
+  "tests": {
+    "targeted": {
+      "databaseCombined": {"tests": 195, "failures": 0, "errors": 0, "skipped": 0},
+      "jooqABTracked": {"tests": 1, "result": "MATCH"},
+      "deletionHttp": {"tests": 12, "failures": 0, "errors": 0, "skipped": 0}
+    },
+    "fullJdk25OfflineCleanVerify": {
+      "result": "PASS",
+      "elapsed": "PT5M13S",
+      "payloadAdapter": {"tests": 13, "failures": 0, "errors": 0},
+      "application": {"tests": 50, "failures": 0, "errors": 0},
+      "embeddingAdapter": {"tests": 13, "failures": 0, "errors": 0},
+      "databaseAdapter": {"tests": 388, "failures": 0, "errors": 0, "skipped": 1},
+      "contracts": {"tests": 46, "failures": 0, "errors": 0},
+      "api": {"tests": 71, "failures": 0, "errors": 0},
+      "worker": {"tests": 5, "failures": 0, "errors": 0},
+      "architecture": {"tests": 29, "failures": 0, "errors": 0}
+    },
+    "nodeOpenApiDedicatedGate": "NOT_RUN_UNCHANGED",
+    "gitDiffCheck": "PASS"
+  },
+  "unchanged": {
+    "jooqGeneratedTree": "MATCH",
+    "openApiAndTypeScriptGenerated": "MATCH",
+    "reactAndMcpAgainstTask41BBaseline": "MATCH",
+    "task41AFourFiles": "MATCH"
+  },
+  "leakage": {
+    "bodyText": 0,
+    "path": 0,
+    "token": 0,
+    "capability": 0,
+    "secret": 0
+  },
+  "git": {
+    "index": "MATCH",
+    "staged": 0,
+    "outOfBounds": 0,
+    "commit": false,
+    "push": false,
+    "configWrite": false
+  },
+  "docker": {
+    "newContainers": 0,
+    "newVolumes": 0,
+    "newNetworks": 0,
+    "leftoverProcesses": 0
+  },
+  "safety": {
+    "databaseTechnology": "TESTCONTAINERS_ONLY",
+    "homeServerDatabaseConnections": 0,
+    "homeServerDataChanges": 0,
+    "realNoRunRecoveryExecuted": false,
+    "externalNetworkAccess": false
+  },
+  "reportPath": "D:\\myproject\\hide-nest\\reports\\Iteration1-DeletionV020Cascade-执行报告.md"
+}

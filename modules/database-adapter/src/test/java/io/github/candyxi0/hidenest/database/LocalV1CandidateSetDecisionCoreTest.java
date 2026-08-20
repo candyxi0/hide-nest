@@ -110,7 +110,7 @@ class LocalV1CandidateSetDecisionCoreTest {
                 .outOfOrder(false)
                 .validateMigrationNaming(true)
                 .load();
-        assertEquals(20, fw.migrate().migrationsExecuted);
+        assertEquals(21, fw.migrate().migrationsExecuted);
 
         var rds = new DriverManagerDataSource(pg.getJdbcUrl(), U, PW);
         DataSourceTransactionManager txm = new DataSourceTransactionManager(rds);
@@ -1358,6 +1358,7 @@ class LocalV1CandidateSetDecisionCoreTest {
                     .cleanDisabled(true)
                     .baselineOnMigrate(false)
                     .outOfOrder(false)
+                    .target("20")
                     .load();
             assertEquals(1, v20.migrate().migrationsExecuted);
             assertEquals(0, v20.migrate().migrationsExecuted);

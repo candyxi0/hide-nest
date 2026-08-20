@@ -234,6 +234,10 @@ function MemoryArchive() {
   const [query, setQuery] = useState(initialQuery);
   const filter: MemoryFilter = initialState === "ACTIVE" || initialState === "ARCHIVED" ? initialState : "ALL";
   const debouncedQuery = useDebouncedValue(query);
+  const queryClient = useQueryClient();
+  // Transient, in-memory success feedback for a completed permanent deletion. Held in this
+  // component so it survives the single back-navigation; never written to any persistence layer.
+  const [deleteFeedback, setDeleteFeedback] = useState<{ memoryId: string; text: string } | null>(null);
 
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
@@ -260,8 +264,32 @@ function MemoryArchive() {
     setSearchParams(next, { replace: true });
   };
 
-  const selectMemory = (id: string) => navigate({ pathname: `/memories/${id}`, search: location.search });
+  const selectMemory = (id: string) => {
+    // Selecting another memory must not replay the prior deletion feedback.
+    setDeleteFeedback(null);
+    navigate({ pathname: `/memories/${id}`, search: location.search });
+  };
   const backToList = () => navigate({ pathname: "/memories", search: location.search });
+
+  // Runs only after a formal run reaches CANONICAL_COMMITTED / INDEX_READY (guarded in DeleteDrawer).
+  // Removes the deleted row from every list-query cache immediately (so it cannot linger while an
+  // async refetch is in flight or after a refetch fails), then refetches to converge on server truth,
+  // shows one visible aria-live feedback, and navigates back to the list exactly once.
+  const handleDeletionSucceeded = (deletedMemoryId: string) => {
+    queryClient.removeQueries({ queryKey: [DETAIL_KEY, deletedMemoryId] });
+    queryClient.removeQueries({ queryKey: [EVIDENCE_KEY, deletedMemoryId] });
+    queryClient.setQueriesData<{ items: MemoryListItem[] }>(
+      { queryKey: [LIST_KEY] },
+      (data) => {
+        if (!data || !Array.isArray(data.items)) return data;
+        const nextItems = data.items.filter((item) => item.memoryId !== deletedMemoryId);
+        return nextItems.length === data.items.length ? data : { ...data, items: nextItems };
+      },
+    );
+    setDeleteFeedback({ memoryId: deletedMemoryId, text: "已永久删除 1 条记忆。" });
+    void queryClient.invalidateQueries({ queryKey: [LIST_KEY] });
+    backToList();
+  };
 
   return (
     <section className={`memory-route ${memoryId ? "detail-open" : ""}`} aria-label="记忆档案">
@@ -296,6 +324,9 @@ function MemoryArchive() {
           <span>{listQuery.data ? `${listQuery.data.items.length} 条档案` : "读取中"}</span>
           <span>最近变化</span>
         </div>
+        {deleteFeedback && (
+          <p className="delete-feedback-banner" role="status" aria-live="polite">{deleteFeedback.text}</p>
+        )}
         <ListResult
           query={debouncedQuery.trim()}
           selectedId={memoryId}
@@ -305,7 +336,7 @@ function MemoryArchive() {
       </section>
       <article className="memory-detail" aria-live="polite">
         {memoryId ? (
-          <MemoryDetailView memoryId={memoryId} onBack={backToList} />
+          <MemoryDetailView memoryId={memoryId} onBack={backToList} onDeleted={handleDeletionSucceeded} />
         ) : (
           <div className="welcome-detail">
             <span className="eyebrow">只读档案</span>
@@ -364,7 +395,7 @@ function ListResult({
   );
 }
 
-function MemoryDetailView({ memoryId, onBack }: { memoryId: string; onBack: () => void }) {
+function MemoryDetailView({ memoryId, onBack, onDeleted }: { memoryId: string; onBack: () => void; onDeleted: (memoryId: string) => void }) {
   const queryClient = useQueryClient();
   const detailQuery = useQuery({
     queryKey: [DETAIL_KEY, memoryId],
@@ -378,10 +409,10 @@ function MemoryDetailView({ memoryId, onBack }: { memoryId: string; onBack: () =
 
   if (detailQuery.isPending) return <LoadingState scope="详情" />;
   if (detailQuery.isError) return <ProblemPanel problem={classifyError(detailQuery.error)} />;
-  return <DetailContent key={memoryId} memory={detailQuery.data.memory} onBack={onBack} />;
+  return <DetailContent key={memoryId} memory={detailQuery.data.memory} onBack={onBack} onDeleted={onDeleted} />;
 }
 
-function DetailContent({ memory, onBack }: { memory: MemoryDetail; onBack: () => void }) {
+function DetailContent({ memory, onBack, onDeleted }: { memory: MemoryDetail; onBack: () => void; onDeleted: (memoryId: string) => void }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteSession, setDeleteSession] = useState(0);
@@ -394,10 +425,10 @@ function DetailContent({ memory, onBack }: { memory: MemoryDetail; onBack: () =>
   const announceUnavailableAction = (action: string) => {
     setActionFeedback(`${action}当前本地 V1 尚未接线；未发出写请求。`);
   };
-  const handleDeletionSucceeded = () => {
-    void queryClient.invalidateQueries({ queryKey: [LIST_KEY] });
-    onBack();
-  };
+  // Success is only signalled by DeleteDrawer once a run reaches CANONICAL_COMMITTED/INDEX_READY.
+  // The actual cache eviction, one-shot feedback, refetch and single navigation all happen in the
+  // lifted MemoryArchive handler so they survive the back-navigation.
+  const handleDeletionSucceeded = () => onDeleted(memory.memoryId);
   const openDeleteDrawer = (nextOpen: boolean) => {
     setDeleteOpen(nextOpen);
     setDeleteSession((session) => session + 1);
