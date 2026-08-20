@@ -113,7 +113,20 @@ class LocalV1ContextPackHttpIntegrationTest {
             byte[] body = exchange.getRequestBody().readAllBytes();
             JsonNode root = JSON.readTree(body);
             String text = root.path("texts").get(0).asText();
-            String vector = text.contains("颜色B") ? basisLiteral(1) : basisLiteral(0);
+            // 颜色B -> basis(1); empty-search marker -> basis(2); policy tests -> basis(3); else basis(0).
+            // No memory is ever projected to basis(2), so a query on it yields NO_RELEVANT_RESULT.
+            // The policy marker isolates those tests onto their own basis so they cannot displace the
+            // basis(0)/basis(1) memories that the original ranking/replay tests assert on.
+            String vector;
+            if (text.contains("颜色B")) {
+                vector = basisLiteral(1);
+            } else if (text.contains("仅空检索")) {
+                vector = basisLiteral(2);
+            } else if (text.contains("政策")) {
+                vector = basisLiteral(3);
+            } else {
+                vector = basisLiteral(0);
+            }
             String response = "{\"model\":\"" + MODEL + "\",\"dimension\":" + DIMENSION
                     + ",\"vectors\":[" + vector + "]}";
             byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
@@ -228,6 +241,103 @@ class LocalV1ContextPackHttpIntegrationTest {
         assertTrue(response.status() == 403 || response.status() == 404, "deep-search must not be implemented");
     }
 
+    // ── Task43A Phase 3: policy fields over the wire ──────────────────────
+
+    @Test
+    void oldFourFieldRequestUsesDefaultMaxResultsThree() throws Exception {
+        submit("政策DM1");
+        submit("政策DM2");
+        submit("政策DM3");
+        submit("政策DM4");
+        Response response = post("/v1/context-packs", contextPackBody("政策检索目标"), "cp-http-default-max");
+        assertEquals(200, response.status());
+        JsonNode body = JSON.readTree(response.body());
+        assertEquals("SUCCEEDED", body.get("resultCategory").asText());
+        // default maxResults=3 caps the response regardless of how many matching memories exist
+        assertEquals(3, body.get("memories").size());
+    }
+
+    @Test
+    void explicitMaxResultsDeliversExactlyThatMany() throws Exception {
+        submit("政策EM1");
+        submit("政策EM2");
+        submit("政策EM3");
+        submit("政策EM4");
+        Response response = post(
+                "/v1/context-packs",
+                contextPackBodyWithPolicy("政策检索目标", 2, null),
+                "cp-http-explicit-max");
+        assertEquals(200, response.status());
+        JsonNode body = JSON.readTree(response.body());
+        assertEquals("SUCCEEDED", body.get("resultCategory").asText());
+        assertEquals(2, body.get("memories").size());
+    }
+
+    @Test
+    void explicitMinScoreAndBothFieldsAccepted() throws Exception {
+        submit("政策SM1");
+        submit("政策SM2");
+        String onlyMin = "{\"threadId\":\"" + UUID.randomUUID() + "\",\"turnId\":\"" + UUID.randomUUID()
+                + "\",\"purpose\":\"RECALL\",\"query\":\"政策检索目标\",\"minScore\":0.4}";
+        assertEquals(200, post("/v1/context-packs", onlyMin, "cp-http-only-min").status());
+
+        String both = "{\"threadId\":\"" + UUID.randomUUID() + "\",\"turnId\":\"" + UUID.randomUUID()
+                + "\",\"purpose\":\"RECALL\",\"query\":\"政策检索目标\",\"maxResults\":1,\"minScore\":0.4}";
+        Response response = post("/v1/context-packs", both, "cp-http-both");
+        assertEquals(200, response.status());
+        assertEquals(1, JSON.readTree(response.body()).get("memories").size());
+    }
+
+    @Test
+    void emptyResultIsHttp200NoRelevantResult() throws Exception {
+        // query maps to basis(2) which no memory is projected to -> every candidate is below minScore
+        Response response = post(
+                "/v1/context-packs", contextPackBody("仅空检索目标"), "cp-http-empty");
+        assertEquals(200, response.status());
+        JsonNode body = JSON.readTree(response.body());
+        assertEquals("NO_RELEVANT_RESULT", body.get("resultCategory").asText());
+        assertEquals(0, body.get("memories").size());
+        assertEquals(0, body.get("policyRevisionSet").size());
+    }
+
+    @Test
+    void explicitNullPolicyFieldsAreRejected422() throws Exception {
+        assertEquals(422, post("/v1/context-packs",
+                "{\"threadId\":\"" + UUID.randomUUID() + "\",\"turnId\":\"" + UUID.randomUUID()
+                        + "\",\"purpose\":\"p\",\"query\":\"查询\",\"maxResults\":null}",
+                "cp-http-null-max").status());
+        assertEquals(422, post("/v1/context-packs",
+                "{\"threadId\":\"" + UUID.randomUUID() + "\",\"turnId\":\"" + UUID.randomUUID()
+                        + "\",\"purpose\":\"p\",\"query\":\"查询\",\"minScore\":null}",
+                "cp-http-null-min").status());
+    }
+
+    @Test
+    void wrongTypeAndRangePolicyFieldsAreRejected422() throws Exception {
+        assertEquals(422, post("/v1/context-packs",
+                "{\"threadId\":\"" + UUID.randomUUID() + "\",\"turnId\":\"" + UUID.randomUUID()
+                        + "\",\"purpose\":\"p\",\"query\":\"查询\",\"maxResults\":\"three\"}",
+                "cp-http-type-max").status());
+        assertEquals(422, post("/v1/context-packs",
+                "{\"threadId\":\"" + UUID.randomUUID() + "\",\"turnId\":\"" + UUID.randomUUID()
+                        + "\",\"purpose\":\"p\",\"query\":\"查询\",\"minScore\":1.5}",
+                "cp-http-range-min").status());
+        assertEquals(422, post("/v1/context-packs",
+                "{\"threadId\":\"" + UUID.randomUUID() + "\",\"turnId\":\"" + UUID.randomUUID()
+                        + "\",\"purpose\":\"p\",\"query\":\"查询\",\"maxResults\":6}",
+                "cp-http-range-max").status());
+    }
+
+    @Test
+    void sameKeyWithDifferentPolicyValuesConflicts409() throws Exception {
+        submit("政策CF1");
+        String key = "cp-http-policy-conflict";
+        String firstBody = contextPackBodyWithPolicy("政策检索目标", 3, null);
+        assertEquals(200, post("/v1/context-packs", firstBody, key).status());
+        String different = contextPackBodyWithPolicy("政策检索目标", 2, null);
+        assertEquals(409, post("/v1/context-packs", different, key).status());
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────
 
     private static ConfigurableApplicationContext startApi(String password) {
@@ -304,6 +414,19 @@ class LocalV1ContextPackHttpIntegrationTest {
     private static String contextPackBody(String query) {
         return "{\"threadId\":\"" + UUID.randomUUID() + "\",\"turnId\":\"" + UUID.randomUUID()
                 + "\",\"purpose\":\"RECALL\",\"query\":\"" + query + "\"}";
+    }
+
+    private static String contextPackBodyWithPolicy(String query, Integer maxResults, Double minScore) {
+        StringBuilder sb = new StringBuilder("{\"threadId\":\"" + UUID.randomUUID() + "\",\"turnId\":\""
+                + UUID.randomUUID() + "\",\"purpose\":\"RECALL\",\"query\":\"" + query + "\"");
+        if (maxResults != null) {
+            sb.append(",\"maxResults\":").append(maxResults);
+        }
+        if (minScore != null) {
+            sb.append(",\"minScore\":").append(minScore);
+        }
+        sb.append("}");
+        return sb.toString();
     }
 
     private static Response post(String path, String body, String idempotencyKey) throws Exception {

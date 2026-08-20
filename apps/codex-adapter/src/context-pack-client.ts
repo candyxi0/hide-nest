@@ -133,6 +133,8 @@ export async function retrieveContextPack(
         turnId: request.turnId,
         purpose: request.purpose,
         query: request.query,
+        maxResults: request.maxResults,
+        minScore: request.minScore,
       }),
       redirect: "manual",
       signal: AbortSignal.timeout(config.timeoutMs ?? REQUEST_TIMEOUT_MS),

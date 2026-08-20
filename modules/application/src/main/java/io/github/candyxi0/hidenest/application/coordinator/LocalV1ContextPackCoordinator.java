@@ -16,6 +16,7 @@ import io.github.candyxi0.hidenest.runtime.domain.RetrievalTrace;
 import io.github.candyxi0.hidenest.runtime.port.RuntimeQueryPort;
 import io.github.candyxi0.hidenest.runtime.port.RuntimeTransactionPort;
 import io.github.candyxi0.hidenest.runtime.port.TransactionExecutor;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -43,6 +44,10 @@ import java.util.UUID;
 public class LocalV1ContextPackCoordinator {
 
     private static final int LIMIT = 5;
+    private static final int MIN_MAX_RESULTS = 1;
+    private static final double MIN_MIN_SCORE = 0.4d;
+    private static final double MAX_MIN_SCORE = 1.0d;
+    private static final String POLICY_VERSION = "v2";
     private static final int MAX_PURPOSE_BYTES = 128;
     private static final int MAX_QUERY_BYTES = 480;
     private static final int MAX_IDEMPOTENCY_KEY_BYTES = 128;
@@ -117,6 +122,12 @@ public class LocalV1ContextPackCoordinator {
         List<DeliveredMemory> delivered = new ArrayList<>();
         for (LocalV1VectorMatch candidate : candidates) {
             consideredIds.add(candidate.memoryId());
+            if (candidate.score() < request.minScore()) {
+                continue;
+            }
+            if (delivered.size() >= request.maxResults()) {
+                continue;
+            }
             DeliveredMemory verified = verifyCandidate(candidate);
             if (verified != null) {
                 delivered.add(verified);
@@ -227,7 +238,15 @@ public class LocalV1ContextPackCoordinator {
         }
 
         List<ContextPackDeliveryItem> items = runtimeQuery.findContextPackDeliveryItemsByDeliveryId(deliveryId);
+        if (items.size() > request.maxResults()) {
+            throw new LocalV1ContextPackException(LocalV1ContextPackException.Code.INTERNAL_FAILURE);
+        }
         List<DeliveredMemory> delivered = items.stream().map(this::replayVerifyItem).toList();
+        for (DeliveredMemory memory : delivered) {
+            if (memory.score() < request.minScore()) {
+                throw new LocalV1ContextPackException(LocalV1ContextPackException.Code.INTERNAL_FAILURE);
+            }
+        }
 
         String resultCategory = delivered.isEmpty() ? NO_RELEVANT_RESULT : SUCCEEDED;
         List<String> policySet = policySet(delivered);
@@ -477,6 +496,9 @@ public class LocalV1ContextPackCoordinator {
         fields.add(request.threadId().toString());
         fields.add(request.turnId().toString());
         fields.add(request.purpose());
+        fields.add(POLICY_VERSION);
+        fields.add(Integer.toString(request.maxResults()));
+        fields.add(canonicalScore(request.minScore()));
         fields.add(resultCategory);
         fields.addAll(policySet);
         for (DeliveredMemory memory : delivered) {
@@ -508,10 +530,21 @@ public class LocalV1ContextPackCoordinator {
 
     private static byte[] computeRequestHash(LocalV1ContextPackRequest request) {
         return canonicalHash(List.of(
+                POLICY_VERSION,
                 request.threadId().toString(),
                 request.turnId().toString(),
                 request.purpose(),
-                request.query()));
+                request.query(),
+                Integer.toString(request.maxResults()),
+                canonicalScore(request.minScore())));
+    }
+
+    /**
+     * Deterministic canonical text for a score: no locale, no scientific notation, no trailing
+     * zeros, so the same double always hashes identically across JVMs and platforms.
+     */
+    private static String canonicalScore(double score) {
+        return BigDecimal.valueOf(score).stripTrailingZeros().toPlainString();
     }
 
     private static String receiptManifest(UUID requestId, String resultCategory) {
@@ -544,6 +577,15 @@ public class LocalV1ContextPackCoordinator {
         }
         if (request.query().isBlank()
                 || request.query().getBytes(StandardCharsets.UTF_8).length > MAX_QUERY_BYTES) {
+            throw new LocalV1ContextPackException(LocalV1ContextPackException.Code.REQUEST_SCHEMA_INVALID);
+        }
+        if (request.maxResults() < MIN_MAX_RESULTS || request.maxResults() > LIMIT) {
+            throw new LocalV1ContextPackException(LocalV1ContextPackException.Code.REQUEST_SCHEMA_INVALID);
+        }
+        if (Double.isNaN(request.minScore())
+                || Double.isInfinite(request.minScore())
+                || request.minScore() < MIN_MIN_SCORE
+                || request.minScore() > MAX_MIN_SCORE) {
             throw new LocalV1ContextPackException(LocalV1ContextPackException.Code.REQUEST_SCHEMA_INVALID);
         }
     }

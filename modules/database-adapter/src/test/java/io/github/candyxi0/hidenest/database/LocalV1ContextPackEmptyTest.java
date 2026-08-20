@@ -159,7 +159,8 @@ class LocalV1ContextPackEmptyTest {
     }
 
     private static LocalV1ContextPackRequest request(String query) {
-        return new LocalV1ContextPackRequest(UUID.randomUUID(), UUID.randomUUID(), "RECALL", query);
+        return new LocalV1ContextPackRequest(
+                UUID.randomUUID(), UUID.randomUUID(), "RECALL", query, 3, 0.6d);
     }
 
     private static double[] unitVector() {

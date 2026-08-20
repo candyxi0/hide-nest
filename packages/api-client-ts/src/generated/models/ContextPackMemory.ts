@@ -70,13 +70,13 @@ export interface ContextPackMemory {
      */
     score: number;
     /**
-     *
+     * Latest occurrence time among the saved evidence of this delivered memory.
      * @type {Date}
      * @memberof ContextPackMemory
      */
     evidenceOccurredAt: Date;
     /**
-     *
+     * Number of complete 24-hour periods between evidenceOccurredAt and issuedAt (existing algorithm; not calendar days).
      * @type {number}
      * @memberof ContextPackMemory
      */

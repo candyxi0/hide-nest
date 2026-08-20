@@ -275,21 +275,28 @@ describe("real MCP stdio + loopback CandidateSet gate", () => {
             contextPackReceipts.set(idempotencyKey, receipt);
           }
           const noRelevant = query.includes("NO_RELEVANT");
+          const overMax = query.includes("OVER_MAX");
+          const single = {
+            memoryId: receipt.memoryId,
+            memoryRevisionId: receipt.memoryRevisionId,
+            revisionNo: 1,
+            policyRevisionNo: 1,
+            memoryType: "INTERPRETATION",
+            bodyText: CONTEXT_MEMORY_BODY,
+            score: 0.7,
+            evidenceOccurredAt: "2026-08-12T09:30:01Z",
+            evidenceAgeDays: 3,
+          };
           const memories = noRelevant
             ? []
-            : [
-                {
-                  memoryId: receipt.memoryId,
-                  memoryRevisionId: receipt.memoryRevisionId,
-                  revisionNo: 1,
-                  policyRevisionNo: 1,
-                  memoryType: "INTERPRETATION",
-                  bodyText: CONTEXT_MEMORY_BODY,
-                  score: 0.48,
-                  evidenceOccurredAt: "2026-08-12T09:30:01Z",
-                  evidenceAgeDays: 3,
-                },
-              ];
+            : overMax
+              ? [
+                  single,
+                  { ...single, memoryId: randomUUID(), memoryRevisionId: randomUUID(), score: 0.3 },
+                  { ...single, memoryId: randomUUID(), memoryRevisionId: randomUUID(), score: 0.2 },
+                  { ...single, memoryId: randomUUID(), memoryRevisionId: randomUUID(), score: 0.1 },
+                ]
+              : [single];
           response.writeHead(200, { "Content-Type": "application/json" });
           response.end(
             JSON.stringify({
@@ -423,6 +430,33 @@ describe("real MCP stdio + loopback CandidateSet gate", () => {
     expect(contextTool?.description).toContain("偏好、边界、关系、承诺、计划或长期项目");
     expect(contextTool?.description).toContain("不要每轮机械调用");
     expect(contextTool?.description).toContain("低相关、重复或冲突的记忆宁可不用");
+    // input is exactly six properties; required stays the original four fields
+    expect(contextTool?.inputSchema.additionalProperties).toBe(false);
+    const contextProperties = Object.keys(
+      (contextTool?.inputSchema.properties as Record<string, unknown>) ?? {},
+    ).sort();
+    expect(contextProperties).toEqual(["maxResults", "minScore", "query", "retrievalKey", "threadKey", "turnKey"]);
+    const contextRequired = Array.from(
+      (contextTool?.inputSchema.required as string[] | undefined) ?? [],
+    ).sort();
+    expect(contextRequired).toEqual(["query", "retrievalKey", "threadKey", "turnKey"]);
+    // frozen policy + relaxation rules must be locked verbatim in the description
+    expect(contextTool?.description).toContain("默认 maxResults=3、minScore=0.6");
+    expect(contextTool?.description).toContain("返回空集合是正常结果");
+    expect(contextTool?.description).toContain("降低门槛凑数");
+    expect(contextTool?.description).toContain("maxResults=5、minScore=0.4");
+    expect(contextTool?.description).toContain("必须使用新的 retrievalKey");
+    expect(contextTool?.description).toContain("保持同一 threadKey 与 turnKey");
+    expect(contextTool?.description).toContain("不允许第三次重试");
+    expect(contextTool?.description).toContain("不允许低于 0.4");
+    expect(contextTool?.description).toContain("已有结果，不得为了得到更多记忆再自动放宽");
+    // query rules + no-excludeTerms + verbatim positive/negative examples
+    expect(contextTool?.description).toContain("检索控制型否定");
+    expect(contextTool?.description).toContain("排除的概念名称");
+    expect(contextTool?.description).toContain("小林不喜欢香菜");
+    expect(contextTool?.description).toContain("没有 excludeTerms");
+    expect(contextTool?.description).toContain("错误 query：查找月亮记忆，不要返回亲密互动、称呼、欢迎回家");
+    expect(contextTool?.description).toContain("正确 query：月亮、月光、摸不到、真实照在夕淋身上");
     const evidenceTool = list.tools.find((tool) => tool.name === MEMORY_EVIDENCE_TOOL_NAME);
     expect(evidenceTool?.inputSchema.additionalProperties).toBe(false);
     expect(
@@ -569,6 +603,28 @@ describe("real MCP stdio + loopback CandidateSet gate", () => {
     expect(post?.headers.authorization).toBe(`Bearer ${TEST_TOKEN}`);
     expect(post?.headers["x-action-capability"]).toBeUndefined();
     expect(post?.headers.cookie).toBeUndefined();
+    // omitted policy fields are resolved and explicitly sent as the default 3 / 0.6
+    const sent = JSON.parse(post?.body ?? "{}") as Record<string, unknown>;
+    expect(sent.maxResults).toBe(3);
+    expect(sent.minScore).toBe(0.6);
+  });
+
+  it("context-pack response second gate rejects count above maxResults", async () => {
+    const result = await client.callTool({
+      name: CONTEXT_PACK_TOOL_NAME,
+      arguments: contextPackArgs({ query: "OVER_MAX 合成四条结果" }),
+    });
+    expect(resultIsError(result)).toBe(true);
+    expect(resultText(result)).toContain("INVALID_RESPONSE");
+  });
+
+  it("context-pack response second gate rejects a below-minScore memory", async () => {
+    const result = await client.callTool({
+      name: CONTEXT_PACK_TOOL_NAME,
+      arguments: { ...contextPackArgs(), minScore: 0.9 },
+    });
+    expect(resultIsError(result)).toBe(true);
+    expect(resultText(result)).toContain("INVALID_RESPONSE");
   });
 
   it("context-pack replay/new-key and NO_RELEVANT_RESULT semantics are unchanged", async () => {

@@ -1096,6 +1096,19 @@ components:
           type: string
         query:
           type: string
+        maxResults:
+          type: integer
+          description: Maximum number of memories to deliver, 1 to 5. Defaults to 3 when absent.
+          minimum: 1
+          maximum: 5
+          default: 3
+        minScore:
+          type: number
+          format: double
+          description: Minimum cosine relevance score a candidate must reach to be delivered, 0.4 to 1.0. Defaults to 0.6 when absent.
+          minimum: 0.4
+          maximum: 1.0
+          default: 0.6
       additionalProperties: false
 
     ContextPackResponse:
@@ -1182,10 +1195,12 @@ components:
         evidenceOccurredAt:
           type: string
           format: date-time
+          description: Latest occurrence time among the saved evidence of this delivered memory.
         evidenceAgeDays:
           type: integer
           format: int64
           minimum: 0
+          description: Number of complete 24-hour periods between evidenceOccurredAt and issuedAt (existing algorithm; not calendar days).
       additionalProperties: false
 
     DeepSearchRequest:

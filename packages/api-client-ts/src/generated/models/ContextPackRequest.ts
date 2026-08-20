@@ -43,6 +43,18 @@ export interface ContextPackRequest {
      * @memberof ContextPackRequest
      */
     query: string;
+    /**
+     * Maximum number of memories to deliver, 1 to 5. Defaults to 3 when absent.
+     * @type {number}
+     * @memberof ContextPackRequest
+     */
+    maxResults?: number;
+    /**
+     * Minimum cosine relevance score a candidate must reach to be delivered, 0.4 to 1.0. Defaults to 0.6 when absent.
+     * @type {number}
+     * @memberof ContextPackRequest
+     */
+    minScore?: number;
 }
 
 /**
@@ -70,6 +82,8 @@ export function ContextPackRequestFromJSONTyped(json: any, ignoreDiscriminator: 
         'turnId': json['turnId'],
         'purpose': json['purpose'],
         'query': json['query'],
+        'maxResults': json['maxResults'] == null ? undefined : json['maxResults'],
+        'minScore': json['minScore'] == null ? undefined : json['minScore'],
     };
 }
 
@@ -88,6 +102,8 @@ export function ContextPackRequestToJSONTyped(value?: ContextPackRequest | null,
         'turnId': value['turnId'],
         'purpose': value['purpose'],
         'query': value['query'],
+        'maxResults': value['maxResults'],
+        'minScore': value['minScore'],
     };
 }
 

@@ -12,7 +12,14 @@ import tools.jackson.databind.JsonNode;
  */
 final class LocalV1ContextPackRequestMapper {
 
-    private static final Set<String> TOP_LEVEL_FIELDS = Set.of("threadId", "turnId", "purpose", "query");
+    private static final Set<String> TOP_LEVEL_FIELDS =
+            Set.of("threadId", "turnId", "purpose", "query", "maxResults", "minScore");
+    private static final int DEFAULT_MAX_RESULTS = 3;
+    private static final double DEFAULT_MIN_SCORE = 0.6d;
+    private static final int MIN_MAX_RESULTS = 1;
+    private static final int MAX_MAX_RESULTS = 5;
+    private static final double MIN_MIN_SCORE = 0.4d;
+    private static final double MAX_MIN_SCORE = 1.0d;
 
     private LocalV1ContextPackRequestMapper() {}
 
@@ -25,7 +32,52 @@ final class LocalV1ContextPackRequestMapper {
                 requiredUuid(body, "threadId"),
                 requiredUuid(body, "turnId"),
                 requiredText(body, "purpose"),
-                requiredText(body, "query"));
+                requiredText(body, "query"),
+                optionalMaxResults(body),
+                optionalMinScore(body));
+    }
+
+    /**
+     * Absent field mechanically resolves to the contract default; a field present but explicitly
+     * {@code null} is not "absent" and must be rejected as schema-invalid before any work.
+     */
+    private static int optionalMaxResults(JsonNode node) {
+        JsonNode value = node.get("maxResults");
+        if (value == null) {
+            return DEFAULT_MAX_RESULTS;
+        }
+        if (value.isNull()) {
+            throw schema();
+        }
+        if (!value.isIntegralNumber() || !value.canConvertToInt()) {
+            throw schema();
+        }
+        int maxResults = value.asInt();
+        if (maxResults < MIN_MAX_RESULTS || maxResults > MAX_MAX_RESULTS) {
+            throw schema();
+        }
+        return maxResults;
+    }
+
+    private static double optionalMinScore(JsonNode node) {
+        JsonNode value = node.get("minScore");
+        if (value == null) {
+            return DEFAULT_MIN_SCORE;
+        }
+        if (value.isNull()) {
+            throw schema();
+        }
+        if (!value.isNumber()) {
+            throw schema();
+        }
+        double minScore = value.asDouble();
+        if (Double.isNaN(minScore)
+                || Double.isInfinite(minScore)
+                || minScore < MIN_MIN_SCORE
+                || minScore > MAX_MIN_SCORE) {
+            throw schema();
+        }
+        return minScore;
     }
 
     private static UUID requiredUuid(JsonNode node, String field) {

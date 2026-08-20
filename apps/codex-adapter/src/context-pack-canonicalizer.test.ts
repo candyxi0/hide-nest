@@ -18,12 +18,16 @@ const MEMORY_REVISION_ID = "00000000-0000-4000-8000-000000000004";
 const MEMORY_ID_2 = "00000000-0000-4000-8000-000000000005";
 const MEMORY_REVISION_ID_2 = "00000000-0000-4000-8000-000000000006";
 
-function makeRequest(overrides?: Partial<Record<"retrievalKey" | "threadKey" | "turnKey" | "query", string>>): ContextPackRequest {
+function makeRequest(
+  overrides?: Partial<Record<"retrievalKey" | "threadKey" | "turnKey" | "query", string> & Record<"maxResults" | "minScore", number>>,
+): ContextPackRequest {
   return buildContextPackRequest({
     retrievalKey: overrides?.retrievalKey ?? "retrieval-key-001",
     threadKey: overrides?.threadKey ?? "thread-key-001",
     turnKey: overrides?.turnKey ?? "turn-key-001",
     query: overrides?.query ?? "小林最近确认了哪些合成记忆？",
+    maxResults: overrides?.maxResults ?? 3,
+    minScore: overrides?.minScore ?? 0.6,
   });
 }
 
@@ -35,7 +39,7 @@ function memory(overrides?: Partial<ContextPackMemory>): ContextPackMemory {
     policyRevisionNo: 1,
     memoryType: "INTERPRETATION",
     bodyText: "记忆正文",
-    score: 0.48,
+    score: 0.7,
     evidenceOccurredAt: "2026-08-12T09:30:01Z",
     evidenceAgeDays: 3,
     ...overrides,
@@ -123,10 +127,10 @@ describe("parseContextPackResponse success projection", () => {
     const request = makeRequest();
     const memories = [
       memory({ memoryId: MEMORY_ID, memoryRevisionId: MEMORY_REVISION_ID, policyRevisionNo: 2, score: 0.9 }),
-      memory({ memoryId: MEMORY_ID_2, memoryRevisionId: MEMORY_REVISION_ID_2, policyRevisionNo: 1, score: 0.4 }),
+      memory({ memoryId: MEMORY_ID_2, memoryRevisionId: MEMORY_REVISION_ID_2, policyRevisionNo: 1, score: 0.7 }),
     ];
     const result = parseContextPackResponse(request, validResponse(memories, request));
-    expect(result.memories.map((m) => m.score)).toEqual([0.9, 0.4]);
+    expect(result.memories.map((m) => m.score)).toEqual([0.9, 0.7]);
   });
 });
 
@@ -254,9 +258,9 @@ describe("parseContextPackResponse rejections", () => {
     ).toThrow();
   });
 
-  it("rejects more than five memories", () => {
-    const request = makeRequest();
-    const memories = Array.from({ length: 6 }, (_, i) =>
+  it("rejects more memories than the requested maxResults", () => {
+    const request = makeRequest({ maxResults: 2 });
+    const memories = Array.from({ length: 3 }, (_, i) =>
       memory({
         memoryId: `00000000-0000-4000-8000-0000000000${String(i + 1)}`,
         memoryRevisionId: `00000000-0000-4000-8000-0000000001${String(i + 1)}`,
@@ -266,21 +270,38 @@ describe("parseContextPackResponse rejections", () => {
     expect(() => parseContextPackResponse(request, validResponse(memories, request))).toThrow();
   });
 
+  it("rejects a delivered memory whose score is below minScore", () => {
+    const request = makeRequest({ minScore: 0.8 });
+    expect(() =>
+      parseContextPackResponse(request, validResponse([memory({ score: 0.4 })], request)),
+    ).toThrow();
+  });
+
+  it("accepts a delivered memory exactly at minScore and at most maxResults", () => {
+    const request = makeRequest({ maxResults: 2, minScore: 0.4 });
+    const memories = [
+      memory({ memoryId: MEMORY_ID, memoryRevisionId: MEMORY_REVISION_ID, score: 0.9 }),
+      memory({ memoryId: MEMORY_ID_2, memoryRevisionId: MEMORY_REVISION_ID_2, score: 0.4 }),
+    ];
+    const result = parseContextPackResponse(request, validResponse(memories, request));
+    expect(result.memories).toHaveLength(2);
+  });
+
   it("rejects duplicate memory ids and revision ids", () => {
     const request = makeRequest();
     const dupId = memory({ memoryId: MEMORY_ID, memoryRevisionId: MEMORY_REVISION_ID, score: 0.9 });
-    const dupId2 = memory({ memoryId: MEMORY_ID, memoryRevisionId: MEMORY_REVISION_ID_2, score: 0.4 });
+    const dupId2 = memory({ memoryId: MEMORY_ID, memoryRevisionId: MEMORY_REVISION_ID_2, score: 0.7 });
     expect(() => parseContextPackResponse(request, validResponse([dupId, dupId2], request))).toThrow();
 
     const dupRev = memory({ memoryId: MEMORY_ID, memoryRevisionId: MEMORY_REVISION_ID, score: 0.9 });
-    const dupRev2 = memory({ memoryId: MEMORY_ID_2, memoryRevisionId: MEMORY_REVISION_ID, score: 0.4 });
+    const dupRev2 = memory({ memoryId: MEMORY_ID_2, memoryRevisionId: MEMORY_REVISION_ID, score: 0.7 });
     expect(() => parseContextPackResponse(request, validResponse([dupRev, dupRev2], request))).toThrow();
   });
 
   it("rejects non-decreasing scores", () => {
     const request = makeRequest();
     const memories = [
-      memory({ memoryId: MEMORY_ID, memoryRevisionId: MEMORY_REVISION_ID, score: 0.4 }),
+      memory({ memoryId: MEMORY_ID, memoryRevisionId: MEMORY_REVISION_ID, score: 0.7 }),
       memory({ memoryId: MEMORY_ID_2, memoryRevisionId: MEMORY_REVISION_ID_2, score: 0.9 }),
     ];
     expect(() => parseContextPackResponse(request, validResponse(memories, request))).toThrow();

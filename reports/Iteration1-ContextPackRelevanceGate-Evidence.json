@@ -1,0 +1,296 @@
+{
+  "schemaVersion": 1,
+  "status": "ITERATION1_CONTEXT_PACK_RELEVANCE_GATE_R1_READY_FOR_LOCAL_COMMIT",
+  "producerStartedAt": "2026-08-20T20:10:00+08:00",
+  "producerCompletedAt": "2026-08-20T21:10:00+08:00",
+  "r1": {
+    "closure": "generation-check-and-report-evidence",
+    "businessLogicChanged": 0,
+    "testLogicChanged": 0,
+    "realGenerateCheck": {
+      "command": "powershell -File scripts/generate.ps1 -Check",
+      "verdict": "GENERATION_CHECK_PASS",
+      "exit": 0,
+      "whitespaceExceptions": 0
+    },
+    "evidenceDescriptionClosure": {
+      "evidenceOccurredAtDescription": "Latest occurrence time among the saved evidence of this delivered memory",
+      "evidenceAgeDaysDescription": "Number of complete 24-hour periods between evidenceOccurredAt and issuedAt (existing algorithm; not calendar days)",
+      "fieldTypeUnchanged": true,
+      "requiredUnchanged": true,
+      "algorithmUnchanged": true
+    },
+    "mavenAttempts": {
+      "attempt1": "CONTRACTS_FAILED_baseline_not_synced",
+      "attempt2": "BUILD_SUCCESS",
+      "finalGate": "PASS",
+      "totalAttempts": 2
+    }
+  },
+  "baseline": {
+    "head": "5dde3bf34a4ec34489b1c6cd024f6d0aceac0c70",
+    "branch": "main",
+    "takeover": "Task43A-H1-Kimi-breakpoint"
+  },
+  "scope": {
+    "modified": [
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1ContextPackRequestMapper.java",
+      "apps/api/src/test/java/io/github/candyxi0/hidenest/api/LocalV1ContextPackHttpIntegrationTest.java",
+      "apps/codex-adapter/src/context-pack-input.ts",
+      "apps/codex-adapter/src/context-pack-input.test.ts",
+      "apps/codex-adapter/src/context-pack-canonicalizer.ts",
+      "apps/codex-adapter/src/context-pack-canonicalizer.test.ts",
+      "apps/codex-adapter/src/context-pack-client.ts",
+      "apps/codex-adapter/src/context-pack-client.test.ts",
+      "apps/codex-adapter/src/mcp.ts",
+      "apps/codex-adapter/src/mcp.integration.test.ts",
+      "contracts/openapi/hide-nest-api.yaml",
+      "contracts/compatibility-fixtures/baseline.yaml",
+      "modules/application/src/main/java/io/github/candyxi0/hidenest/application/coordinator/LocalV1ContextPackCoordinator.java",
+      "modules/application/src/main/java/io/github/candyxi0/hidenest/application/model/LocalV1ContextPackRequest.java",
+      "modules/database-adapter/src/test/java/io/github/candyxi0/hidenest/database/LocalV1ContextPackEmptyTest.java",
+      "modules/database-adapter/src/test/java/io/github/candyxi0/hidenest/database/LocalV1ContextPackRetrievalTest.java",
+      "packages/api-client-ts/src/generated/models/ContextPackMemory.ts",
+      "packages/api-client-ts/src/generated/models/ContextPackRequest.ts"
+    ],
+    "added": [
+      "apps/api/src/test/java/io/github/candyxi0/hidenest/api/LocalV1ContextPackRequestMapperTest.java",
+      "modules/contracts/src/test/java/io/github/candyxi0/hidenest/contracts/ContextPackRequestContractTest.java",
+      "modules/database-adapter/src/test/java/io/github/candyxi0/hidenest/database/LocalV1ContextPackRelevanceGateTest.java",
+      "reports/Iteration1-ContextPackRelevanceGate-执行报告.md",
+      "reports/Iteration1-ContextPackRelevanceGate-Evidence.json"
+    ],
+    "deleted": [],
+    "gitScope": {
+      "modified": 18,
+      "added": 5,
+      "deleted": 0,
+      "taskPaths": 23,
+      "qaTempDirExcludedFromTaskPaths": true
+    },
+    "allowedQaTempDir": "reports/local-v1-read-browser-qa/.playwright-artifacts"
+  },
+  "knownGaps": {
+    "h1_01_explicitNullNotAbsent": {
+      "absentToDefault": "PASS",
+      "explicitNull": "REQUEST_SCHEMA_INVALID_422",
+      "unknownTypeRangeRejected": "PASS",
+      "mapperUnitTests": 6,
+      "embeddingAndAuditReach": 0
+    },
+    "h1_02_sqlSchema": {
+      "objects": [
+        "runtime.retrieval_trace",
+        "runtime.context_delivery",
+        "runtime.context_pack_delivery_item",
+        "runtime.idempotency_receipt"
+      ],
+      "emptyResultAudit": "1-1-0-1"
+    },
+    "h1_03_testCompletion": {
+      "tests": 16,
+      "scoreEqualsMinScoreAccepted": true,
+      "scoreJustBelowMinScoreRejected": true,
+      "belowThresholdNoS2bExpansion": "PASS",
+      "visibilityFailureFewerThanMaxNoLowFill": "PASS",
+      "sameKeyPolicyDiffConflictFactsZero": "PASS",
+      "replayItemScoreBelowThresholdFailClosed": "PASS",
+      "replayItemCountOverMaxFailClosed": "PASS",
+      "task42LegacyReceiptNotV2Replay": "PASS",
+      "manifestContentBindingDefaultAndCustom": "PASS",
+      "sameValueReplayZeroDeltasAllFacts": "PASS"
+    },
+    "h1_04_whitespace": {
+      "formalDescriptionAdded": true,
+      "regeneratedViaOfficialScript": true,
+      "contextPackMemoryRestoredToTracked": true,
+      "schemaNotChanged": true,
+      "gitDiffCheck": "PASS"
+    }
+  },
+  "requestSemantics": {
+    "defaults": "3-0.6",
+    "maxResultsRange": "1..5",
+    "minScoreRange": "0.4..1.0",
+    "oldFourFieldRequestValid": true,
+    "explicitNullRejected": true,
+    "unknownTypeRangeRejected": true,
+    "emptyResult": "NO_RELEVANT_RESULT_HTTP200",
+    "sameKeyPolicyDiff": "409_IDEMPOTENCY_KEY_REUSED"
+  },
+  "contracts": {
+    "contextPackRequestContractTest": {
+      "tests": 8,
+      "failed": 0,
+      "requiredSetUnchanged": true,
+      "additionalPropertiesFalse": true,
+      "oldFourFieldValid": true,
+      "newSixFieldValid": true,
+      "unknownRejected": true,
+      "outOfRangeRejected": true
+    }
+  },
+  "tests": {
+    "databaseContextPack": {
+      "RelevanceGate": 16,
+      "Empty": 2,
+      "Retrieval": 20,
+      "failed": 0
+    },
+    "api": {
+      "MapperTest": 6,
+      "HttpIntegration": 12,
+      "failed": 0
+    },
+    "codexAdapter": {
+      "tests": 284,
+      "skipped": 1,
+      "failed": 0
+    },
+    "architectureTests": {
+      "tests": 29,
+      "failed": 0
+    }
+  },
+  "mcp": {
+    "toolName": "hide_nest_retrieve_context_pack_synthetic",
+    "inputProperties": 6,
+    "inputRequired": [
+      "retrievalKey",
+      "threadKey",
+      "turnKey",
+      "query"
+    ],
+    "maxResultsOptional": "1..5",
+    "minScoreOptional": "0.4..1.0",
+    "omittedSendsExplicitDefault": "3-0.6",
+    "responseSecondGate": {
+      "countLeMaxResults": true,
+      "eachScoreGeMinScore": true,
+      "violation": "INVALID_RESPONSE"
+    },
+    "descriptionLocked": {
+      "default3MinScore06": true,
+      "emptyIsNormal": true,
+      "noLowerThresholdToFill": true,
+      "oneTimeRelaxTo5MinScore04": true,
+      "newRetrievalKeySameTurnKey": true,
+      "noThirdRetry": true,
+      "noBelow04": true,
+      "noRelaxIfResultsExist": true,
+      "queryPositiveSingleTarget": true,
+      "noControlNegation": true,
+      "noExcludedConceptNames": true,
+      "factualNegationPreserved": true,
+      "noExcludeTerms": true,
+      "verbatimExamples": true
+    },
+    "mcpToolCountTotal": 3,
+    "candidateSetRegression": "PASS",
+    "memoryEvidenceRegression": "PASS"
+  },
+  "compatibilityGate": {
+    "tool": "contract-compatibility.ps1",
+    "baselineVsCurrentVerdict": "COMPATIBLE",
+    "baselineVsCurrentExit": 0,
+    "selfTestRemovedResponseRequiredField": "INCOMPATIBLE_EXPECTED",
+    "selfTestRemovedOperation": "INCOMPATIBLE_EXPECTED",
+    "selfTestOptionalFieldUnion": "COMPATIBLE_EXPECTED",
+    "closedRequestAddPropToolVerdictBeforeSync": "INCOMPATIBLE_TOOL_LIMITATION",
+    "independentContractProvesOldFourFieldValid": true,
+    "baselineFormalByteIdentical": true,
+    "toolAndFixturesAndAddPropFalseUnchanged": true
+  },
+  "generationCheck": {
+    "officialScript": "scripts/generate.ps1",
+    "realCheckCommand": "powershell -File scripts/generate.ps1 -Check",
+    "verdict": "GENERATION_CHECK_PASS",
+    "exit": 0,
+    "doubleGenerationDeterminism": "PASS",
+    "committedTreeMatchesFreshGeneration": true,
+    "whitespaceExceptions": 0,
+    "contextPackMemoryClosure": "real-descriptions-added-evidenceOccurredAt-and-evidenceAgeDays",
+    "contextPackMemoryHandEdited": false,
+    "contextPackMemorySchemaChanged": false
+  },
+  "gates": {
+    "contextPackTargeted": "PASS",
+    "openapiGenerate": "PASS",
+    "openapiCheck": "PASS",
+    "compatibility": "PASS",
+    "codexAdapterFourGates": {
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "test": "PASS",
+      "build": "PASS"
+    },
+    "rootNodeFourGates": {
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "test": "PASS",
+      "build": "PASS"
+    },
+    "jdk25OfflineCleanVerify": {
+      "finalGate": "PASS",
+      "attempt1": "CONTRACTS_FAILED_baseline_not_synced",
+      "attempt2": "BUILD_SUCCESS",
+      "totalAttempts": 2
+    },
+    "architectureGate": "PASS",
+    "gitDiffCheck": "PASS",
+    "r1OnlyRan": {
+      "generateCheck": true,
+      "contractsBaselineByteIdentity": true,
+      "gitDiffCheck": true,
+      "jsonDoubleParse": true,
+      "gitScopePathDedup": true,
+      "mavenCleanVerifyRerun": false,
+      "dockerTestsRerun": false,
+      "nodeFourGatesRerun": false,
+      "familySmokeRerun": false
+    }
+  },
+  "inventoryCounts": {
+    "operations": 30,
+    "failureCodes": 50,
+    "events": 12,
+    "schemaChanged": false
+  },
+  "scopeExclusions": {
+    "migrationChanged": 0,
+    "jooqGeneratedChanged": 0,
+    "vectorSqlChanged": 0,
+    "embeddingAdapterChanged": 0,
+    "memoryEvidenceMCPChanged": 0,
+    "candidateSetChanged": 0,
+    "deletionChanged": 0,
+    "reactChanged": 0,
+    "consoleHostChanged": 0,
+    "deploymentChanged": 0
+  },
+  "leakage": {
+    "bodyText": 0,
+    "query": 0,
+    "fullVector": 0,
+    "token": 0,
+    "capability": 0,
+    "secret": 0,
+    "homeHostAddress": 0,
+    "absolutePayloadPath": 0
+  },
+  "gitIndex": {
+    "headMatch": true,
+    "staged": 0,
+    "outOfBounds": 0,
+    "diffCheck": "PASS"
+  },
+  "docker": {
+    "newContainers": 0,
+    "newVolumes": 0,
+    "newNetworks": 0,
+    "leftoverProcesses": 0
+  },
+  "networkAccess": false,
+  "gitWriteOperations": false,
+  "familyApiEmbeddingSmoke": "NOT_RUN"
+}

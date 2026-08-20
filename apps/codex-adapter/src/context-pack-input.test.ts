@@ -110,3 +110,39 @@ describe("validateContextPackInput control-character rejection", () => {
     reject({ ...validArgs(), query: "bad\u0085query" });
   });
 });
+
+describe("validateContextPackInput optional policy fields", () => {
+  it("resolves absent policy fields to the default 3 / 0.6", () => {
+    const input = validateContextPackInput(validArgs());
+    expect(input.maxResults).toBe(3);
+    expect(input.minScore).toBe(0.6);
+  });
+
+  it("accepts explicit maxResults 1..5 and minScore 0.4..1.0", () => {
+    expect(validateContextPackInput({ ...validArgs(), maxResults: 1, minScore: 0.4 }))
+      .toMatchObject({ maxResults: 1, minScore: 0.4 });
+    expect(validateContextPackInput({ ...validArgs(), maxResults: 5, minScore: 1.0 }))
+      .toMatchObject({ maxResults: 5, minScore: 1.0 });
+    expect(validateContextPackInput({ ...validArgs(), maxResults: 3 })).toMatchObject({ maxResults: 3 });
+    expect(validateContextPackInput({ ...validArgs(), minScore: 0.6 })).toMatchObject({ minScore: 0.6 });
+  });
+
+  it("rejects out-of-range or non-integer maxResults", () => {
+    reject({ ...validArgs(), maxResults: 0 });
+    reject({ ...validArgs(), maxResults: 6 });
+    reject({ ...validArgs(), maxResults: 2.5 });
+    reject({ ...validArgs(), maxResults: -1 });
+  });
+
+  it("rejects out-of-range, non-finite or non-number minScore", () => {
+    reject({ ...validArgs(), minScore: 0.3 });
+    reject({ ...validArgs(), minScore: 1.1 });
+    reject({ ...validArgs(), minScore: Number.NaN });
+    reject({ ...validArgs(), minScore: "0.6" });
+  });
+
+  it("rejects explicit null policy fields", () => {
+    reject({ ...validArgs(), maxResults: null });
+    reject({ ...validArgs(), minScore: null });
+  });
+});

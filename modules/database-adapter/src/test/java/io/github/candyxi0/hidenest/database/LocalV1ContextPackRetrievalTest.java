@@ -212,9 +212,10 @@ class LocalV1ContextPackRetrievalTest {
 
     @Test
     void aRanksFirstWithHigherScore() {
-        UUID a = createMemory(basis(100));
-        UUID b = createMemory(basis(101));
-        LocalV1ContextPackResult result = contextPack.create(requestFor("q-1", basis(100)), key());
+        // B is partially aligned (score 0.8) so it clears the default minScore 0.6 yet ranks below A (score 1.0)
+        UUID a = createMemory(basis(500));
+        UUID b = createMemory(partiallyAligned(500, 501, 0.8));
+        LocalV1ContextPackResult result = contextPack.create(requestFor("q-1", basis(500)), key());
 
         assertEquals("SUCCEEDED", result.resultCategory());
         LocalV1ContextPackMemory first = result.memories().get(0);
@@ -224,7 +225,7 @@ class LocalV1ContextPackRetrievalTest {
                 .filter(m -> m.memoryId().equals(b))
                 .findFirst()
                 .orElseThrow();
-        assertEquals(0.0, bItem.score(), 1e-6);
+        assertEquals(0.8, bItem.score(), 1e-3);
         assertTrue(first.score() > bItem.score(), "A must score strictly higher than B");
     }
 
@@ -280,7 +281,7 @@ class LocalV1ContextPackRetrievalTest {
         assertEquals(first.policyRevisionSet(), replay.policyRevisionSet());
 
         LocalV1ContextPackRequest different = new LocalV1ContextPackRequest(
-                req.threadId(), req.turnId(), req.purpose(), "另一个查询");
+                req.threadId(), req.turnId(), req.purpose(), "另一个查询", 3, 0.6d);
         LocalV1ContextPackException ex = assertThrows(
                 LocalV1ContextPackException.class, () -> contextPack.create(different, "cp-replay-fixed"));
         assertEquals(LocalV1ContextPackException.Code.IDEMPOTENCY_KEY_REUSED, ex.code());
@@ -313,6 +314,9 @@ class LocalV1ContextPackRetrievalTest {
         manifestFields.add(result.threadId().toString());
         manifestFields.add(result.turnId().toString());
         manifestFields.add(result.purpose());
+        manifestFields.add("v2"); // POLICY_VERSION bound into the manifest
+        manifestFields.add("3"); // requestFor default maxResults
+        manifestFields.add("0.6"); // requestFor default minScore (canonical)
         manifestFields.add(result.resultCategory());
         manifestFields.addAll(policySet);
         for (LocalV1ContextPackMemory m : result.memories()) {
@@ -561,18 +565,18 @@ class LocalV1ContextPackRetrievalTest {
         assertThrows(
                 LocalV1ContextPackException.class,
                 () -> contextPack.create(
-                        new LocalV1ContextPackRequest(UUID.randomUUID(), UUID.randomUUID(), "p", "   "),
+                        new LocalV1ContextPackRequest(UUID.randomUUID(), UUID.randomUUID(), "p", "   ", 3, 0.6d),
                         key()));
         String oversizedQuery = "好".repeat(481);
         assertThrows(
                 LocalV1ContextPackException.class,
                 () -> contextPack.create(
-                        new LocalV1ContextPackRequest(UUID.randomUUID(), UUID.randomUUID(), "p", oversizedQuery),
+                        new LocalV1ContextPackRequest(UUID.randomUUID(), UUID.randomUUID(), "p", oversizedQuery, 3, 0.6d),
                         key()));
         assertThrows(
                 LocalV1ContextPackException.class,
                 () -> contextPack.create(
-                        new LocalV1ContextPackRequest(UUID.randomUUID(), UUID.randomUUID(), "   ", "查询"),
+                        new LocalV1ContextPackRequest(UUID.randomUUID(), UUID.randomUUID(), "   ", "查询", 3, 0.6d),
                         key()));
         assertThrows(
                 LocalV1ContextPackException.class,
@@ -721,8 +725,10 @@ class LocalV1ContextPackRetrievalTest {
         UUID threadId = UUID.randomUUID();
         UUID turnId = UUID.randomUUID();
         String key = "cp-race-" + UUID.randomUUID();
-        LocalV1ContextPackRequest reqA = new LocalV1ContextPackRequest(threadId, turnId, "RECALL", "q-race-a");
-        LocalV1ContextPackRequest reqB = new LocalV1ContextPackRequest(threadId, turnId, "RECALL", "q-race-b");
+        LocalV1ContextPackRequest reqA =
+                new LocalV1ContextPackRequest(threadId, turnId, "RECALL", "q-race-a", 3, 0.6d);
+        LocalV1ContextPackRequest reqB =
+                new LocalV1ContextPackRequest(threadId, turnId, "RECALL", "q-race-b", 3, 0.6d);
 
         AtomicReference<LocalV1ContextPackResult> success = new AtomicReference<>();
         AtomicReference<Throwable> errorA = new AtomicReference<>();
@@ -768,7 +774,8 @@ class LocalV1ContextPackRetrievalTest {
 
     private static LocalV1ContextPackRequest requestFor(String queryText, double[] queryVector) {
         queryEmbedding.put(queryText, queryVector);
-        return new LocalV1ContextPackRequest(UUID.randomUUID(), UUID.randomUUID(), "RECALL", queryText);
+        return new LocalV1ContextPackRequest(
+                UUID.randomUUID(), UUID.randomUUID(), "RECALL", queryText, 3, 0.6d);
     }
 
     private void assertReplayRejected(String label, Consumer<Pack> attack, LocalV1ContextPackException.Code expected) {
@@ -1145,6 +1152,14 @@ class LocalV1ContextPackRetrievalTest {
     private static double[] basis(int index) {
         double[] vector = new double[DIMENSION];
         vector[index] = 1.0;
+        return vector;
+    }
+
+    /** L2-normalized unit vector whose cosine against {@code basis(primary)} is exactly {@code primaryWeight}. */
+    private static double[] partiallyAligned(int primary, int secondary, double primaryWeight) {
+        double[] vector = new double[DIMENSION];
+        vector[primary] = primaryWeight;
+        vector[secondary] = Math.sqrt(1.0 - primaryWeight * primaryWeight);
         return vector;
     }
 

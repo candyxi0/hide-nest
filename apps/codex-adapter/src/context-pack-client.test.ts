@@ -23,6 +23,8 @@ function makeRequest(): ContextPackRequest {
     threadKey: "thread-key-001",
     turnKey: "turn-key-001",
     query: "小林最近确认了哪些合成记忆？",
+    maxResults: 3,
+    minScore: 0.6,
   });
 }
 
@@ -129,7 +131,7 @@ describe("retrieveContextPack success + request shape", () => {
               policyRevisionNo: 1,
               memoryType: "INTERPRETATION",
               bodyText: MEMORY_BODY,
-              score: 0.48,
+              score: 0.7,
               evidenceOccurredAt: "2026-08-12T09:30:01Z",
               evidenceAgeDays: 3,
             },
@@ -152,11 +154,20 @@ describe("retrieveContextPack success + request shape", () => {
     expect(observed.headers.cookie).toBeUndefined();
 
     const sent = JSON.parse(observed.body) as Record<string, unknown>;
-    expect(Object.keys(sent).sort()).toEqual(["purpose", "query", "threadId", "turnId"]);
+    expect(Object.keys(sent).sort()).toEqual([
+      "maxResults",
+      "minScore",
+      "purpose",
+      "query",
+      "threadId",
+      "turnId",
+    ]);
     expect(sent.threadId).toBe(request.threadId);
     expect(sent.turnId).toBe(request.turnId);
     expect(sent.purpose).toBe("ANSWER_CURRENT_TURN");
     expect(sent.query).toBe(request.query);
+    expect(sent.maxResults).toBe(3);
+    expect(sent.minScore).toBe(0.6);
     await handle.close();
   });
 
@@ -284,6 +295,8 @@ describe("retrieveContextPack response re-validation", () => {
       threadKey: "thread-key-001",
       turnKey: "turn-key-999",
       query: "q",
+      maxResults: 3,
+      minScore: 0.6,
     });
     const handle = await serveJson({
       requestId: REQUEST_ID,

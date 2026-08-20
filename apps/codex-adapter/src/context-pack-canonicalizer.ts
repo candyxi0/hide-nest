@@ -30,15 +30,19 @@ export interface ContextPackInput {
   threadKey: string;
   turnKey: string;
   query: string;
+  maxResults: number;
+  minScore: number;
 }
 
-/** The closed wire request: identity derived + fixed purpose + exact query, plus the raw idempotency key. */
+/** The closed wire request: identity derived + fixed purpose + exact query + resolved policy, plus the raw idempotency key. */
 export interface ContextPackRequest {
   retrievalKey: string;
   threadId: string;
   turnId: string;
   purpose: typeof CONTEXT_PACK_PURPOSE;
   query: string;
+  maxResults: number;
+  minScore: number;
 }
 
 export type ContextPackResultCategory = "SUCCEEDED" | "NO_RELEVANT_RESULT";
@@ -83,6 +87,8 @@ export function buildContextPackRequest(input: ContextPackInput): ContextPackReq
     turnId: deriveTurnId(input.threadKey, input.turnKey),
     purpose: CONTEXT_PACK_PURPOSE,
     query: input.query,
+    maxResults: input.maxResults,
+    minScore: input.minScore,
   };
 }
 
@@ -310,7 +316,11 @@ export function parseContextPackResponse(
 
   if (!Array.isArray(raw.memories)) fail();
   const memories = raw.memories.map((m) => parseMemory(m, issuedAtNanos));
-  if (memories.length > 5) fail();
+  // second gate: never deliver more than requested, and never a below-threshold memory
+  if (memories.length > request.maxResults) fail();
+  for (const memory of memories) {
+    if (memory.score < request.minScore) fail();
+  }
   if (resultCategory === "SUCCEEDED" && memories.length < 1) fail();
   if (resultCategory === "NO_RELEVANT_RESULT" && memories.length !== 0) fail();
 
