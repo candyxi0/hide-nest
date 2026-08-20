@@ -10,7 +10,9 @@ import io.github.candyxi0.hidenest.runtime.domain.ContextPackDeliveryItem;
 import io.github.candyxi0.hidenest.runtime.domain.ModelRun;
 import io.github.candyxi0.hidenest.runtime.domain.RetrievalTrace;
 import io.github.candyxi0.hidenest.runtime.domain.WorkArtifact;
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /** Read-only queries for runtime domain objects. */
@@ -54,6 +56,25 @@ public interface RuntimeQueryPort {
 
     /** Find context pack delivery items by delivery id, ordered by ordinal ascending. */
     List<ContextPackDeliveryItem> findContextPackDeliveryItemsByDeliveryId(UUID deliveryId);
+
+    /**
+     * Return the distinct memory ids delivered in this thread within the half-open interval
+     * {@code (cutoff, now]} for {@code purpose = CONTEXT_PACK}. A memory delivered in the same
+     * thread is cooled until the cutoff; other threads, other purposes and deliveries outside the
+     * interval are not returned.
+     *
+     * <p>Only the memory identity matters: query, score, revision number and memory type do not
+     * affect the result, and a later revision of the same memory is still the same memory id.
+     * Permanently deleted memories whose revision can no longer be joined to
+     * {@code memory.memory_revision} are naturally absent and must not raise an error.</p>
+     *
+     * @param threadId the thread whose delivered memory ids are sought; must be non-null
+     * @param cutoff the lower bound, exclusive ({@code delivered_at > cutoff}); must be non-null
+     * @param now the upper bound, inclusive ({@code delivered_at <= now}); must be non-null
+     * @throws NullPointerException if {@code threadId} is null
+     * @throws IllegalArgumentException if {@code cutoff} or {@code now} is null
+     */
+    Set<UUID> findDeliveredMemoryIdsSince(UUID threadId, OffsetDateTime cutoff, OffsetDateTime now);
 
     /** Check if a consumer effect exists. */
     boolean existsConsumerEffect(String consumerCode, UUID eventId, String effectKey);

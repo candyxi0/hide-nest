@@ -239,6 +239,7 @@ class OutboxWorkerCoordinatorTest {
         @Override public OutboxTerminalSettlement settleOutboxRejected(UUID eid, String lo, OffsetDateTime ca, String fc) {
             return terminalOutcomes.getOrDefault(eid, new OutboxTerminalSettlement.Rejected()); }
         @Override public void lockIdempotencyKey(String k) {}
+        @Override public void lockContextPackThread(UUID threadId) {}
         @Override public IdempotencyReceipt findReceiptByKey(String k) { return null; }
         @Override public void commitReceipt(String k, String oc, byte[] rh, UUID rid, String rk, String rm) {}
         @Override public void insertGovernedOutbox(OutboxEvent e) {}

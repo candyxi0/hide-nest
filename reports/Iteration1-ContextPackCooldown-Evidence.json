@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 1,
+  "status": "ITERATION1_CONTEXT_PACK_24H_COOLDOWN_R1_READY_FOR_LOCAL_COMMIT",
+  "producerStartedAt": "2026-08-20T22:40:00+08:00",
+  "producerCompletedAt": "2026-08-20T23:57:00+08:00",
+  "baseline": {
+    "head": "9dbfdeb290375b7cb0e90de493b23eb88e4d8a47",
+    "branch": "main",
+    "staged": 0,
+    "originMainMatch": true
+  },
+  "r1": {
+    "commitClockRecheck": "PASS",
+    "phaseAOldUpperBoundConcurrentCounterProof": "PASS",
+    "interleavedSameThreadDuplicateDeliveries": 0,
+    "halfCommit": 0,
+    "longEmbeddingIssuedAtDeliveredAtExpiresAt": "PASS",
+    "boundaryCrossedDuringRetrieval_eligibilityRestored": "PASS/PASS",
+    "existingTimeThreadSortThresholdReplayRegression": "PASS",
+    "counterProofTestsKillOldImpl": "verified-3-of-3-fail-on-old-behavior",
+    "phaseOrderingProven": "ManualClock records reads; A=[T0,T1], B=[T1,T1]; long-embed=[T0,T1]; boundary=[X,Y]",
+    "commitNowUsedForTraceCreatedAtDeliveryDeliveredAtIssuedAt": true,
+    "expiresAtCommitNowPlus10Min": true,
+    "initialNowUsedOnlyForWindowSizing": true,
+    "embeddingOutsideTx": true,
+    "requestHashManifestV3Cooldown24BindingUnchanged": true,
+    "replayNoCooldownRecomputeExact": true,
+    "productionChanges": 1,
+    "testChanges": 1,
+    "reportChanges": 2
+  },
+  "cooldown": {
+    "policyVersion": "v3",
+    "cooldownHours": 24,
+    "timeSemantics": "caller-injected Clock, cutoff = now - 24h, filter cutoff < delivered_at <= now, truncated to micros",
+    "cooldownScope": "same threadId, purpose=CONTEXT_PACK, memory identity only, cross-thread isolated",
+    "noNewMigration": true,
+    "noNewTableColumnIndexFunctionOrPrivilege": true,
+    "noJooqGeneratedChange": true,
+    "threadLock": "pg_advisory_xact_lock(73951, hashtext(threadId)) in dedicated namespace",
+    "candidateWindowFormula": "min(100, max(5, maxResults + cooledIds.size))",
+    "candidateWindowClampedToVectorMax": 20,
+    "requestHashBindsV3AndCooldownHours": true,
+    "manifestBindsV3AndCooldownHours": true,
+    "dynamicNowCutoffCooledNotInHash": true
+  },
+  "receipt": {
+    "r1Status": "ITERATION1_CONTEXT_PACK_24H_COOLDOWN_R1_READY_FOR_LOCAL_COMMIT",
+    "phaseAOldUpperBoundConcurrent_commitClockRecheck": "PASS/PASS",
+    "interleavedSameThreadDuplicate_halfCommit": "0/0",
+    "longEmbeddingIssuedAtDeliveredAtExpiresAt": "PASS",
+    "boundaryCrossedDuringRetrieval_restoredEligibility": "PASS/PASS",
+    "existingTimeThreadSortThresholdReplayRegression": "PASS",
+    "task44ATargeted_offlineCompile_diffWhitespace": "PASS/PASS/PASS",
+    "thisRoundNodeMavenArchitectureGates": "NOT_RUN_R1_REUSE_TASK44A_PASS",
+    "productionTestReportChanges": "1/1/2",
+    "v001ToV021_openapiGenerated_reactPrototype_mcp": "MATCH/MATCH/MATCH/MATCH",
+    "gitIndex_staged_outOfBounds": "MATCH/0/0",
+    "networkAccess_gitWrite": "否/否",
+    "sameThreadFirst_23h59m_24h": "PASS/FILTERED/PASS",
+    "crossThread_otherPurpose_emptyDelivery": "PASS/PASS/PASS",
+    "cooledSubstitution_lowScoreNoFill_allCooledEmpty": "PASS/PASS/PASS",
+    "cooledS2bDetailEvidenceCalls": "0-0",
+    "sameValueReplay_embeddingAuditDelta": "EXACT/0-0",
+    "sameThreadConcurrentDuplicate_crossThreadConcurrent": "0/PASS",
+    "v2ReceiptMasquerade_attackMatrix": "REJECTED/PASS",
+    "contextPackTargeted_mavenOffline_architecture": "PASS/PASS/PASS",
+    "codexAdapterFourGates_nodeFourGates": "PASS/PASS",
+    "v001toV021_openapiGenerated_reactPrototype_candidateSetMemoryEvidenceDeletion": "MATCH/MATCH/MATCH/MATCH",
+    "leakage_body_query_fullVector_path_token_capability_secret": "0-0-0-0-0-0-0",
+    "dockerNewContainersVolumesNetworks_leftoverProcesses": "0-0-0/0",
+    "networkAccess": false,
+    "gitWriteOperations": false,
+    "familyDeployment": "NOT_STARTED"
+  },
+  "scope": {
+    "modified": [
+      "apps/codex-adapter/src/mcp.ts",
+      "apps/codex-adapter/src/mcp.integration.test.ts",
+      "modules/application/src/main/java/io/github/candyxi0/hidenest/application/coordinator/LocalV1ContextPackCoordinator.java",
+      "modules/application/src/test/java/io/github/candyxi0/hidenest/application/outbox/OutboxWorkerCoordinatorTest.java",
+      "modules/database-adapter/src/main/java/io/github/candyxi0/hidenest/database/adapter/JooqRuntimeQueryAdapter.java",
+      "modules/database-adapter/src/main/java/io/github/candyxi0/hidenest/database/adapter/JooqRuntimeTransactionAdapter.java",
+      "modules/database-adapter/src/test/java/io/github/candyxi0/hidenest/database/LocalV1ContextPackRetrievalTest.java",
+      "modules/runtime/src/main/java/io/github/candyxi0/hidenest/runtime/port/RuntimeQueryPort.java",
+      "modules/runtime/src/main/java/io/github/candyxi0/hidenest/runtime/port/RuntimeTransactionPort.java"
+    ],
+    "added": [
+      "reports/Iteration1-ContextPackCooldown-Evidence.json",
+      "reports/Iteration1-ContextPackCooldown-执行报告.md"
+    ],
+    "deleted": [],
+    "migrationChanged": 0,
+    "jooqGeneratedChanged": 0,
+    "openapiChanged": 0,
+    "reactChanged": 0,
+    "candidateSetChanged": 0,
+    "memoryEvidenceChanged": 0,
+    "deletionChanged": 0,
+    "deploymentChanged": 0
+  },
+  "tests": {
+    "databaseContextPack": {
+      "Retrieval": 38,
+      "RelevanceGate": 16,
+      "Empty": 2,
+      "total": 56,
+      "r1NewClockCounterProof": 3,
+      "failed": 0
+    },
+    "api": {
+      "HttpIntegration": 12,
+      "MapperTest": 6,
+      "total": 18,
+      "failed": 0
+    },
+    "contracts": {
+      "ContextPackRequestContract": 8,
+      "failed": 0
+    },
+    "codexAdapter": {
+      "tests": 284,
+      "skipped": 1,
+      "failed": 0
+    },
+    "rootNode": {
+      "tests": 10,
+      "failed": 0
+    },
+    "architectureTests": {
+      "tests": 29,
+      "failed": 0
+    }
+  },
+  "mcp": {
+    "toolCountTotal": 3,
+    "inputSchemaUnchanged": true,
+    "otherToolsUnchanged": true,
+    "cooldownDescriptionLocked": {
+      "24hSameThreadCooled": true,
+      "otherThreadUnaffected": true,
+      "stableThreadKeyNoKeyChurn": true,
+      "mayUnderFillOrEmpty": true,
+      "noLowerThresholdToFill": true,
+      "networkRetryReusesKeysExactReplay": true
+    },
+    "task43DefaultRelaxationQueryRulesPreserved": true
+  },
+  "gates": {
+    "cooldownTargeted": "PASS",
+    "contextPackApiContractsTargeted": "PASS",
+    "codexAdapterFourGates": {
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "test": "PASS",
+      "build": "PASS"
+    },
+    "rootNodeFourGates": {
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "test": "PASS",
+      "build": "PASS"
+    },
+    "jdk25OfflineCleanVerify": "PASS",
+    "architectureGate": "PASS",
+    "gitDiffCheck": "PASS",
+    "openapiGenerate": "NOT_RUN_UNCHANGED",
+    "openapiCheck": "NOT_RUN_UNCHANGED",
+    "compatibility": "NOT_RUN_UNCHANGED",
+    "jooqGenerate": "NOT_RUN_UNCHANGED"
+  },
+  "leakage": {
+    "bodyText": 0,
+    "query": 0,
+    "fullVector": 0,
+    "token": 0,
+    "capability": 0,
+    "secret": 0,
+    "homeHostAddress": 0,
+    "absolutePayloadPath": 0
+  },
+  "gitIndex": {
+    "headMatch": true,
+    "staged": 0,
+    "outOfBounds": 0,
+    "diffCheck": "PASS"
+  },
+  "docker": {
+    "newContainers": 0,
+    "newVolumes": 0,
+    "newNetworks": 0,
+    "leftoverProcesses": 0,
+    "note": "pre-existing exited containers from prior tasks are not from this task"
+  },
+  "notes": {
+    "candidateWindowClamp": "cooldown candidateLimit clamped to the frozen vector coordinator max of 20 before searchSimilar",
+    "fakeTxPortStub": "OutboxWorkerCoordinatorTest.FakeTxPort gained a no-op lockContextPackThread stub required to compile after the port interface change",
+    "openapiCompatibilityJooqUnchanged": "corresponding paths have zero changes; regenerated output matches HEAD"
+  }
+}

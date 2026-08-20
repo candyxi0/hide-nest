@@ -12,6 +12,8 @@ import io.github.candyxi0.hidenest.application.coordinator.LocalV1ContextPackCoo
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1ContextPackException;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1S1WindowCloseCoordinator;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1S2BQueryCoordinator;
+import io.github.candyxi0.hidenest.application.model.LocalV1S2BEvidenceResult;
+import io.github.candyxi0.hidenest.application.model.LocalV1S2BMemoryDetail;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1VectorCoordinator;
 import io.github.candyxi0.hidenest.application.model.LocalV1CloseoutSubmission;
 import io.github.candyxi0.hidenest.application.model.LocalV1CloseoutSubmission.AnchorUnit;
@@ -314,7 +316,8 @@ class LocalV1ContextPackRetrievalTest {
         manifestFields.add(result.threadId().toString());
         manifestFields.add(result.turnId().toString());
         manifestFields.add(result.purpose());
-        manifestFields.add("v2"); // POLICY_VERSION bound into the manifest
+        manifestFields.add("v3"); // POLICY_VERSION bound into the manifest
+        manifestFields.add("24"); // COOLDOWN_HOURS bound into the manifest
         manifestFields.add("3"); // requestFor default maxResults
         manifestFields.add("0.6"); // requestFor default minScore (canonical)
         manifestFields.add(result.resultCategory());
@@ -766,6 +769,478 @@ class LocalV1ContextPackRetrievalTest {
         assertEquals(1L, count("SELECT count(*) FROM runtime.retrieval_trace WHERE request_id=?", success.get().requestId()));
     }
 
+    // ── 13. cooldown: time & thread boundaries (6.1) ───────────────────────
+
+    @Test
+    void sameThreadFirstReturnsThenFiltersAt23h59mAndRecoversAtExactly24h() {
+        UUID threadId = UUID.randomUUID();
+        UUID a = createMemory(basis(60));
+        String q = "q-cool-boundary";
+        LocalV1ContextPackResult first = contextPack.create(sameThreadRequest(threadId, q, basis(60)), key());
+        assertEquals("SUCCEEDED", first.resultCategory());
+        assertTrue(first.memories().stream().anyMatch(m -> m.memoryId().equals(a)));
+
+        // 23:59:59.999999 later, new key, same thread -> A filtered
+        Clock justUnder = Clock.fixed(Instant.parse("2026-08-16T23:59:59.999999Z"), ZoneId.of("UTC"));
+        LocalV1ContextPackResult filtered =
+                contextPackWith(justUnder, s2b).create(sameThreadRequest(threadId, q, basis(60)), key());
+        assertTrue(filtered.memories().stream().noneMatch(m -> m.memoryId().equals(a)),
+                "A must be cooled at 23:59:59.999999");
+
+        // exactly 24:00:00.000000 later -> A recovers
+        Clock exactly = Clock.fixed(Instant.parse("2026-08-17T00:00:00Z"), ZoneId.of("UTC"));
+        LocalV1ContextPackResult recovered =
+                contextPackWith(exactly, s2b).create(sameThreadRequest(threadId, q, basis(60)), key());
+        assertTrue(recovered.memories().stream().anyMatch(m -> m.memoryId().equals(a)),
+                "A must recover at exactly 24h");
+    }
+
+    @Test
+    void differentThreadIsNotCooled() {
+        UUID threadA = UUID.randomUUID();
+        UUID a = createMemory(basis(61));
+        contextPack.create(sameThreadRequest(threadA, "q-a", basis(61)), key());
+        UUID threadB = UUID.randomUUID();
+        LocalV1ContextPackResult r = contextPack.create(sameThreadRequest(threadB, "q-b", basis(61)), key());
+        assertTrue(r.memories().stream().anyMatch(m -> m.memoryId().equals(a)),
+                "a different thread must not be cooled");
+    }
+
+    @Test
+    void otherPurposeDeliveryDoesNotCool() {
+        UUID threadId = UUID.randomUUID();
+        UUID a = createMemory(basis(62));
+        UUID deliveryId = UUID.randomUUID();
+        dsl.execute("INSERT INTO runtime.context_delivery(delivery_id,request_id,thread_id,turn_id,purpose,"
+                        + "policy_revision_set_hash,manifest_hash,delivered_at,expires_at) "
+                        + "VALUES (?::uuid,?::uuid,?::uuid,?::uuid,'RETRIEVAL',decode(repeat('00',32),'hex'),"
+                        + "decode(repeat('00',32),'hex'),'2026-08-16T00:00:00Z','2026-08-16T00:10:00Z')",
+                deliveryId, UUID.randomUUID(), threadId, UUID.randomUUID());
+        dsl.execute("INSERT INTO runtime.context_pack_delivery_item(delivery_id,ordinal,memory_revision_id,"
+                        + "policy_revision_no,score) VALUES (?::uuid,0,?::uuid,1,0.5)",
+                deliveryId, currentRevision(a));
+        LocalV1ContextPackResult r = contextPack.create(sameThreadRequest(threadId, "q-other-purpose", basis(62)), key());
+        assertTrue(r.memories().stream().anyMatch(m -> m.memoryId().equals(a)),
+                "a non-CONTEXT_PACK delivery must not cool A");
+    }
+
+    @Test
+    void emptyDeliveryDoesNotCool() {
+        UUID threadId = UUID.randomUUID();
+        // empty (NO_RELEVANT) delivery in this thread: query vector matches nothing
+        String qEmpty = "q-empty-cool";
+        queryEmbedding.put(qEmpty, basis(90));
+        contextPack.create(sameThreadRequest(threadId, qEmpty, basis(90)), key());
+        UUID a = createMemory(basis(63));
+        LocalV1ContextPackResult r = contextPack.create(sameThreadRequest(threadId, "q-after-empty", basis(63)), key());
+        assertTrue(r.memories().stream().anyMatch(m -> m.memoryId().equals(a)),
+                "an empty delivery (no items) must not cool A");
+    }
+
+    @Test
+    void futureDeliveryNotCountedAndOrphanItemDoesNotBreakQuery() {
+        UUID threadId = UUID.randomUUID();
+        UUID a = createMemory(basis(73));
+        UUID revId = currentRevision(a);
+        // CONTEXT_PACK delivery with future delivered_at (after CLOCK now) -> must not cool A
+        UUID d1 = UUID.randomUUID();
+        dsl.execute("INSERT INTO runtime.context_delivery(delivery_id,request_id,thread_id,turn_id,purpose,"
+                        + "policy_revision_set_hash,manifest_hash,delivered_at,expires_at) "
+                        + "VALUES (?::uuid,?::uuid,?::uuid,?::uuid,'CONTEXT_PACK',decode(repeat('00',32),'hex'),"
+                        + "decode(repeat('00',32),'hex'),'2026-08-17T00:00:00Z','2026-08-17T00:10:00Z')",
+                d1, UUID.randomUUID(), threadId, UUID.randomUUID());
+        dsl.execute("INSERT INTO runtime.context_pack_delivery_item(delivery_id,ordinal,memory_revision_id,"
+                        + "policy_revision_no,score) VALUES (?::uuid,0,?::uuid,1,0.5)",
+                d1, revId);
+        // orphan item referencing a non-existent revision -> must be ignored without error
+        UUID d2 = UUID.randomUUID();
+        dsl.execute("INSERT INTO runtime.context_delivery(delivery_id,request_id,thread_id,turn_id,purpose,"
+                        + "policy_revision_set_hash,manifest_hash,delivered_at,expires_at) "
+                        + "VALUES (?::uuid,?::uuid,?::uuid,?::uuid,'CONTEXT_PACK',decode(repeat('00',32),'hex'),"
+                        + "decode(repeat('00',32),'hex'),'2026-08-16T00:00:00Z','2026-08-16T00:10:00Z')",
+                d2, UUID.randomUUID(), threadId, UUID.randomUUID());
+        dsl.execute("INSERT INTO runtime.context_pack_delivery_item(delivery_id,ordinal,memory_revision_id,"
+                        + "policy_revision_no,score) VALUES (?::uuid,0,?::uuid,1,0.5)",
+                d2, UUID.randomUUID());
+        LocalV1ContextPackResult r = contextPack.create(sameThreadRequest(threadId, "q-future-orphan", basis(73)), key());
+        assertTrue(r.memories().stream().anyMatch(m -> m.memoryId().equals(a)),
+                "future delivery must not cool A and an orphan item must not break the query");
+    }
+
+    // ── 14. cooldown: sort, threshold & side effects (6.2) ─────────────────
+
+    @Test
+    void cooledTopCandidateFallsThroughToNextByOriginalScore() {
+        UUID threadId = UUID.randomUUID();
+        // B is below the default 0.6 threshold against q1 but well above it against q2
+        UUID a = createMemory(basis(64));
+        UUID b = createMemory(partiallyAligned(64, 65, 0.4));
+        // first delivery matches only A (B scores 0.4 < 0.6 against q1), so only A is cooled
+        contextPack.create(sameThreadRequest(threadId, "q-ft-1", basis(64)), key());
+        // second query aligns with B; A is cooled, B is still eligible and delivered by score order
+        LocalV1ContextPackResult r = contextPack.create(sameThreadRequest(threadId, "q-ft-2", basis(65)), key());
+        assertTrue(r.memories().stream().noneMatch(m -> m.memoryId().equals(a)), "A must be cooled");
+        assertTrue(r.memories().stream().anyMatch(m -> m.memoryId().equals(b)),
+                "second-ranked B, still above threshold, must be delivered by original score order");
+    }
+
+    @Test
+    void lowScoreBelowThresholdIsNotFilledAfterCooled() {
+        UUID threadId = UUID.randomUUID();
+        UUID a = createMemory(basis(66));
+        UUID c = createMemory(partiallyAligned(66, 67, 0.5));
+        String q = "q-nofill";
+        contextPack.create(sameThreadRequest(threadId, q, basis(66)), key());
+        LocalV1ContextPackResult r = contextPack.create(sameThreadRequest(threadId, q, basis(66)), key());
+        assertTrue(r.memories().stream().noneMatch(m -> m.memoryId().equals(a)));
+        assertTrue(r.memories().stream().noneMatch(m -> m.memoryId().equals(c)),
+                "a below-threshold candidate must not be pulled up to fill");
+    }
+
+    @Test
+    void allEligibleCooledReturnsEmptyResultWithExactAuditCounts() {
+        UUID threadId = UUID.randomUUID();
+        createMemory(basis(68));
+        String q = "q-allcooled";
+        contextPack.create(sameThreadRequest(threadId, q, basis(68)), key());
+
+        long tracesBefore = count("SELECT count(*) FROM runtime.retrieval_trace");
+        long deliveriesBefore = count("SELECT count(*) FROM runtime.context_delivery");
+        long itemsBefore = count("SELECT count(*) FROM runtime.context_pack_delivery_item");
+        long receiptsBefore = count("SELECT count(*) FROM runtime.idempotency_receipt");
+
+        LocalV1ContextPackResult r = contextPack.create(sameThreadRequest(threadId, q, basis(68)), key());
+        assertEquals("NO_RELEVANT_RESULT", r.resultCategory());
+        assertTrue(r.memories().isEmpty());
+        assertTrue(r.policyRevisionSet().isEmpty());
+        assertEquals(1L, count("SELECT count(*) FROM runtime.retrieval_trace") - tracesBefore);
+        assertEquals(1L, count("SELECT count(*) FROM runtime.context_delivery") - deliveriesBefore);
+        assertEquals(0L, count("SELECT count(*) FROM runtime.context_pack_delivery_item") - itemsBefore);
+        assertEquals(1L, count("SELECT count(*) FROM runtime.idempotency_receipt") - receiptsBefore);
+    }
+
+    @Test
+    void cooledCandidateSkippedS2bDetailAndEvidenceCalls() {
+        UUID threadId = UUID.randomUUID();
+        createMemory(basis(69));
+        String q = "q-s2b-count";
+        contextPack.create(sameThreadRequest(threadId, q, basis(69)), key());
+        CountingS2b counting = new CountingS2b();
+        LocalV1ContextPackResult r =
+                contextPackWith(CLOCK, counting).create(sameThreadRequest(threadId, q, basis(69)), key());
+        assertTrue(r.memories().isEmpty());
+        assertEquals(0, counting.detailCalls);
+        assertEquals(0, counting.evidenceCalls);
+    }
+
+    @Test
+    void defaultAndCustomPoliciesUnchangedWithCooldown() {
+        UUID a = createMemory(basis(76));
+        LocalV1ContextPackRequest def =
+                new LocalV1ContextPackRequest(UUID.randomUUID(), UUID.randomUUID(), "RECALL", "q-default-policy", 3, 0.6d);
+        queryEmbedding.put("q-default-policy", basis(76));
+        LocalV1ContextPackResult r = contextPack.create(def, key());
+        assertTrue(r.memories().stream().anyMatch(m -> m.memoryId().equals(a)));
+
+        UUID b = createMemory(partiallyAligned(76, 77, 0.4));
+        LocalV1ContextPackRequest custom =
+                new LocalV1ContextPackRequest(UUID.randomUUID(), UUID.randomUUID(), "RECALL", "q-custom-policy", 5, 0.4d);
+        queryEmbedding.put("q-custom-policy", basis(76));
+        LocalV1ContextPackResult rc = contextPack.create(custom, key());
+        assertTrue(rc.memories().stream().anyMatch(m -> m.memoryId().equals(b)),
+                "explicit 5/0.4 must still accept a score equal to minScore");
+    }
+
+    // ── 15. cooldown: idempotency, concurrency & attacks (6.3) ─────────────
+
+    @Test
+    void sameKeyReplayIsExactEvenWhenMemoryIsCooled() {
+        UUID threadId = UUID.randomUUID();
+        createMemory(basis(70));
+        String q = "q-replay-cool";
+        LocalV1ContextPackRequest req = sameThreadRequest(threadId, q, basis(70));
+        String k = key();
+        LocalV1ContextPackResult first = contextPack.create(req, k);
+
+        queryEmbedding.resetCalls();
+        long tracesAfterFirst = count("SELECT count(*) FROM runtime.retrieval_trace");
+        long deliveriesAfterFirst = count("SELECT count(*) FROM runtime.context_delivery");
+        long itemsAfterFirst = count("SELECT count(*) FROM runtime.context_pack_delivery_item");
+        long receiptsAfterFirst = count("SELECT count(*) FROM runtime.idempotency_receipt");
+
+        LocalV1ContextPackResult replay = contextPack.create(req, k);
+        assertEquals(first.requestId(), replay.requestId());
+        assertEquals(first.deliveryId(), replay.deliveryId());
+        assertEquals(first.memories(), replay.memories());
+        assertEquals(0, queryEmbedding.calls(), "replay must not re-embed");
+        assertEquals(tracesAfterFirst, count("SELECT count(*) FROM runtime.retrieval_trace"));
+        assertEquals(deliveriesAfterFirst, count("SELECT count(*) FROM runtime.context_delivery"));
+        assertEquals(itemsAfterFirst, count("SELECT count(*) FROM runtime.context_pack_delivery_item"));
+        assertEquals(receiptsAfterFirst, count("SELECT count(*) FROM runtime.idempotency_receipt"));
+    }
+
+    @Test
+    void sameKeyDifferentValueRejectedWithNoNewFacts() {
+        UUID threadId = UUID.randomUUID();
+        createMemory(basis(71));
+        LocalV1ContextPackRequest req = sameThreadRequest(threadId, "q-v1", basis(71));
+        String k = key();
+        contextPack.create(req, k);
+
+        long receiptsBefore = count("SELECT count(*) FROM runtime.idempotency_receipt");
+        long tracesBefore = count("SELECT count(*) FROM runtime.retrieval_trace");
+        LocalV1ContextPackRequest diff = sameThreadRequest(threadId, "q-v2", basis(71));
+        LocalV1ContextPackException ex = assertThrows(
+                LocalV1ContextPackException.class, () -> contextPack.create(diff, k));
+        assertEquals(LocalV1ContextPackException.Code.IDEMPOTENCY_KEY_REUSED, ex.code());
+        assertEquals(tracesBefore, count("SELECT count(*) FROM runtime.retrieval_trace"));
+        assertEquals(receiptsBefore, count("SELECT count(*) FROM runtime.idempotency_receipt"));
+    }
+
+    @Test
+    void v2ReceiptCannotMasqueradeAsV3Replay() {
+        UUID threadId = UUID.randomUUID();
+        createMemory(basis(72));
+        LocalV1ContextPackRequest req = sameThreadRequest(threadId, "q-v2fake", basis(72));
+        String k = key();
+        // a v2-era receipt carries a request hash that no longer matches the v3 request hash
+        dsl.execute("INSERT INTO runtime.idempotency_receipt(idempotency_key,operation_code,request_hash,state,"
+                        + "resource_kind,resource_id,response_manifest,created_at,committed_at) "
+                        + "VALUES (?, 'LOCAL_V1_CONTEXT_PACK', decode(repeat('00',32),'hex'), 'COMMITTED', "
+                        + "'CONTEXT_DELIVERY', ?::uuid, '{}', clock_timestamp(), clock_timestamp())",
+                k, UUID.randomUUID());
+        LocalV1ContextPackException ex = assertThrows(
+                LocalV1ContextPackException.class, () -> contextPack.create(req, k));
+        assertEquals(LocalV1ContextPackException.Code.IDEMPOTENCY_KEY_REUSED, ex.code());
+    }
+
+    @Test
+    void concurrentSameThreadDifferentKeysDeliverMemoryAtMostOnce() throws Exception {
+        UUID threadId = UUID.randomUUID();
+        UUID a = createMemory(basis(74));
+        String q = "q-concurrent-same-thread";
+        queryEmbedding.put(q, basis(74));
+
+        BlockingEmbeddingProvider blocking = new BlockingEmbeddingProvider(queryEmbedding, 2);
+        var blockingVector =
+                new LocalV1VectorCoordinator(blocking, vectorStore, governance, transactions, fingerprint, CLOCK);
+        var blockingCoordinator = new LocalV1ContextPackCoordinator(
+                blockingVector, s2b, memoryRead, runtimeTx, runtimeQuery, transactions, CLOCK);
+
+        LocalV1ContextPackRequest req =
+                new LocalV1ContextPackRequest(threadId, UUID.randomUUID(), "RECALL", q, 3, 0.6d);
+        AtomicReference<LocalV1ContextPackResult> r1 = new AtomicReference<>();
+        AtomicReference<LocalV1ContextPackResult> r2 = new AtomicReference<>();
+        AtomicReference<Throwable> e1 = new AtomicReference<>();
+        AtomicReference<Throwable> e2 = new AtomicReference<>();
+        Thread t1 = new Thread(() -> {
+            try { r1.set(blockingCoordinator.create(req, key())); } catch (Throwable t) { e1.set(t); }
+        });
+        Thread t2 = new Thread(() -> {
+            try { r2.set(blockingCoordinator.create(req, key())); } catch (Throwable t) { e2.set(t); }
+        });
+        t1.start();
+        t2.start();
+        assertTrue(blocking.entered.await(10, TimeUnit.SECONDS), "both threads must enter the search");
+        blocking.release.countDown();
+        t1.join(15000);
+        t2.join(15000);
+
+        assertTrue(r1.get() != null, "thread1 must succeed; e1=" + e1.get());
+        assertTrue(r2.get() != null, "thread2 must succeed; e2=" + e2.get());
+        // different keys on the same thread: both succeed (no idempotency conflict), but the same
+        // memory must appear in at most one new delivery thanks to the thread advisory lock + re-read
+        assertEquals(1L, count(
+                "SELECT count(*) FROM runtime.context_pack_delivery_item i "
+                        + "JOIN runtime.context_delivery d ON d.delivery_id=i.delivery_id "
+                        + "JOIN memory.memory_revision r ON r.memory_revision_id=i.memory_revision_id "
+                        + "WHERE d.thread_id=?::uuid AND r.memory_id=?::uuid",
+                threadId, a));
+    }
+
+    @Test
+    void concurrentDifferentThreadsBothDeliverSameMemory() throws Exception {
+        UUID a = createMemory(basis(75));
+        String q = "q-concurrent-diff-thread";
+        queryEmbedding.put(q, basis(75));
+
+        BlockingEmbeddingProvider blocking = new BlockingEmbeddingProvider(queryEmbedding, 2);
+        var blockingVector =
+                new LocalV1VectorCoordinator(blocking, vectorStore, governance, transactions, fingerprint, CLOCK);
+        var blockingCoordinator = new LocalV1ContextPackCoordinator(
+                blockingVector, s2b, memoryRead, runtimeTx, runtimeQuery, transactions, CLOCK);
+
+        UUID thread1 = UUID.randomUUID();
+        UUID thread2 = UUID.randomUUID();
+        LocalV1ContextPackRequest req1 =
+                new LocalV1ContextPackRequest(thread1, UUID.randomUUID(), "RECALL", q, 3, 0.6d);
+        LocalV1ContextPackRequest req2 =
+                new LocalV1ContextPackRequest(thread2, UUID.randomUUID(), "RECALL", q, 3, 0.6d);
+        AtomicReference<LocalV1ContextPackResult> r1 = new AtomicReference<>();
+        AtomicReference<LocalV1ContextPackResult> r2 = new AtomicReference<>();
+        AtomicReference<Throwable> e1 = new AtomicReference<>();
+        AtomicReference<Throwable> e2 = new AtomicReference<>();
+        Thread t1 = new Thread(() -> {
+            try { r1.set(blockingCoordinator.create(req1, key())); } catch (Throwable t) { e1.set(t); }
+        });
+        Thread t2 = new Thread(() -> {
+            try { r2.set(blockingCoordinator.create(req2, key())); } catch (Throwable t) { e2.set(t); }
+        });
+        t1.start();
+        t2.start();
+        assertTrue(blocking.entered.await(10, TimeUnit.SECONDS), "both threads must enter the search");
+        blocking.release.countDown();
+        t1.join(15000);
+        t2.join(15000);
+
+        assertTrue(r1.get() != null, "thread1 must deliver A; e1=" + e1.get());
+        assertTrue(r2.get() != null, "thread2 must deliver A; e2=" + e2.get());
+        assertTrue(r1.get().memories().stream().anyMatch(m -> m.memoryId().equals(a)));
+        assertTrue(r2.get().memories().stream().anyMatch(m -> m.memoryId().equals(a)));
+    }
+
+    // ── 16. R1: Phase B must re-read the authoritative commit clock (kills stale-now) ───
+
+    @Test
+    void concurrentSameThreadInterleavedClocksDeliverMemoryExactlyOnce() throws Exception {
+        UUID threadId = UUID.randomUUID();
+        UUID a = createMemory(basis(80));
+        String q = "q-interleaved";
+        queryEmbedding.put(q, basis(80));
+
+        // A's Phase A reads T0 and blocks in embedding; B runs fully at T1 and commits first.
+        Instant t0 = Instant.parse("2026-08-16T00:00:00Z");
+        Instant t1 = Instant.parse("2026-08-16T00:05:00Z");
+        ManualClock clockA = new ManualClock(t0);
+        ManualClock clockB = new ManualClock(t1);
+
+        BlockingEmbeddingProvider blockingA = new BlockingEmbeddingProvider(queryEmbedding, 1);
+        var vectorA =
+                new LocalV1VectorCoordinator(blockingA, vectorStore, governance, transactions, fingerprint, clockA);
+        var coordinatorA =
+                new LocalV1ContextPackCoordinator(vectorA, s2b, memoryRead, runtimeTx, runtimeQuery, transactions, clockA);
+        var vectorB =
+                new LocalV1VectorCoordinator(queryEmbedding, vectorStore, governance, transactions, fingerprint, clockB);
+        var coordinatorB =
+                new LocalV1ContextPackCoordinator(vectorB, s2b, memoryRead, runtimeTx, runtimeQuery, transactions, clockB);
+
+        LocalV1ContextPackRequest req =
+                new LocalV1ContextPackRequest(threadId, UUID.randomUUID(), "RECALL", q, 3, 0.6d);
+        AtomicReference<LocalV1ContextPackResult> rA = new AtomicReference<>();
+        AtomicReference<Throwable> eA = new AtomicReference<>();
+        Thread tA = new Thread(() -> {
+            try { rA.set(coordinatorA.create(req, key())); } catch (Throwable th) { eA.set(th); }
+        });
+        tA.start();
+        assertTrue(blockingA.entered.await(10, TimeUnit.SECONDS), "A must reach embedding at T0");
+
+        // B commits first at T1, delivering the shared memory at T1.
+        LocalV1ContextPackResult rB = coordinatorB.create(req, key());
+        assertEquals(t1, rB.issuedAt().toInstant(), "B committed at T1");
+
+        // Bring A's commit clock to T1, then release A so its Phase B re-reads the later time and
+        // must observe B's just-committed delivery as cooled.
+        clockA.set(t1);
+        blockingA.release.countDown();
+        tA.join(15000);
+        assertTrue(rA.get() != null, "A must return normally; eA=" + eA.get());
+
+        // The shared memory must appear in exactly one delivery item in this thread. The old
+        // implementation (stale Phase-A now) would miss B's T1 delivery and deliver it a second time.
+        assertEquals(1L, count(
+                "SELECT count(*) FROM runtime.context_pack_delivery_item i "
+                        + "JOIN runtime.context_delivery d ON d.delivery_id=i.delivery_id "
+                        + "JOIN memory.memory_revision r ON r.memory_revision_id=i.memory_revision_id "
+                        + "WHERE d.thread_id=?::uuid AND r.memory_id=?::uuid",
+                threadId, a));
+
+        // Phase-ordering proof: A read T0 in Phase A and T1 in Phase B; B read T1 in both phases.
+        assertEquals(List.of(t0, t1), clockA.reads(), "A: Phase A at T0, Phase B at T1");
+        assertEquals(List.of(t1, t1), clockB.reads(), "B: Phase A and Phase B both at T1");
+    }
+
+    @Test
+    void longEmbeddingAdvancesCommitClockForIssuedAndExpiry() throws Exception {
+        UUID threadId = UUID.randomUUID();
+        createMemory(basis(82));
+        String q = "q-long-embed";
+        queryEmbedding.put(q, basis(82));
+
+        Instant t0 = Instant.parse("2026-08-16T00:00:00Z");
+        ManualClock clock = new ManualClock(t0);
+        BlockingEmbeddingProvider blocking = new BlockingEmbeddingProvider(queryEmbedding, 1);
+        var vector =
+                new LocalV1VectorCoordinator(blocking, vectorStore, governance, transactions, fingerprint, clock);
+        var coord =
+                new LocalV1ContextPackCoordinator(vector, s2b, memoryRead, runtimeTx, runtimeQuery, transactions, clock);
+
+        AtomicReference<LocalV1ContextPackResult> r = new AtomicReference<>();
+        AtomicReference<Throwable> e = new AtomicReference<>();
+        Thread t = new Thread(() -> {
+            try { r.set(coord.create(sameThreadRequest(threadId, q, basis(82)), key())); }
+            catch (Throwable th) { e.set(th); }
+        });
+        t.start();
+        assertTrue(blocking.entered.await(10, TimeUnit.SECONDS), "call must reach embedding at T0");
+
+        Instant t1 = t0.plusSeconds(300); // +5 minutes while embedding
+        clock.set(t1);
+        blocking.release.countDown();
+        t.join(15000);
+        assertTrue(r.get() != null, "call must succeed; e=" + e.get());
+
+        LocalV1ContextPackResult result = r.get();
+        assertEquals(t1, result.issuedAt().toInstant(), "issuedAt must use the Phase B commit clock");
+        assertEquals(t1.plusSeconds(600), result.expiresAt().toInstant(), "expiresAt = commitNow + 10min");
+        ContextDelivery delivery = runtimeQuery.findContextDeliveryById(result.deliveryId());
+        assertEquals(t1, delivery.deliveredAt().toInstant(), "deliveredAt must be commitNow");
+        assertEquals(List.of(t0, t1), clock.reads(), "Phase A read T0, Phase B read T1");
+    }
+
+    @Test
+    void boundaryCrossedDuringRetrievalRecoversByPhaseBTime() throws Exception {
+        UUID threadId = UUID.randomUUID();
+        UUID a = createMemory(basis(81));
+        String q = "q-boundary-cross";
+        queryEmbedding.put(q, basis(81));
+
+        Instant t0 = Instant.parse("2026-08-16T00:00:00Z");
+        ManualClock deliveryClock = new ManualClock(t0);
+        var dv =
+                new LocalV1VectorCoordinator(queryEmbedding, vectorStore, governance, transactions, fingerprint, deliveryClock);
+        var deliveryCoord =
+                new LocalV1ContextPackCoordinator(dv, s2b, memoryRead, runtimeTx, runtimeQuery, transactions, deliveryClock);
+        LocalV1ContextPackResult first = deliveryCoord.create(sameThreadRequest(threadId, q, basis(81)), key());
+        assertTrue(first.memories().stream().anyMatch(m -> m.memoryId().equals(a)), "A delivered at T0");
+
+        Instant x = t0.plusSeconds(23L * 3600 + 59L * 60); // 23h59m -> still < 24h
+        Instant y = t0.plusSeconds(24L * 3600);            // exactly 24h
+        ManualClock clock = new ManualClock(x);
+        BlockingEmbeddingProvider blocking = new BlockingEmbeddingProvider(queryEmbedding, 1);
+        var vector =
+                new LocalV1VectorCoordinator(blocking, vectorStore, governance, transactions, fingerprint, clock);
+        var coord =
+                new LocalV1ContextPackCoordinator(vector, s2b, memoryRead, runtimeTx, runtimeQuery, transactions, clock);
+
+        AtomicReference<LocalV1ContextPackResult> r = new AtomicReference<>();
+        AtomicReference<Throwable> e = new AtomicReference<>();
+        Thread t = new Thread(() -> {
+            try { r.set(coord.create(sameThreadRequest(threadId, q, basis(81)), key())); }
+            catch (Throwable th) { e.set(th); }
+        });
+        t.start();
+        assertTrue(blocking.entered.await(10, TimeUnit.SECONDS), "call must reach embedding before 24h");
+        clock.set(y); // while embedding, the clock crosses to exactly 24h
+        blocking.release.countDown();
+        t.join(15000);
+        assertTrue(r.get() != null, "call must succeed; e=" + e.get());
+
+        // Phase A (<24h) sees A cooled; the authoritative Phase B time (==24h) restores eligibility.
+        assertTrue(r.get().memories().stream().anyMatch(m -> m.memoryId().equals(a)),
+                "Phase B time (exactly 24h) must restore eligibility");
+        assertEquals(List.of(x, y), clock.reads(), "Phase A read X (<24h), Phase B read Y (==24h)");
+    }
+
     // ── helpers ────────────────────────────────────────────────────────────
 
     private static String key() {
@@ -776,6 +1251,20 @@ class LocalV1ContextPackRetrievalTest {
         queryEmbedding.put(queryText, queryVector);
         return new LocalV1ContextPackRequest(
                 UUID.randomUUID(), UUID.randomUUID(), "RECALL", queryText, 3, 0.6d);
+    }
+
+    /** A default-policy request pinned to a caller-chosen thread (for cooldown tests). */
+    private static LocalV1ContextPackRequest sameThreadRequest(
+            UUID threadId, String queryText, double[] queryVector) {
+        queryEmbedding.put(queryText, queryVector);
+        return new LocalV1ContextPackRequest(threadId, UUID.randomUUID(), "RECALL", queryText, 3, 0.6d);
+    }
+
+    private static UUID currentRevision(UUID memoryId) {
+        return dsl.fetchOne(
+                        "SELECT current_revision_id FROM memory.memory_record WHERE memory_id=?::uuid",
+                        memoryId)
+                .get("current_revision_id", UUID.class);
     }
 
     private void assertReplayRejected(String label, Consumer<Pack> attack, LocalV1ContextPackException.Code expected) {
@@ -992,6 +1481,62 @@ class LocalV1ContextPackRetrievalTest {
     private record Pack(UUID memoryId, UUID deliveryId) {}
 
     private static final AtomicInteger BASIS = new AtomicInteger(0);
+
+    /** Wraps the real S2B coordinator and counts detail/evidence calls (cooldown must skip them). */
+    private static final class CountingS2b extends LocalV1S2BQueryCoordinator {
+        int detailCalls;
+        int evidenceCalls;
+
+        CountingS2b() {
+            super(memoryRead, evidence, payloadStore, deletionFence);
+        }
+
+        @Override
+        public LocalV1S2BMemoryDetail getMemoryDetail(UUID memoryId) {
+            detailCalls++;
+            return super.getMemoryDetail(memoryId);
+        }
+
+        @Override
+        public LocalV1S2BEvidenceResult getFullEvidence(UUID memoryId) {
+            evidenceCalls++;
+            return super.getFullEvidence(memoryId);
+        }
+    }
+
+    /** A controllable clock that records every read so tests can prove each phase's time ordering. */
+    private static final class ManualClock extends Clock {
+        private Instant instant;
+        private final List<Instant> reads = new ArrayList<>();
+
+        ManualClock(Instant start) {
+            this.instant = start;
+        }
+
+        void set(Instant value) {
+            this.instant = value;
+        }
+
+        @Override
+        public synchronized Instant instant() {
+            reads.add(instant);
+            return instant;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneId.of("UTC");
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        synchronized List<Instant> reads() {
+            return new ArrayList<>(reads);
+        }
+    }
 
     private static final class BlockingEmbeddingProvider implements EmbeddingProviderPort {
         private final EmbeddingProviderPort delegate;

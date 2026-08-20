@@ -30,6 +30,13 @@ import org.jooq.Record14;
 
 public class JooqRuntimeTransactionAdapter implements RuntimeTransactionPort {
 
+    /**
+     * Dedicated two-integer-key advisory-lock namespace for context-pack thread serialization.
+     * Kept separate from the single-key idempotency lock so the two lock families never share an
+     * unprefixed hash space.
+     */
+    private static final int CONTEXT_PACK_THREAD_LOCK_NAMESPACE = 73_951;
+
     private final DSLContext dsl;
 
     public JooqRuntimeTransactionAdapter(DSLContext dsl) {
@@ -41,6 +48,17 @@ public class JooqRuntimeTransactionAdapter implements RuntimeTransactionPort {
         dsl.select(org.jooq.impl.DSL.field(
                 "pg_advisory_xact_lock(hashtext({0}))",
                 org.jooq.impl.DSL.val(idempotencyKey))).fetch();
+    }
+
+    @Override
+    public void lockContextPackThread(UUID threadId) {
+        if (threadId == null) {
+            throw new NullPointerException("threadId must not be null");
+        }
+        dsl.select(org.jooq.impl.DSL.field(
+                "pg_advisory_xact_lock({0}, hashtext({1}))",
+                org.jooq.impl.DSL.val(CONTEXT_PACK_THREAD_LOCK_NAMESPACE),
+                org.jooq.impl.DSL.val(threadId.toString()))).fetch();
     }
 
     @Override

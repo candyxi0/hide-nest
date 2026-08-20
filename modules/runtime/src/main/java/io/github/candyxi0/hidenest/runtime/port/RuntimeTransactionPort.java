@@ -25,6 +25,20 @@ public interface RuntimeTransactionPort {
     /** Acquire transaction-level advisory lock for idempotency key (L0). */
     void lockIdempotencyKey(String idempotencyKey);
 
+    /**
+     * Acquire a transaction-level advisory lock scoped to a context-pack thread, in a dedicated
+     * namespace. Different idempotency keys carrying out concurrent retrievals for the same thread
+     * must not deliver the same memory more than once: the thread lock serializes them so a
+     * concurrent re-read of the cooldown set is authoritative.
+     *
+     * <p>This must use the two-integer-key {@code pg_advisory_xact_lock(namespace, hash(threadId))}
+     * with a namespace distinct from the single-key idempotency lock, so the two lock families
+     * never share an unprefixed hash space.</p>
+     *
+     * @param threadId the thread whose delivery must be serialized; must be non-null
+     */
+    void lockContextPackThread(UUID threadId);
+
     /** Find existing committed receipt, locking the row. */
     IdempotencyReceipt findReceiptByKey(String idempotencyKey);
 

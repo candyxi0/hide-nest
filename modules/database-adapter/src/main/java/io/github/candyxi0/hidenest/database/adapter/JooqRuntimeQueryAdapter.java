@@ -13,9 +13,12 @@ import io.github.candyxi0.hidenest.runtime.domain.ModelRun;
 import io.github.candyxi0.hidenest.runtime.domain.RetrievalTrace;
 import io.github.candyxi0.hidenest.runtime.domain.WorkArtifact;
 import io.github.candyxi0.hidenest.runtime.port.RuntimeQueryPort;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.jooq.DSLContext;
 
@@ -214,6 +217,37 @@ public class JooqRuntimeQueryAdapter implements RuntimeQueryPort {
                     row.get(2, UUID.class),
                     row.get(3, Long.class),
                     row.get(4, Double.class)));
+        }
+        return result;
+    }
+
+    @Override
+    public Set<UUID> findDeliveredMemoryIdsSince(UUID threadId, OffsetDateTime cutoff, OffsetDateTime now) {
+        if (threadId == null) {
+            throw new NullPointerException("threadId must not be null");
+        }
+        if (cutoff == null) {
+            throw new IllegalArgumentException("cutoff must not be null");
+        }
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
+        var rows = dsl.fetch(
+                "SELECT DISTINCT r.memory_id "
+                        + "FROM runtime.context_delivery d "
+                        + "JOIN runtime.context_pack_delivery_item i "
+                        + "  ON i.delivery_id = d.delivery_id "
+                        + "JOIN memory.memory_revision r "
+                        + "  ON r.memory_revision_id = i.memory_revision_id "
+                        + "WHERE d.thread_id = ?::uuid "
+                        + "  AND d.purpose = 'CONTEXT_PACK' "
+                        + "  AND d.delivered_at > ?::timestamptz "
+                        + "  AND d.delivered_at <= ?::timestamptz "
+                        + "ORDER BY r.memory_id ASC",
+                threadId, cutoff, now);
+        Set<UUID> result = new LinkedHashSet<>();
+        for (var row : rows) {
+            result.add(row.get(0, UUID.class));
         }
         return result;
     }

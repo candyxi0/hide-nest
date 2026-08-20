@@ -457,6 +457,15 @@ describe("real MCP stdio + loopback CandidateSet gate", () => {
     expect(contextTool?.description).toContain("没有 excludeTerms");
     expect(contextTool?.description).toContain("错误 query：查找月亮记忆，不要返回亲密互动、称呼、欢迎回家");
     expect(contextTool?.description).toContain("正确 query：月亮、月光、摸不到、真实照在夕淋身上");
+    // 24h cooldown rules locked in the description (same-thread, other threads unaffected, no key
+    // churn, may under-fill or return empty, network retries reuse keys for EXACT replay)
+    expect(contextTool?.description).toContain("24 小时内已成功返回的 memoryId 会自动冷却过滤");
+    expect(contextTool?.description).toContain("其他 threadKey 不受影响");
+    expect(contextTool?.description).toContain("稳定复用 threadKey");
+    expect(contextTool?.description).toContain("禁止为绕过冷却而更换 key");
+    expect(contextTool?.description).toContain("冷却后结果可少于 maxResults 或返回空集合");
+    expect(contextTool?.description).toContain("降低 minScore 凑数");
+    expect(contextTool?.description).toContain("EXACT replay");
     const evidenceTool = list.tools.find((tool) => tool.name === MEMORY_EVIDENCE_TOOL_NAME);
     expect(evidenceTool?.inputSchema.additionalProperties).toBe(false);
     expect(

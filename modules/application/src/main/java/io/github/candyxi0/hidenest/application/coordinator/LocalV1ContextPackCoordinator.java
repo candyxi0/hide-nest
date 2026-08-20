@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -47,7 +48,16 @@ public class LocalV1ContextPackCoordinator {
     private static final int MIN_MAX_RESULTS = 1;
     private static final double MIN_MIN_SCORE = 0.4d;
     private static final double MAX_MIN_SCORE = 1.0d;
-    private static final String POLICY_VERSION = "v2";
+    private static final String POLICY_VERSION = "v3";
+    /** Cooldown duration for a delivered memory within the same thread. */
+    private static final long COOLDOWN_HOURS = 24L;
+    /** Upper bound of the widened vector candidate window per the cooldown formula. */
+    private static final int CANDIDATE_LIMIT_MAX = 100;
+    /**
+     * The frozen {@code LocalV1VectorCoordinator} rejects search limits above this value, so the
+     * widened candidate window is clamped to it before requesting a search.
+     */
+    private static final int VECTOR_CANDIDATE_MAX = 20;
     private static final int MAX_PURPOSE_BYTES = 128;
     private static final int MAX_QUERY_BYTES = 480;
     private static final int MAX_IDEMPOTENCY_KEY_BYTES = 128;
@@ -111,50 +121,74 @@ public class LocalV1ContextPackCoordinator {
 
     private LocalV1ContextPackResult createNew(
             LocalV1ContextPackRequest request, String idempotencyKey, byte[] requestHash) {
+        // Phase A (outside any transaction): the time read here is used ONLY to size the vector
+        // candidate window from the current cooldown set, then embed and search. It is deliberately
+        // NOT reused as the authoritative commit time, which is re-read after the thread lock.
+        OffsetDateTime initialNow = OffsetDateTime.now(clock).truncatedTo(ChronoUnit.MICROS);
+        OffsetDateTime initialCutoff = initialNow.minus(Duration.ofHours(COOLDOWN_HOURS));
+        Set<UUID> initialCooled =
+                runtimeQuery.findDeliveredMemoryIdsSince(request.threadId(), initialCutoff, initialNow);
+        int candidateLimit = Math.min(
+                CANDIDATE_LIMIT_MAX,
+                Math.max(5, request.maxResults() + initialCooled.size()));
+        int searchLimit = Math.min(candidateLimit, VECTOR_CANDIDATE_MAX);
+
         List<LocalV1VectorMatch> candidates;
         try {
-            candidates = vector.searchSimilar(request.query(), LIMIT);
+            candidates = vector.searchSimilar(request.query(), searchLimit);
         } catch (LocalV1VectorException exception) {
             throw embeddingFailure(exception);
         }
 
-        List<UUID> consideredIds = new ArrayList<>();
-        List<DeliveredMemory> delivered = new ArrayList<>();
-        for (LocalV1VectorMatch candidate : candidates) {
-            consideredIds.add(candidate.memoryId());
-            if (candidate.score() < request.minScore()) {
-                continue;
-            }
-            if (delivered.size() >= request.maxResults()) {
-                continue;
-            }
-            DeliveredMemory verified = verifyCandidate(candidate);
-            if (verified != null) {
-                delivered.add(verified);
-            }
-        }
-
-        String resultCategory = delivered.isEmpty() ? NO_RELEVANT_RESULT : SUCCEEDED;
-        List<String> policySet = policySet(delivered);
-        byte[] policySetHash = canonicalHash(policySet);
-
-        UUID requestId = UUID.randomUUID();
-        UUID deliveryId = UUID.randomUUID();
-        UUID traceId = UUID.randomUUID();
-        OffsetDateTime issuedAt = OffsetDateTime.now(clock).truncatedTo(ChronoUnit.MICROS);
-        OffsetDateTime expiresAt = issuedAt.plusMinutes(EXPIRES_MINUTES);
-
-        List<String> manifestFields = manifestFields(
-                requestId, request, resultCategory, policySet, delivered);
-        byte[] manifestHash = canonicalHash(manifestFields);
-
-        List<UUID> deliveredIds = delivered.stream().map(DeliveredMemory::memoryId).toList();
-
-        boolean committed = transactions.executeInTransaction(() -> {
+        // Phase B: lock idempotency key, re-check the receipt, serialise on the thread, then take
+        // the authoritative commit clock. Reading it here, AFTER the thread lock, ensures a
+        // concurrent delivery committed while we waited is within (commitCutoff, commitNow] and is
+        // seen as cooled. This same commitNow becomes issuedAt / deliveredAt / trace createdAt.
+        CommitResult result = transactions.executeInTransaction(() -> {
             runtimeTx.lockIdempotencyKey(idempotencyKey);
             if (runtimeTx.findReceiptByKey(idempotencyKey) != null) {
-                return Boolean.FALSE;
+                return new CommitResult(true, null, null, null, null, List.of());
             }
+            runtimeTx.lockContextPackThread(request.threadId());
+            OffsetDateTime commitNow = OffsetDateTime.now(clock).truncatedTo(ChronoUnit.MICROS);
+            OffsetDateTime commitCutoff = commitNow.minus(Duration.ofHours(COOLDOWN_HOURS));
+            Set<UUID> cooled =
+                    runtimeQuery.findDeliveredMemoryIdsSince(request.threadId(), commitCutoff, commitNow);
+
+            List<UUID> consideredIds = new ArrayList<>();
+            List<DeliveredMemory> delivered = new ArrayList<>();
+            for (LocalV1VectorMatch candidate : candidates) {
+                consideredIds.add(candidate.memoryId());
+                if (candidate.score() < request.minScore()) {
+                    continue;
+                }
+                if (cooled.contains(candidate.memoryId())) {
+                    continue;
+                }
+                if (delivered.size() >= request.maxResults()) {
+                    continue;
+                }
+                DeliveredMemory verified = verifyCandidate(candidate);
+                if (verified != null) {
+                    delivered.add(verified);
+                }
+            }
+
+            String resultCategory = delivered.isEmpty() ? NO_RELEVANT_RESULT : SUCCEEDED;
+            List<String> policySet = policySet(delivered);
+            byte[] policySetHash = canonicalHash(policySet);
+            List<UUID> deliveredIds = delivered.stream().map(DeliveredMemory::memoryId).toList();
+
+            UUID requestId = UUID.randomUUID();
+            UUID deliveryId = UUID.randomUUID();
+            UUID traceId = UUID.randomUUID();
+            OffsetDateTime issuedAt = commitNow;
+            OffsetDateTime expiresAt = issuedAt.plusMinutes(EXPIRES_MINUTES);
+
+            List<String> manifestFields = manifestFields(
+                    requestId, request, resultCategory, policySet, delivered);
+            byte[] manifestHash = canonicalHash(manifestFields);
+
             runtimeTx.insertRetrievalTrace(new RetrievalTrace(
                     traceId,
                     requestId,
@@ -187,22 +221,24 @@ public class LocalV1ContextPackCoordinator {
                     deliveryId,
                     RESOURCE_KIND,
                     receiptManifest(requestId, resultCategory));
-            return Boolean.TRUE;
+            return new CommitResult(false, requestId, deliveryId, issuedAt, expiresAt, delivered);
         });
 
-        if (!committed) {
+        if (result.replay()) {
             return replay(request, idempotencyKey);
         }
 
+        String resultCategory = result.delivered().isEmpty() ? NO_RELEVANT_RESULT : SUCCEEDED;
+        List<String> policySet = policySet(result.delivered());
         return buildResult(
-                requestId,
+                result.requestId(),
                 resultCategory,
-                deliveryId,
+                result.deliveryId(),
                 request,
                 policySet,
-                issuedAt,
-                expiresAt,
-                delivered);
+                result.issuedAt(),
+                result.expiresAt(),
+                result.delivered());
     }
 
     // ── replay ─────────────────────────────────────────────────────────────
@@ -497,6 +533,7 @@ public class LocalV1ContextPackCoordinator {
         fields.add(request.turnId().toString());
         fields.add(request.purpose());
         fields.add(POLICY_VERSION);
+        fields.add(Long.toString(COOLDOWN_HOURS));
         fields.add(Integer.toString(request.maxResults()));
         fields.add(canonicalScore(request.minScore()));
         fields.add(resultCategory);
@@ -531,6 +568,7 @@ public class LocalV1ContextPackCoordinator {
     private static byte[] computeRequestHash(LocalV1ContextPackRequest request) {
         return canonicalHash(List.of(
                 POLICY_VERSION,
+                Long.toString(COOLDOWN_HOURS),
                 request.threadId().toString(),
                 request.turnId().toString(),
                 request.purpose(),
@@ -602,6 +640,15 @@ public class LocalV1ContextPackCoordinator {
         PROCEED,
         REPLAY
     }
+
+    /** Outcome of the atomic commit transaction; {@code replay} is set when a receipt appeared. */
+    private record CommitResult(
+            boolean replay,
+            UUID requestId,
+            UUID deliveryId,
+            OffsetDateTime issuedAt,
+            OffsetDateTime expiresAt,
+            List<DeliveredMemory> delivered) {}
 
     private record DeliveredMemory(
             UUID memoryId,
