@@ -1,4 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import * as Popover from "@radix-ui/react-popover";
 import {
   Configuration,
   DeletionApi,
@@ -54,6 +55,11 @@ const memoryTypeLabels: Record<string, string> = {
   CALIBRATION: "校准",
   PRINCIPLE: "原则",
 };
+
+const MEMORY_TYPE_OPTIONS = [
+  { value: "ALL", label: "全部类型" },
+  ...Object.entries(memoryTypeLabels).map(([value, label]) => ({ value, label })),
+] as const;
 
 const MEMORY_TYPE_VALUES = new Set<string>([
   "EVENT",
@@ -194,6 +200,89 @@ function useDebouncedValue(value: string, wait = 250) {
     return () => window.clearTimeout(timer);
   }, [value, wait]);
   return debounced;
+}
+
+function MemoryTypeMenu({ value, onValueChange }: { value: string; onValueChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const optionRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const currentLabel = value === "ALL" ? "全部" : memoryTypeLabels[value] ?? "全部";
+
+  const selectOption = (nextValue: string) => {
+    onValueChange(nextValue);
+    setOpen(false);
+  };
+
+  const moveFocus = (currentValue: string, direction: 1 | -1) => {
+    const index = MEMORY_TYPE_OPTIONS.findIndex((option) => option.value === currentValue);
+    const nextIndex = (index + direction + MEMORY_TYPE_OPTIONS.length) % MEMORY_TYPE_OPTIONS.length;
+    optionRefs.current[MEMORY_TYPE_OPTIONS[nextIndex].value]?.focus();
+  };
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          className="type-filter-trigger"
+          aria-label={`按记忆类型筛选，当前${currentLabel}`}
+          aria-haspopup="dialog"
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") {
+              event.preventDefault();
+              setOpen(true);
+            }
+          }}
+        >
+          <span>类型 · {currentLabel}</span>
+          <span className="type-filter-caret" aria-hidden="true">⌄</span>
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          className="type-filter-popover"
+          side="bottom"
+          align="end"
+          sideOffset={7}
+          collisionPadding={12}
+          aria-label="按记忆类型筛选"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            optionRefs.current[value]?.focus();
+          }}
+        >
+          <div className="type-filter-options" role="radiogroup" aria-label="按记忆类型筛选">
+            {MEMORY_TYPE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                ref={(element) => { optionRefs.current[option.value] = element; }}
+                type="button"
+                className="type-filter-option"
+                role="radio"
+                aria-checked={value === option.value}
+                tabIndex={value === option.value ? 0 : -1}
+                onClick={() => selectOption(option.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    moveFocus(option.value, 1);
+                  } else if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    moveFocus(option.value, -1);
+                  } else if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    selectOption(option.value);
+                  }
+                }}
+              >
+                <span className="type-filter-dot" aria-hidden="true" />
+                <span>{option.label}</span>
+              </button>
+            ))}
+          </div>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
 }
 
 function AppShell() {
@@ -375,20 +464,7 @@ function MemoryArchive() {
               </button>
             ))}
           </div>
-          <div className="type-filter-row">
-            <label className="type-filter-label" htmlFor="memory-type-select">记忆类型</label>
-            <select
-              id="memory-type-select"
-              className="type-filter-select"
-              value={typeFilter}
-              onChange={(event) => selectType(event.target.value)}
-            >
-              <option value="ALL">全部类型</option>
-              {(Object.keys(memoryTypeLabels) as MemoryType[]).map((type) => (
-                <option key={type} value={type}>{memoryTypeLabels[type]}</option>
-              ))}
-            </select>
-          </div>
+          <MemoryTypeMenu value={typeFilter} onValueChange={selectType} />
         </div>
         <div className="index-meta" aria-live="polite">
           <span>
@@ -479,8 +555,9 @@ function ListResult({
   }
   const showLoadMore = nextPageError || hasNextPage;
   return (
-    <div className="memory-list">
-      {items.map((item) => (
+    <>
+      <div className="memory-list">
+        {items.map((item) => (
         <button
           className={item.memoryId === selectedId ? "memory-row selected" : "memory-row"}
           type="button"
@@ -496,18 +573,21 @@ function ListResult({
           <p>{item.summary}</p>
           <div className="row-footer"><span>第 {item.revisionNo} 版</span><time>{formatDate(item.updatedAt)}</time></div>
         </button>
-      ))}
+        ))}
+      </div>
       {showLoadMore && (
-        <button
-          type="button"
-          className="load-more-button"
-          onClick={onLoadMore}
-          disabled={isFetchingNextPage}
-        >
-          {nextPageError ? "加载更多失败，请重试" : isFetchingNextPage ? "正在加载…" : "加载更多"}
-        </button>
+        <div className="pagination-footer">
+          <button
+            type="button"
+            className="load-more-button"
+            onClick={onLoadMore}
+            disabled={isFetchingNextPage}
+          >
+            {nextPageError ? "加载更多失败，请重试" : isFetchingNextPage ? "正在加载…" : "加载更多"}
+          </button>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 

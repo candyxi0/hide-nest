@@ -1063,6 +1063,13 @@ describe("记忆列表稳定分页与类型筛选", () => {
     } as const;
   }
 
+  const typeTrigger = () => screen.getByRole("button", { name: /按记忆类型筛选/ });
+
+  async function chooseType(user: ReturnType<typeof userEvent.setup>, label: string) {
+    await user.click(typeTrigger());
+    await user.click(await screen.findByRole("radio", { name: label }));
+  }
+
   it("首屏只请求 limit=30 且不带 cursor，收到 nextCursor 后显示加载更多", async () => {
     const requests: Array<{ cursor: string | null; limit: number | null }> = [];
     server.use(http.get("*/v1/memories", ({ request }) => {
@@ -1153,11 +1160,39 @@ describe("记忆列表稳定分页与类型筛选", () => {
     const user = userEvent.setup();
     render(<App client={queryClientFactory()} />);
     await screen.findByText("共 0 条");
-    const select = screen.getByLabelText("记忆类型");
-    await user.selectOptions(select, "EVENT");
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    await chooseType(user, "事件");
     await waitFor(() => expect(paramsList[paramsList.length - 1].get("memoryType")).toBe("EVENT"));
-    await user.selectOptions(select, "ALL");
+    await chooseType(user, "全部类型");
     await waitFor(() => expect(paramsList[paramsList.length - 1].get("memoryType")).toBeNull());
+  });
+
+  it("纸张菜单支持触发、方向键选择、Escape 和外部关闭", async () => {
+    const user = userEvent.setup();
+    render(<App client={queryClientFactory()} />);
+    const trigger = typeTrigger();
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const all = await screen.findByRole("radio", { name: "全部类型" });
+    expect(all).toHaveAttribute("aria-checked", "true");
+    expect(all).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("radio", { name: "事件" })).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
+    expect(trigger).toHaveAccessibleName("按记忆类型筛选，当前事件");
+
+    await user.keyboard("{ArrowDown}");
+    expect(await screen.findByRole("radio", { name: "事件" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(trigger).toHaveFocus();
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(trigger);
+    await user.click(screen.getByPlaceholderText("搜索当前规范记忆"));
+    expect(screen.queryByRole("radiogroup", { name: "按记忆类型筛选" })).not.toBeInTheDocument();
+    expect(trigger).toHaveAccessibleName("按记忆类型筛选，当前事件");
   });
 
   it("切换类型重置为第一页并把 type 写入 URL；非法 URL type 回退全部并清除", async () => {
@@ -1177,7 +1212,7 @@ describe("记忆列表稳定分页与类型筛选", () => {
     render(<App client={queryClientFactory()} />);
     await screen.findByRole("button", { name: "加载更多" });
     const before = calls;
-    await user.selectOptions(screen.getByLabelText("记忆类型"), "CLAIM");
+    await chooseType(user, "判断");
     await waitFor(() => expect(new URLSearchParams(window.location.search).get("type")).toBe("CLAIM"));
     expect(calls).toBeGreaterThan(before);
     expect(screen.getByRole("button", { name: /暖灰的规范正文/ })).toBeVisible();
@@ -1194,7 +1229,7 @@ describe("记忆列表稳定分页与类型筛选", () => {
     await screen.findByText("共 1 条");
     await waitFor(() => expect(new URLSearchParams(window.location.search).get("type")).toBeNull());
     expect(sent.every((value) => value === null)).toBe(true);
-    expect(screen.getByLabelText("记忆类型")).toHaveValue("ALL");
+    expect(typeTrigger()).toHaveAccessibleName("按记忆类型筛选，当前全部");
   });
 
   it("挂载后导航到非法 type 时动态回退并清除，合法 type 保留", async () => {
@@ -1217,7 +1252,7 @@ describe("记忆列表稳定分页与类型筛选", () => {
     window.history.pushState({}, "", "/memories?type=CLAIM");
     window.dispatchEvent(new PopStateEvent("popstate"));
     await waitFor(() => expect(new URLSearchParams(window.location.search).get("type")).toBe("CLAIM"));
-    expect(screen.getByLabelText("记忆类型")).toHaveValue("CLAIM");
+    expect(typeTrigger()).toHaveAccessibleName("按记忆类型筛选，当前判断");
   });
 
   it("浏览器 back 到非法 type 时动态回退并清除", async () => {

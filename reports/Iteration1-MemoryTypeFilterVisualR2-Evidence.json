@@ -1,0 +1,83 @@
+{
+  "workOrder": "Task45D",
+  "status": "ITERATION1_MEMORY_TYPE_FILTER_PAPER_MENU_READY_FOR_LOCAL_COMMIT",
+  "visual": {
+    "nativeSelect": 0,
+    "legacyTypeFilter": 0,
+    "sameRowTrigger": "PASS",
+    "paperPopover": "PASS",
+    "selectedIndicator": "PASS",
+    "mouseHeavyRoseFrame": 0,
+    "systemBlue": 0,
+    "newPaletteValues": 0
+  },
+  "pagination": {
+    "firstViewportVisible": "PASS",
+    "fixedFooter": "PASS",
+    "lastPageHidden": "PASS",
+    "scrollAreaSibling": "PASS"
+  },
+  "interaction": {
+    "pointer": "PASS",
+    "keyboard": "PASS",
+    "escapeAndOutsideClose": "PASS",
+    "focusReturn": "PASS",
+    "wireValues": "PASS",
+    "pageReset": "PASS",
+    "existingPagingAndDeletion": "PASS"
+  },
+  "validation": {
+    "nestConsole": {
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "test": "PASS:62",
+      "build": "PASS"
+    },
+    "rootNode": {
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "test": "PASS",
+      "build": "PASS"
+    },
+    "browser": {
+      "status": "PASS:27",
+      "viewports": ["1440x900", "1024x768", "390x844"],
+      "axe": {
+        "serious": 0,
+        "critical": 0,
+        "moderate": 0,
+        "minor": 0
+      },
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "externalRequests": 0
+    },
+    "prototypeSha256": {
+      "indexHtml": "3940E0B43331540A795CE96FB4644BD849A01FB5B31559ADCB4FD6D60B53B260",
+      "stylesCss": "8D9FA48C252393B7CD98466FA41C27ED61E7B03758DDCC7D5BBBEA0D6F7D90FE",
+      "appJs": "4574D4CF15B374CE9261151F6599B9EE60ABB4660CA301C08AEC952F5A361296",
+      "match": "PASS"
+    },
+    "diffCheck": "PASS"
+  },
+  "scope": {
+    "modified": 4,
+    "added": 2,
+    "deleted": 0,
+    "taskPaths": 6,
+    "pathSet": [
+      "apps/nest-console/e2e/paging-typefilter.spec.ts",
+      "apps/nest-console/src/App.tsx",
+      "apps/nest-console/src/app.css",
+      "apps/nest-console/src/test/App.test.tsx",
+      "reports/Iteration1-MemoryTypeFilterVisualR2-Evidence.json",
+      "reports/Iteration1-MemoryTypeFilterVisualR2-执行报告.md"
+    ],
+    "excluded": ["reports/local-v1-read-browser-qa/"],
+    "apiOpenApiGeneratedMcp": "UNCHANGED",
+    "deployment": "NOT_STARTED",
+    "gitWrite": "NO",
+    "staged": 0,
+    "sensitiveContentScan": "PASS"
+  }
+}

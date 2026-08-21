@@ -11,8 +11,7 @@ import {
 // ---------------------------------------------------------------------------
 // 记忆列表稳定分页与类型筛选 —— 真实浏览器纵切（1440 / 1024 / 390）
 //
-// 覆盖 Task45A 新增的两类控件：类型单选下拉（<select>）与“加载更多”整行按钮，
-// 并验证其响应式、键盘/aria 与视觉（axe + 截图）门。
+// 覆盖 Task45D 的纸张类型菜单与固定分页底栏，并验证响应式、键盘/aria 与视觉门。
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 30;
@@ -42,6 +41,22 @@ async function expectNoHorizontalOverflow(page: Page) {
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   );
   expect(overflow).toBe(false);
+}
+
+async function expectPaginationFooterInViewport(page: Page) {
+  const layout = await page.locator(".pagination-footer").evaluate((footer) => {
+    const footerRect = footer.getBoundingClientRect();
+    const listRect = document.querySelector(".memory-list")!.getBoundingClientRect();
+    return {
+      footerTop: footerRect.top,
+      footerBottom: footerRect.bottom,
+      listBottom: listRect.bottom,
+      viewportHeight: window.innerHeight,
+    };
+  });
+  expect(layout.footerTop).toBeGreaterThanOrEqual(0);
+  expect(layout.footerBottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
+  expect(layout.listBottom).toBeLessThanOrEqual(layout.footerTop + 1);
 }
 
 function installPagedApi(page: Page, log: { typeParams: Array<string | null>; cursors: Array<string | null> }) {
@@ -86,40 +101,52 @@ test("type filter + load more vertical flow", async ({ page }, testInfo) => {
 
   await page.goto("/");
 
-  // 1. 首屏 30 条 + “加载更多” + “已加载 30 条”
+  // 1. 首屏 30 条 + 可见的独立底栏 + “已加载 30 条”
   await expect(page.locator(".memory-row")).toHaveCount(30);
   await expect(page.getByRole("button", { name: "加载更多" })).toBeVisible();
   await expect(page.getByText("已加载 30 条")).toBeVisible();
+  await expectPaginationFooterInViewport(page);
+  await expect(page.locator(".memory-list .load-more-button")).toHaveCount(0);
   expect(log.cursors).toEqual([null]);
   await expectNoHorizontalOverflow(page);
 
-  // 2. 类型筛选控件：原生 <select>，可访问标签，且首屏默认不发送 memoryType
-  const typeSelect = page.getByLabel("记忆类型");
-  await expect(typeSelect).toBeVisible();
-  await expect(typeSelect).toHaveRole("combobox");
-  await expect(typeSelect).toHaveValue("ALL");
+  // 2. 纸张菜单：无原生 select，默认不发送 memoryType。
+  const typeTrigger = page.getByRole("button", { name: "按记忆类型筛选，当前全部" });
+  await expect(typeTrigger).toBeVisible();
+  await expect(page.locator("select")).toHaveCount(0);
+  await expect(typeTrigger).toHaveAttribute("aria-expanded", "false");
   expect(log.typeParams[0]).toBeNull();
+  screenshots.push(await captureScreenshot(page, project, "type-filter-closed", 1));
 
-  // 3. 键盘可访问：Tab 可聚焦到下拉，focus-visible 玫瑰描边
-  await page.locator(".search-field input").focus();
-  for (let i = 0; i < 8; i++) {
-    await page.keyboard.press("Tab");
-    if (await typeSelect.evaluate((el) => document.activeElement === el)) break;
-  }
-  await expect(typeSelect).toBeFocused();
-  const focusOutline = await typeSelect.evaluate((el) => getComputedStyle(el).outlineStyle);
+  // 3. 键盘可访问：触发器 ArrowDown 打开，当前项获得焦点，细玫瑰 focus-visible 存在。
+  await typeTrigger.focus();
+  const focusOutline = await typeTrigger.evaluate((el) => getComputedStyle(el).outlineStyle);
   expect(focusOutline).toBe("solid");
+  await page.keyboard.press("ArrowDown");
+  const allOption = page.getByRole("radio", { name: "全部类型" });
+  await expect(allOption).toBeFocused();
+  await expect(allOption).toHaveAttribute("aria-checked", "true");
+  const popover = page.locator(".type-filter-popover");
+  await expect(popover).toBeVisible();
+  const popoverBox = await popover.boundingBox();
+  expect(popoverBox?.width).toBeLessThanOrEqual(156);
+  screenshots.push(await captureScreenshot(page, project, "type-filter-open", 2));
 
-  // 4. 类型筛选发送精确 wire enum；全部类型省略 memoryType
-  await typeSelect.selectOption("CLAIM");
+  // 4. 选择后关闭，发送精确 wire enum；全部类型省略 memoryType。
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("radio", { name: "事件" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("radio", { name: "判断" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(popover).toHaveCount(0);
   await expect(page.getByText(/已加载|共/)).toBeVisible();
   await expect(page.locator(".memory-row")).toHaveCount(6); // 35 项中 CLAIM 有 6 项
   expect(log.typeParams[log.typeParams.length - 1]).toBe("CLAIM");
   await expect(page.getByRole("button", { name: "加载更多" })).not.toBeVisible();
   axeScans.push(await runAxe(page, project, "type-filter", 1));
-  screenshots.push(await captureScreenshot(page, project, "type-filter", 1));
 
-  await typeSelect.selectOption("ALL");
+  await page.getByRole("button", { name: "按记忆类型筛选，当前判断" }).click();
+  await page.getByRole("radio", { name: "全部类型" }).click();
   await expect(page.locator(".memory-row")).toHaveCount(30);
   expect(log.typeParams[log.typeParams.length - 1]).toBeNull();
 
