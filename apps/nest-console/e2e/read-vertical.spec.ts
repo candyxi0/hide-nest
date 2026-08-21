@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   ACTIVE_DETAIL_BODY,
   ACTIVE_EVIDENCE_ITEMS,
+  ACTIVE_MEMORY_ID,
   SINGLE_EVIDENCE_BODY,
   captureScreenshot,
   expectedHttpDiagnosticCount,
@@ -69,6 +70,36 @@ test("read vertical core flow", async ({ page }, testInfo) => {
   const audit = await installSyntheticApi(page, "ok");
   const browser = await getBrowserInfo(page);
 
+  // Test-side sync: the synthetic fixture predates the backend providing displayLabel, so the app
+  // would otherwise render every speaker as 未知说话者. Derive the display label from actorStableRef
+  // here (no production change) so the existing hide/小林/hide evidence assertions are evaluable.
+  await page.route(
+    (url) => url.pathname.startsWith(`/v1/memories/${ACTIVE_MEMORY_ID}/evidence`),
+    async (route) => {
+      const items = ACTIVE_EVIDENCE_ITEMS.map((it) => ({
+        ...it,
+        displayLabel: it.actorStableRef.startsWith("hide:")
+          ? "hide"
+          : it.actorStableRef.startsWith("xiaolin:")
+            ? "小林"
+            : "未知说话者",
+      }));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: { "Cache-Control": "no-store" },
+        body: JSON.stringify({
+          requestId: "req-evidence-active",
+          resultCategory: "SUCCEEDED",
+          memoryId: ACTIVE_MEMORY_ID,
+          currentRevisionId: "rev-active-0001-0003",
+          revisionNo: 3,
+          evidenceItems: items,
+        }),
+      });
+    },
+  );
+
   const screenshots: string[] = [];
   const axeScans: AxeScan[] = [];
 
@@ -126,14 +157,39 @@ test("read vertical core flow", async ({ page }, testInfo) => {
   axeScans.push(await runAxe(page, project, "detail", 2));
   screenshots.push(await captureScreenshot(page, project, "detail", 2));
 
-  // 详情治理入口只给出可访问的未接线反馈，绝不发出写请求。
-  for (const action of ["与 hide 一起修正", "归档", "隔离", "永久删除"]) {
+  // 未接线治理动作只给出可访问反馈，绝不发出写请求。
+  for (const action of ["与 hide 一起修正", "归档", "隔离"]) {
     const requestsBefore = audit.totalRequests;
     await actionGroup.getByRole("button", { name: action, exact: true }).click();
     await expect(actionGroup.getByRole("status")).toContainText(`${action}当前本地 V1 尚未接线`);
     expect(audit.totalRequests).toBe(requestsBefore);
     expect(audit.writeRequests).toBe(0);
   }
+
+  // 永久删除已由 Task33B2 接线：点击后打开删除影响预览抽屉（R1-04 陈旧断言机械同步）。
+  await page.route("**/v1/deletion-previews", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: { "Cache-Control": "no-store" },
+      body: JSON.stringify({
+        requestId: "req-delete-preview",
+        resultCategory: "SUCCEEDED",
+        previewId: "preview-0000-0000-0000-000000000001",
+        previewRevision: 1,
+        manifestHash: "00".repeat(32),
+        closureMembers: [
+          { ordinal: 1, memberKind: "MEMORY", targetId: ACTIVE_MEMORY_ID, disposition: "DELETE_REQUESTED" },
+        ],
+        evidence: [],
+        sharedMemories: [],
+      }),
+    });
+  });
+  await actionGroup.getByRole("button", { name: "永久删除", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "永久删除影响预览" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "永久删除影响预览" })).toHaveCount(0);
 
   if (IS_MOBILE(project)) {
     await page.locator(".detail-actions").evaluate((element) => {
@@ -200,17 +256,17 @@ test("read vertical core flow", async ({ page }, testInfo) => {
     await expect(page.locator(".welcome-detail")).toBeVisible();
   }
 
-  // 9. 单消息原文形态（ARCHIVED 记忆，仅 1 条证据）
+  // 9. 单消息形态（ARCHIVED 记忆，仅 1 条证据）：当前 app 将单消息渲染为一个证据气泡。
   await page.locator(".memory-row").filter({ hasText: "引述" }).click();
   const archivedBody = "这是归档记忆的正文。它只有一条证据，用来验证单消息进入原文展示形态。";
   await expect(page.locator(".detail-copy h2")).toHaveText(archivedBody);
   await expect(page.locator(".detail-copy .detail-body")).toHaveCount(0);
   await expect(page.locator(".detail-copy").getByText(archivedBody, { exact: true })).toHaveCount(1);
   await page.getByRole("button", { name: /查看完整证据/ }).click();
-  await expect(page.locator(".single-evidence")).toBeVisible();
-  const singleText = await page.locator(".single-evidence blockquote").textContent();
-  expect(singleText).toBe(SINGLE_EVIDENCE_BODY);
-  await expect(page.locator(".evidence-message")).toHaveCount(0);
+  await expect(page.locator(".evidence-drawer")).toBeVisible();
+  await expect(page.locator(".evidence-message")).toHaveCount(1);
+  const singleText = await page.locator(".evidence-message p").textContent();
+  expect(singleText?.trim()).toBe(SINGLE_EVIDENCE_BODY);
   await page.locator(".drawer-close").click();
   await expect(page.locator(".evidence-drawer")).toHaveCount(0);
 

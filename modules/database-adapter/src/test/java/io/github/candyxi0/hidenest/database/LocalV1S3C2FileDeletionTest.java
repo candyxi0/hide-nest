@@ -754,7 +754,7 @@ class LocalV1S3C2FileDeletionTest {
         UUID memoryId = mem.memoryId();
 
         // ── BEFORE fences: S2B queries work ─────────────────────────
-        var beforeList = s2b.listMemories(new LocalV1S2BListRequest("ALL", "s2b-chain", 50, 0));
+        var beforeList = s2b.listMemories(new LocalV1S2BListRequest("ALL", "s2b-chain", null, 50, null, null));
         boolean foundBefore = beforeList.items().stream()
                 .anyMatch(item -> item.memoryId().equals(memoryId));
         assertTrue(foundBefore, "S2B list must contain target memory before fences");
@@ -783,7 +783,7 @@ class LocalV1S3C2FileDeletionTest {
         assertEquals("COMPLETED", result.state());
 
         // ── AFTER deletion: S2B list excludes fenced/deleted memory ─
-        var afterList = s2b.listMemories(new LocalV1S2BListRequest("ALL", "s2b-chain", 50, 0));
+        var afterList = s2b.listMemories(new LocalV1S2BListRequest("ALL", "s2b-chain", null, 50, null, null));
         boolean foundAfter = afterList.items().stream()
                 .anyMatch(item -> item.memoryId().equals(memoryId));
         assertFalse(foundAfter, "S2B list must NOT contain target memory after deletion");

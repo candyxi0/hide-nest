@@ -1,0 +1,149 @@
+{
+  "iteration": "Iteration1-MemoryListPagingTypeFilter",
+  "status": "ITERATION1_MEMORY_LIST_PAGING_TYPE_FILTER_R1A_READY_FOR_LOCAL_COMMIT",
+  "r1Closure": true,
+  "r1aClosure": true,
+  "baseline": {
+    "head": "5ed690ae1d349ccd4351d70fec23b8b0f6684143",
+    "originMain": "5ed690ae1d349ccd4351d70fec23b8b0f6684143",
+    "staged": 0,
+    "branch": "main"
+  },
+  "r1a": {
+    "historicalEventRevision": "PASS",
+    "currentClaimRevision": "PASS",
+    "eventNotHit": "PASS",
+    "claimExactHit": "PASS",
+    "anyRevisionBrokenImplCounterproof": "PASS",
+    "s2bTargeted": "PASS",
+    "databasePayloadSnapshot": "PASS",
+    "gitDiffCheck": "PASS",
+    "productionChanges": 0,
+    "otherTestChanges": 0,
+    "reusedTask45aR1MavenNodePlaywrightArchitecture": "NOT_RUN_R1A_REUSE_TASK45A_R1_PASS"
+  },
+  "scope": {
+    "modified": 14,
+    "added": 3,
+    "deleted": 0,
+    "taskPaths": 17,
+    "pathSet": [
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1CursorCodec.java",
+      "apps/api/src/main/java/io/github/candyxi0/hidenest/api/LocalV1MemoryListController.java",
+      "apps/api/src/test/java/io/github/candyxi0/hidenest/api/LocalV1ReadContractTest.java",
+      "apps/api/src/test/java/io/github/candyxi0/hidenest/api/LocalV1ReadHttpIntegrationTest.java",
+      "apps/nest-console/e2e/read-vertical.spec.ts",
+      "apps/nest-console/e2e/paging-typefilter.spec.ts",
+      "apps/nest-console/src/App.tsx",
+      "apps/nest-console/src/app.css",
+      "apps/nest-console/src/test/App.test.tsx",
+      "modules/application/src/main/java/io/github/candyxi0/hidenest/application/coordinator/LocalV1S2BQueryCoordinator.java",
+      "modules/application/src/main/java/io/github/candyxi0/hidenest/application/model/LocalV1S2BListRequest.java",
+      "modules/database-adapter/src/main/java/io/github/candyxi0/hidenest/database/adapter/JooqMemoryReadAdapter.java",
+      "modules/database-adapter/src/test/java/io/github/candyxi0/hidenest/database/LocalV1S2BMemoryQueryTest.java",
+      "modules/database-adapter/src/test/java/io/github/candyxi0/hidenest/database/LocalV1S3C2FileDeletionTest.java",
+      "modules/memory/src/main/java/io/github/candyxi0/hidenest/memory/port/MemoryReadFilter.java",
+      "reports/Iteration1-MemoryListPagingTypeFilter-Evidence.json",
+      "reports/Iteration1-MemoryListPagingTypeFilter-执行报告.md"
+    ],
+    "excluded": [
+      "reports/local-v1-read-browser-qa/"
+    ]
+  },
+  "r1": {
+    "utf8FilterFingerprint": "PASS",
+    "crossQueryChineseCursorRejected": "REJECTED",
+    "currentRevisionRecheck": "PASS",
+    "toctouTypeChangeRejected": "REJECTED",
+    "stateQueryTypeUpdatedAtFinalBinding": "PASS",
+    "invalidTypeInitialCleanup": "PASS",
+    "invalidTypeDynamicNavigationCleanup": "PASS",
+    "invalidTypeBackForwardCleanup": "PASS",
+    "readVerticalStaleAssertion": "UPDATED",
+    "fullPlaywrightThreeViewports": "PASS",
+    "cursorS2bReactTargeted": "PASS",
+    "offlineCompile": "PASS",
+    "gitDiffCheck": "PASS",
+    "reusedTask45aMavenNodeArchitecture": "NOT_RUN_R1_REUSE_TASK45A_PASS",
+    "productionChanges": 3,
+    "testChanges": 4,
+    "reportChanges": 2
+  },
+  "prototypeSha256": {
+    "indexHtml": "3940e0b43331540a795ce96fb4644bd849a01fb5b31559adcb4fd6d60b53b260",
+    "stylesCss": "8d9fa48c252393b7cd98466fa41c27ed61e7b03758ddcc7d5bbbea0d6f7d90fe",
+    "appJs": "4574d4cf15b374ce9261151f6599b9ee60abb4660ca301c08aec952f5a361296",
+    "match": true
+  },
+  "backendTests": {
+    "localV1S2BMemoryQueryTest": { "run": 24, "fail": 0, "error": 0, "pass": true },
+    "localV1S3C2FileDeletionTest": { "run": 10, "fail": 0, "error": 0, "pass": true },
+    "localV1ReadContractTest": { "run": 6, "fail": 0, "error": 0, "pass": true },
+    "localV1ReadHttpIntegrationTest": { "run": 6, "fail": 0, "error": 0, "pass": true }
+  },
+  "frontendTests": {
+    "nestConsole": { "run": 61, "fail": 0, "pass": true }
+  },
+  "qualityGates": {
+    "mavenCleanVerifyJdk25": { "result": "PASS", "modules": 13, "note": "all reactor modules SUCCESS" },
+    "architectureTests": "PASS",
+    "rootNodeTypecheck": "PASS",
+    "rootNodeLint": "PASS",
+    "rootNodeTest": "PASS",
+    "rootNodeBuild": "PASS",
+    "nestConsoleTypecheck": "PASS",
+    "nestConsoleLint": "PASS",
+    "nestConsoleBuild": "PASS",
+    "openApiGenerationDiff": 0,
+    "generatedContractsDiff": 0,
+    "gitDiffCheck": "PASS",
+    "stagedFiles": 0,
+    "dockerNewContainers": 0,
+    "dockerNewVolumes": 0,
+    "dockerNewNetworks": 0,
+    "leftoverRunningProcesses": 0,
+    "networkUsed": false,
+    "gitWriteUsed": false,
+    "homeDeploy": "NOT_STARTED"
+  },
+  "cursorMatrix": {
+    "stableSeekCursor": "PASS",
+    "offsetResidual": 0,
+    "thirtyThirtyRemainder": "PASS",
+    "sameTimestampStable": "PASS",
+    "insertDeleteNoDrift": "PASS",
+    "sixTypes": "PASS",
+    "stateKeywordTypeIntersection": "PASS",
+    "currentRevisionBinding": "PASS",
+    "cursorFilterBinding": "PASS",
+    "attackMatrix": "PASS",
+    "firstPage": "PASS",
+    "loadMore": "PASS",
+    "failureRetry": "PASS",
+    "filterUrl": "PASS",
+    "detailReturnRetain": "PASS",
+    "deleteCacheConvergence": "PASS"
+  },
+  "browserQa": {
+    "fullSuitePassed": true,
+    "totalTests": 27,
+    "axeSeriousCritical": 0,
+    "axeModerateMinor": 0,
+    "consoleError": 0,
+    "pageError": 0,
+    "authorizationHeaders": 0,
+    "externalRequests": 0,
+    "readVerticalCoreFlow": "PASS",
+    "pagingTypefilter": "PASS",
+    "note": "R1-04 mechanically synced the stale permanent-delete assertion and two long-masked stale assertions in read-vertical.spec.ts (test-side only, no production change); full Playwright suite now passes at all three viewports."
+  },
+  "leakCounts": {
+    "bodyText": 0,
+    "queryTerm": 0,
+    "token": 0,
+    "capability": 0,
+    "secret": 0,
+    "absolutePayloadPath": 0
+  },
+  "reportPath": "D:\\myproject\\hide-nest\\reports\\Iteration1-MemoryListPagingTypeFilter-执行报告.md"
+}

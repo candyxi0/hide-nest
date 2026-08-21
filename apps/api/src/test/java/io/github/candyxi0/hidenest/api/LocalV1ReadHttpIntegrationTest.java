@@ -226,11 +226,41 @@ class LocalV1ReadHttpIntegrationTest {
         assertNotEquals(
                 JSON.readTree(pageOne.body()).at("/items/0/memoryId").asText(),
                 JSON.readTree(pageTwo.body()).at("/items/0/memoryId").asText());
+        // Same filter + same cursor replay must be EXACT in items and nextCursor (only requestId differs).
+        Response pageTwoReplay = get("/v1/memories?limit=1&cursor=" + cursor, TOKEN);
+        assertEquals(
+                JSON.readTree(pageTwo.body()).at("/items"),
+                JSON.readTree(pageTwoReplay.body()).at("/items"));
+        assertEquals(
+                JSON.readTree(pageTwo.body()).at("/nextCursor"),
+                JSON.readTree(pageTwoReplay.body()).at("/nextCursor"));
+
+        // A cursor generated under one filter must not be accepted under a different filter.
+        assertProblem(get("/v1/memories?limit=1&state=ACTIVE&cursor=" + cursor, TOKEN),
+                422, "REQUEST_SCHEMA_INVALID");
+        // Tampering/truncation of the opaque cursor is rejected.
+        assertProblem(get("/v1/memories?limit=1&cursor=" + cursor + "A", TOKEN),
+                422, "REQUEST_SCHEMA_INVALID");
+        assertProblem(get("/v1/memories?limit=1&cursor=" + cursor.substring(0, cursor.length() / 2), TOKEN),
+                422, "REQUEST_SCHEMA_INVALID");
+        // The legacy offset cursor is explicitly rejected.
+        String legacyOffset = java.util.Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString("local-v1-offset:50:0000000000000000"
+                        .getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+        assertProblem(get("/v1/memories?limit=1&cursor=" + legacyOffset, TOKEN),
+                422, "REQUEST_SCHEMA_INVALID");
 
         assertProblem(get("/v1/memories?cursor=broken", TOKEN), 422, "REQUEST_SCHEMA_INVALID");
         assertProblem(get("/v1/memories?limit=0", TOKEN), 422, "REQUEST_SCHEMA_INVALID");
         assertProblem(get("/v1/memories?limit=51", TOKEN), 422, "REQUEST_SCHEMA_INVALID");
-        assertProblem(get("/v1/memories?memoryType=CLAIM", TOKEN), 422, "REQUEST_SCHEMA_INVALID");
+        // memoryType is now wired: a formal six-value type returns a 200 list (possibly empty).
+        Response typed = get("/v1/memories?memoryType=CLAIM", TOKEN);
+        assertEquals(200, typed.status());
+        assertTrue(JSON.readTree(typed.body()).has("items"));
+        assertProblem(get("/v1/memories?memoryType=", TOKEN), 422, "REQUEST_SCHEMA_INVALID");
+        assertProblem(get("/v1/memories?memoryType=bogus", TOKEN), 422, "REQUEST_SCHEMA_INVALID");
+        assertProblem(get("/v1/memories?memoryType=claim", TOKEN), 422, "REQUEST_SCHEMA_INVALID");
         assertProblem(get("/v1/memories?perspectiveActorId=" + UUID.randomUUID(), TOKEN),
                 422, "REQUEST_SCHEMA_INVALID");
         assertProblem(get("/v1/memories?sourceAvailability=AVAILABLE", TOKEN),

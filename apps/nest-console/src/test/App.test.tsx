@@ -12,6 +12,12 @@ const revisionId = "22222222-2222-4222-8222-222222222222";
 const bodyText = "暖灰的规范正文\n第二行仍属于当前版本。";
 const evidenceBodies = ["hide 的必要证据", "小林的必要证据", "未知参与者的必要证据"];
 
+// The list query is an infinite query; its cache holds { pages, pageParams }.
+type ListCache = {
+  pages: Array<{ items: Array<{ memoryId: string }> }>;
+  pageParams: unknown[];
+};
+
 const listResponse = {
   requestId: "018f3f00-0000-7000-8000-000000000001",
   resultCategory: "SUCCEEDED",
@@ -918,11 +924,13 @@ describe("永久删除原型接线", () => {
     expect(feedback.closest("[aria-live=polite]")).not.toBeNull();
 
     // While the refetch is still held open, the deleted row is already gone from cache and DOM.
-    const listEntries = client.getQueriesData<{ items: Array<{ memoryId: string }> }>({ queryKey: ["local-v1-memories"] });
+    const listEntries = client.getQueriesData<ListCache>({ queryKey: ["local-v1-memories"] });
     expect(listEntries.length).toBeGreaterThan(0);
     for (const [, data] of listEntries) {
-      if (data?.items) {
-        expect(data.items.map((item) => item.memoryId)).not.toContain(memoryId);
+      if (data && Array.isArray(data.pages)) {
+        for (const page of data.pages) {
+          expect(page.items.map((item) => item.memoryId)).not.toContain(memoryId);
+        }
       }
     }
     expect(screen.queryByRole("button", { name: /暖灰的规范正文/ })).not.toBeInTheDocument();
@@ -970,8 +978,8 @@ describe("永久删除原型接线", () => {
     expect(screen.queryByText("已永久删除 1 条记忆。")).not.toBeInTheDocument();
     expect(window.location.pathname).toContain(memoryId);
     expect(client.getQueryData(["local-v1-memory", memoryId])).toBeDefined();
-    const listData = client.getQueryData<{ items: Array<{ memoryId: string }> }>(["local-v1-memories", "", "ALL"]);
-    expect(listData?.items.map((item) => item.memoryId)).toContain(memoryId);
+    const listData = client.getQueryData<ListCache>(["local-v1-memories", "", "ALL", "ALL"]);
+    expect(listData?.pages.flatMap((page) => page.items.map((item) => item.memoryId))).toContain(memoryId);
   });
 
   it("轮询超时不清场：无成功反馈、无缓存移除、无导航", async () => {
@@ -984,8 +992,8 @@ describe("永久删除原型接线", () => {
     expect(screen.queryByText("已永久删除 1 条记忆。")).not.toBeInTheDocument();
     expect(window.location.pathname).toContain(memoryId);
     expect(client.getQueryData(["local-v1-memory", memoryId])).toBeDefined();
-    const listData = client.getQueryData<{ items: Array<{ memoryId: string }> }>(["local-v1-memories", "", "ALL"]);
-    expect(listData?.items.map((item) => item.memoryId)).toContain(memoryId);
+    const listData = client.getQueryData<ListCache>(["local-v1-memories", "", "ALL", "ALL"]);
+    expect(listData?.pages.flatMap((page) => page.items.map((item) => item.memoryId))).toContain(memoryId);
   }, 15000);
 
   it("一次性反馈：重新选择其他记忆或普通 refetch 不重复，且不写持久存储", async () => {
@@ -1034,5 +1042,241 @@ describe("永久删除原型接线", () => {
     expect(setItem).not.toHaveBeenCalled();
     expect("indexedDB" in window).toBe(false);
     setItem.mockRestore();
+  });
+});
+
+describe("记忆列表稳定分页与类型筛选", () => {
+  function item(id: string, title: string, type = "EVENT") {
+    return {
+      memoryId: id,
+      currentRevisionId: revisionId,
+      revisionNo: 1,
+      state: "ACTIVE",
+      isolated: false,
+      memoryType: type,
+      perspective: "xiaolin:33333333-3333-4333-8333-333333333333",
+      title,
+      summary: `${title} 的摘要`,
+      sourceAvailability: "AVAILABLE",
+      uncertaintyCode: "CONFIRMED",
+      updatedAt: "2026-08-12T09:00:00Z",
+    } as const;
+  }
+
+  it("首屏只请求 limit=30 且不带 cursor，收到 nextCursor 后显示加载更多", async () => {
+    const requests: Array<{ cursor: string | null; limit: number | null }> = [];
+    server.use(http.get("*/v1/memories", ({ request }) => {
+      const url = new URL(request.url);
+      requests.push({
+        cursor: url.searchParams.get("cursor"),
+        limit: url.searchParams.get("limit") === null ? null : Number(url.searchParams.get("limit")),
+      });
+      return HttpResponse.json({ ...listResponse, items: [item("id-1", "暖灰的规范正文")], nextCursor: "cursor-1" });
+    }));
+    render(<App client={queryClientFactory()} />);
+    expect(await screen.findByRole("button", { name: "加载更多" })).toBeVisible();
+    expect(requests[0]).toEqual({ cursor: null, limit: 30 });
+    expect(screen.getByText("已加载 1 条")).toBeVisible();
+  });
+
+  it("连续加载 30+30+10，cursor 逐字传递，末页按钮消失且显示共 N 条", async () => {
+    const all = Array.from({ length: 70 }, (_, i) => item(`id-${i + 1}`, `分页记忆 ${i + 1}`));
+    let calls = 0;
+    const cursors: Array<string | null> = [];
+    server.use(http.get("*/v1/memories", ({ request }) => {
+      const url = new URL(request.url);
+      cursors.push(url.searchParams.get("cursor"));
+      const start = calls * 30;
+      const items = all.slice(start, start + 30);
+      calls += 1;
+      const nextCursor = start + 30 < all.length ? `cursor-${calls}` : undefined;
+      return HttpResponse.json({ ...listResponse, items, ...(nextCursor ? { nextCursor } : {}) });
+    }));
+    const user = userEvent.setup();
+    render(<App client={queryClientFactory()} />);
+    await screen.findByRole("button", { name: "加载更多" });
+    await user.click(screen.getByRole("button", { name: "加载更多" }));
+    await screen.findByText("已加载 60 条");
+    await user.click(screen.getByRole("button", { name: "加载更多" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "加载更多" })).not.toBeInTheDocument());
+    expect(cursors).toEqual([null, "cursor-1", "cursor-2"]);
+    expect(screen.getAllByRole("button", { name: /分页记忆/ })).toHaveLength(70);
+    expect(screen.getByText("共 70 条")).toBeVisible();
+  });
+
+  it("双击加载更多只产生一个在途下一页请求", async () => {
+    let pageCalls = 0;
+    server.use(http.get("*/v1/memories", async ({ request }) => {
+      const url = new URL(request.url);
+      if (url.searchParams.get("cursor")) {
+        pageCalls += 1;
+        await new Promise((resolve) => setTimeout(resolve, 60));
+        return HttpResponse.json({ ...listResponse, items: [item("id-2", "第二页")], nextCursor: undefined });
+      }
+      return HttpResponse.json({ ...listResponse, items: [item("id-1", "暖灰的规范正文")], nextCursor: "cursor-1" });
+    }));
+    const user = userEvent.setup();
+    render(<App client={queryClientFactory()} />);
+    await user.dblClick(await screen.findByRole("button", { name: "加载更多" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "加载更多" })).not.toBeInTheDocument());
+    expect(pageCalls).toBe(1);
+  });
+
+  it("下一页失败保留首屏 30 条，重试只重试下一页并成功追加", async () => {
+    let pageCalls = 0;
+    server.use(http.get("*/v1/memories", ({ request }) => {
+      const url = new URL(request.url);
+      if (!url.searchParams.get("cursor")) {
+        return HttpResponse.json({ ...listResponse, items: [item("id-1", "暖灰的规范正文")], nextCursor: "cursor-1" });
+      }
+      pageCalls += 1;
+      if (pageCalls === 1) return new HttpResponse(null, { status: 503 });
+      return HttpResponse.json({ ...listResponse, items: [item("id-2", "第二页记忆"), item("id-3", "第三页记忆")], nextCursor: undefined });
+    }));
+    const user = userEvent.setup();
+    render(<App client={queryClientFactory()} />);
+    await user.click(await screen.findByRole("button", { name: "加载更多" }));
+    const retry = await screen.findByRole("button", { name: "加载更多失败，请重试" });
+    expect(screen.getByRole("button", { name: /暖灰的规范正文/ })).toBeVisible();
+    await user.click(retry);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "加载更多失败，请重试" })).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /第二页记忆/ })).toBeVisible();
+    expect(screen.getByRole("button", { name: /第三页记忆/ })).toBeVisible();
+  });
+
+  it("类型筛选发送精确 wire enum，全部类型省略 memoryType 参数", async () => {
+    const paramsList: Array<URLSearchParams> = [];
+    server.use(http.get("*/v1/memories", ({ request }) => {
+      paramsList.push(new URL(request.url).searchParams);
+      return HttpResponse.json({ ...listResponse, items: [], nextCursor: undefined });
+    }));
+    const user = userEvent.setup();
+    render(<App client={queryClientFactory()} />);
+    await screen.findByText("共 0 条");
+    const select = screen.getByLabelText("记忆类型");
+    await user.selectOptions(select, "EVENT");
+    await waitFor(() => expect(paramsList[paramsList.length - 1].get("memoryType")).toBe("EVENT"));
+    await user.selectOptions(select, "ALL");
+    await waitFor(() => expect(paramsList[paramsList.length - 1].get("memoryType")).toBeNull());
+  });
+
+  it("切换类型重置为第一页并把 type 写入 URL；非法 URL type 回退全部并清除", async () => {
+    window.history.replaceState({}, "", "/memories");
+    let calls = 0;
+    server.use(http.get("*/v1/memories", ({ request }) => {
+      const url = new URL(request.url);
+      calls += 1;
+      const cursor = url.searchParams.get("cursor");
+      return HttpResponse.json({
+        ...listResponse,
+        items: [item("id-1", cursor ? "第二页记忆" : "暖灰的规范正文")],
+        nextCursor: cursor ? undefined : "cursor-1",
+      });
+    }));
+    const user = userEvent.setup();
+    render(<App client={queryClientFactory()} />);
+    await screen.findByRole("button", { name: "加载更多" });
+    const before = calls;
+    await user.selectOptions(screen.getByLabelText("记忆类型"), "CLAIM");
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("type")).toBe("CLAIM"));
+    expect(calls).toBeGreaterThan(before);
+    expect(screen.getByRole("button", { name: /暖灰的规范正文/ })).toBeVisible();
+  });
+
+  it("非法 URL type 回退全部类型并从 URL 清除，不向 API 发送非法值", async () => {
+    window.history.replaceState({}, "", "/memories?type=EVIL");
+    const sent: Array<string | null> = [];
+    server.use(http.get("*/v1/memories", ({ request }) => {
+      sent.push(new URL(request.url).searchParams.get("memoryType"));
+      return HttpResponse.json({ ...listResponse, items: [item("id-1", "暖灰的规范正文")], nextCursor: undefined });
+    }));
+    render(<App client={queryClientFactory()} />);
+    await screen.findByText("共 1 条");
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("type")).toBeNull());
+    expect(sent.every((value) => value === null)).toBe(true);
+    expect(screen.getByLabelText("记忆类型")).toHaveValue("ALL");
+  });
+
+  it("挂载后导航到非法 type 时动态回退并清除，合法 type 保留", async () => {
+    window.history.replaceState({}, "", "/memories");
+    const sent: Array<string | null> = [];
+    server.use(http.get("*/v1/memories", ({ request }) => {
+      sent.push(new URL(request.url).searchParams.get("memoryType"));
+      return HttpResponse.json({ ...listResponse, items: [item("id-1", "暖灰的规范正文")], nextCursor: undefined });
+    }));
+    render(<App client={queryClientFactory()} />);
+    await screen.findByText("共 1 条");
+
+    // A navigation (pushState + popstate) into an invalid type must be cleared dynamically.
+    window.history.pushState({}, "", "/memories?type=EVIL");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("type")).toBeNull());
+    expect(sent.every((value) => value === null)).toBe(true);
+
+    // A subsequent valid type is preserved, not cleared.
+    window.history.pushState({}, "", "/memories?type=CLAIM");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("type")).toBe("CLAIM"));
+    expect(screen.getByLabelText("记忆类型")).toHaveValue("CLAIM");
+  });
+
+  it("浏览器 back 到非法 type 时动态回退并清除", async () => {
+    window.history.replaceState({}, "", "/memories?type=CLAIM");
+    const sent: Array<string | null> = [];
+    server.use(http.get("*/v1/memories", ({ request }) => {
+      sent.push(new URL(request.url).searchParams.get("memoryType"));
+      return HttpResponse.json({ ...listResponse, items: [item("id-1", "暖灰的规范正文")], nextCursor: undefined });
+    }));
+    render(<App client={queryClientFactory()} />);
+    await screen.findByText("共 1 条");
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("type")).toBe("CLAIM"));
+
+    // Navigate away to a valid URL, then back (popstate) into the CLAIM entry — must stay valid.
+    window.history.pushState({}, "", "/memories");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("type")).toBeNull());
+    window.history.back();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("type")).toBe("CLAIM"));
+  });
+
+  it("删除已加载页中的项目立即从所有页缓存移除且反馈只出现一次", async () => {
+    let deleted = false;
+    server.use(
+      http.post("*/v1/deletion-previews/:id/confirm", () => {
+        deleted = true;
+        return HttpResponse.json(confirmResponse, { status: 202 });
+      }),
+      http.get("*/v1/deletion-runs/:runId", () => HttpResponse.json(runResponse)),
+      http.get("*/v1/memories", ({ request }) => {
+        const url = new URL(request.url);
+        if (!url.searchParams.get("cursor")) {
+          const items = deleted
+            ? [item("id-x", "第二记忆")]
+            : [item(memoryId, "暖灰的规范正文"), item("id-x", "第二记忆")];
+          return HttpResponse.json({ ...listResponse, items, nextCursor: "cursor-1" });
+        }
+        return HttpResponse.json({ ...listResponse, items: [item("id-y", "第三记忆")], nextCursor: undefined });
+      }),
+    );
+    const user = userEvent.setup();
+    render(<App client={queryClientFactory()} />);
+    await user.click(await screen.findByRole("button", { name: "加载更多" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "加载更多" })).not.toBeInTheDocument());
+    // Open the detail of the page-1 item (global memoryId) and delete it.
+    await user.click(screen.getByRole("button", { name: /暖灰的规范正文/ }));
+    await screen.findByText((content, element) =>
+      element?.classList.contains("detail-body") === true && content.includes("第二行仍属于当前版本。"));
+    await user.click(screen.getByRole("button", { name: "永久删除" }));
+    const dialog = await screen.findByRole("dialog", { name: "永久删除影响预览" });
+    await user.click(await within(dialog).findByRole("button", { name: "永久删除这 1 条记忆" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByText("已永久删除 1 条记忆。")).toBeVisible();
+    expect(screen.getAllByText("已永久删除 1 条记忆。")).toHaveLength(1);
+    // Removed everywhere immediately (not just the page it was on); siblings on other pages survive.
+    expect(screen.queryByRole("button", { name: /暖灰的规范正文/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /第二记忆/ })).toBeVisible();
+    expect(screen.getByRole("button", { name: /第三记忆/ })).toBeVisible();
   });
 });

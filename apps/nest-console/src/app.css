@@ -76,6 +76,13 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .filter-row { display: flex; gap: 4px; margin-top: 14px; }
 .filter-chip { min-height: 36px; padding: 5px 11px; border: 1px solid transparent; border-radius: 99px; background: transparent; color: var(--ink-soft); cursor: pointer; }
 .filter-chip.active { border-color: var(--rule-strong); background: var(--paper-light); color: var(--ink); }
+.type-filter-row { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 2px; margin-top: 6px; border-bottom: 1px solid var(--rule-strong); background: transparent; }
+.type-filter-label { flex: 0 0 auto; color: var(--ink-faint); font: 500 10px/1 var(--font-mono); letter-spacing: .08em; }
+.type-filter-select { flex: 1 1 auto; min-height: 32px; border: 0; background: transparent; color: var(--ink-soft); font: 13px var(--font-body); cursor: pointer; appearance: none; -webkit-appearance: none; padding: 0 26px 0 2px; background-image: linear-gradient(45deg, transparent 50%, var(--ink-faint) 50%), linear-gradient(135deg, var(--ink-faint) 50%, transparent 50%); background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+.type-filter-select:focus-visible { outline: 2px solid var(--rose); outline-offset: 3px; }
+.load-more-button { display: block; width: 100%; min-height: 44px; padding: 8px 12px; border: 0; border-top: 1px solid var(--rule); background: var(--paper); color: var(--ink-soft); font: 13px var(--font-body); cursor: pointer; text-align: center; }
+.load-more-button:hover { color: var(--rose-deep); }
+.load-more-button:disabled { color: var(--ink-faint); cursor: default; }
 .index-meta { display: flex; justify-content: space-between; align-items: center; min-height: 38px; padding: 0 20px; border-block: 1px solid var(--rule); color: var(--ink-faint); font: 10px var(--font-mono); }
 .delete-feedback-banner { margin: 0; padding: 12px 20px; border-bottom: 1px solid var(--rule); background: var(--sage-wash); color: var(--sage); font-size: 13px; font-weight: 600; }
 .memory-list { height: calc(100vh - 106px - 159px); overflow: auto; }

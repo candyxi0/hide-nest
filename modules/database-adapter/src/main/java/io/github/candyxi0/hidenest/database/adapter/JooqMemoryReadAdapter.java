@@ -45,15 +45,22 @@ public class JooqMemoryReadAdapter implements MemoryReadPort {
             where = where.and(MEMORY_RECORD.STATE.eq(filter.state()));
         }
 
-        if (filter.keyword() != null && !filter.keyword().isEmpty()) {
-            String pattern = "%" + escapeLike(filter.keyword().toLowerCase(java.util.Locale.ROOT)) + "%";
-            where = where.and(DSL.exists(
-                    dsl.selectOne()
-                            .from(MEMORY_REVISION)
-                            .where(MEMORY_REVISION.MEMORY_REVISION_ID.eq(
-                                    MEMORY_RECORD.CURRENT_REVISION_ID))
-                            .and(MEMORY_REVISION.MEMORY_ID.eq(MEMORY_RECORD.MEMORY_ID))
-                            .and(DSL.lower(MEMORY_REVISION.BODY_TEXT).like(pattern, LIKE_ESCAPE))));
+        boolean hasKeyword = filter.keyword() != null && !filter.keyword().isEmpty();
+        boolean hasType = filter.memoryType() != null;
+        if (hasKeyword || hasType) {
+            // Keyword and memoryType are judged against the SAME current revision of the memory, so
+            // they can never match different revisions of the same memory.
+            Condition current = MEMORY_REVISION.MEMORY_REVISION_ID.eq(MEMORY_RECORD.CURRENT_REVISION_ID)
+                    .and(MEMORY_REVISION.MEMORY_ID.eq(MEMORY_RECORD.MEMORY_ID));
+            if (hasKeyword) {
+                String pattern =
+                        "%" + escapeLike(filter.keyword().toLowerCase(java.util.Locale.ROOT)) + "%";
+                current = current.and(DSL.lower(MEMORY_REVISION.BODY_TEXT).like(pattern, LIKE_ESCAPE));
+            }
+            if (hasType) {
+                current = current.and(MEMORY_REVISION.MEMORY_TYPE.eq(filter.memoryType()));
+            }
+            where = where.and(DSL.exists(dsl.selectOne().from(MEMORY_REVISION).where(current)));
         } else {
             // A current pointer must bind to a revision owned by the same memory.
             where = where.and(DSL.exists(
@@ -64,11 +71,16 @@ public class JooqMemoryReadAdapter implements MemoryReadPort {
                             .and(MEMORY_REVISION.MEMORY_ID.eq(MEMORY_RECORD.MEMORY_ID))));
         }
 
+        if (filter.afterUpdatedAt() != null && filter.afterMemoryId() != null) {
+            where = where.and(MEMORY_RECORD.UPDATED_AT.lt(filter.afterUpdatedAt())
+                    .or(MEMORY_RECORD.UPDATED_AT.eq(filter.afterUpdatedAt())
+                            .and(MEMORY_RECORD.MEMORY_ID.gt(filter.afterMemoryId()))));
+        }
+
         var records = dsl.selectFrom(MEMORY_RECORD)
                 .where(where)
                 .orderBy(MEMORY_RECORD.UPDATED_AT.desc(), MEMORY_RECORD.MEMORY_ID.asc())
                 .limit(filter.limit())
-                .offset(filter.offset())
                 .fetch();
 
         List<MemoryRecord> result = new ArrayList<>(records.size());
@@ -153,6 +165,9 @@ public class JooqMemoryReadAdapter implements MemoryReadPort {
                 row.getDisplayLabel(), row.getCreatedAt());
     }
 
+    private static final java.util.Set<String> MEMORY_TYPES = java.util.Set.of(
+            "Event", "Claim", "Quote", "Interpretation", "Calibration", "Principle");
+
     private static void validateFilter(MemoryReadFilter filter) {
         if (!("ALL".equals(filter.state())
                 || "ACTIVE".equals(filter.state())
@@ -160,16 +175,18 @@ public class JooqMemoryReadAdapter implements MemoryReadPort {
             throw new IllegalArgumentException("unsupported memory state");
         }
         if (filter.keyword() == null
-                || filter.keyword().codePoints().count() <= 100) {
-            if (filter.limit() < 1 || filter.limit() > 50) {
-                throw new IllegalArgumentException("limit out of range");
-            }
-            if (filter.offset() < 0) {
-                throw new IllegalArgumentException("offset out of range");
-            }
-            return;
+                || filter.keyword().codePoints().count() > 100) {
+            throw new IllegalArgumentException("keyword too long or null");
         }
-        throw new IllegalArgumentException("keyword too long");
+        if (filter.limit() < 1 || filter.limit() > 50) {
+            throw new IllegalArgumentException("limit out of range");
+        }
+        if (filter.memoryType() != null && !MEMORY_TYPES.contains(filter.memoryType())) {
+            throw new IllegalArgumentException("unsupported memory type");
+        }
+        if ((filter.afterUpdatedAt() == null) != (filter.afterMemoryId() == null)) {
+            throw new IllegalArgumentException("after pair must be both or neither");
+        }
     }
 
     private static String escapeLike(String value) {

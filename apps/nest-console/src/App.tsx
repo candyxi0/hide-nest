@@ -11,10 +11,14 @@ import {
   type MemoryDetail,
   type MemoryEvidenceResponse,
   type MemoryListItem,
+  type MemoryListResponse,
+  type MemoryType,
 } from "@hide-nest/api-client-ts";
 import {
+  type InfiniteData,
   QueryClient,
   QueryClientProvider,
+  useInfiniteQuery,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -50,6 +54,15 @@ const memoryTypeLabels: Record<string, string> = {
   CALIBRATION: "校准",
   PRINCIPLE: "原则",
 };
+
+const MEMORY_TYPE_VALUES = new Set<string>([
+  "EVENT",
+  "CLAIM",
+  "QUOTE",
+  "INTERPRETATION",
+  "CALIBRATION",
+  "PRINCIPLE",
+]);
 
 function classifyError(error: unknown): ReadProblem {
   if (error instanceof FetchError || error instanceof TypeError) return "offline";
@@ -233,6 +246,8 @@ function MemoryArchive() {
   const initialState = searchParams.get("state");
   const [query, setQuery] = useState(initialQuery);
   const filter: MemoryFilter = initialState === "ACTIVE" || initialState === "ARCHIVED" ? initialState : "ALL";
+  const rawType = searchParams.get("type") ?? "ALL";
+  const typeFilter = MEMORY_TYPE_VALUES.has(rawType) ? rawType : "ALL";
   const debouncedQuery = useDebouncedValue(query);
   const queryClient = useQueryClient();
   // Transient, in-memory success feedback for a completed permanent deletion. Held in this
@@ -248,19 +263,57 @@ function MemoryArchive() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery, setSearchParams]);
 
-  const listQuery = useQuery({
-    queryKey: [LIST_KEY, debouncedQuery.trim(), filter],
-    queryFn: () => api.listMemories({
+  // A malformed URL `type` falls back to all types and is cleared from the URL, never sent to the API.
+  // It must re-evaluate on every raw `type` change (initial load, navigation, and browser
+  // back/forward), but a valid type or ALL never triggers an extra replace.
+  useEffect(() => {
+    const current = searchParams.get("type");
+    if (current !== null && !MEMORY_TYPE_VALUES.has(current)) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("type");
+      setSearchParams(next, { replace: true });
+    }
+    // searchParams is deliberately omitted: this effect reacts only to the raw `type` value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.get("type"), setSearchParams]);
+
+  const listQuery = useInfiniteQuery({
+    queryKey: [LIST_KEY, debouncedQuery.trim(), filter, typeFilter],
+    queryFn: ({ pageParam }) => api.listMemories({
       query: debouncedQuery.trim() || undefined,
       state: filter === "ALL" ? undefined : MemoryState[filter === "ACTIVE" ? "Active" : "Archived"],
+      memoryType: typeFilter === "ALL" ? undefined : (typeFilter as MemoryType),
       limit: 30,
+      cursor: pageParam,
     }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
+
+  // Flatten all loaded pages; defensively dedupe by memoryId (the normal chain is already distinct).
+  const flatItems = useMemo(() => {
+    const seen = new Set<string>();
+    const out: MemoryListItem[] = [];
+    for (const item of listQuery.data?.pages.flatMap((page) => page.items) ?? []) {
+      if (!seen.has(item.memoryId)) {
+        seen.add(item.memoryId);
+        out.push(item);
+      }
+    }
+    return out;
+  }, [listQuery.data]);
 
   const selectFilter = (nextFilter: MemoryFilter) => {
     const next = new URLSearchParams(searchParams);
     if (nextFilter === "ALL") next.delete("state");
     else next.set("state", nextFilter);
+    setSearchParams(next, { replace: true });
+  };
+
+  const selectType = (nextType: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (nextType === "ALL") next.delete("type");
+    else next.set("type", nextType);
     setSearchParams(next, { replace: true });
   };
 
@@ -278,12 +331,15 @@ function MemoryArchive() {
   const handleDeletionSucceeded = (deletedMemoryId: string) => {
     queryClient.removeQueries({ queryKey: [DETAIL_KEY, deletedMemoryId] });
     queryClient.removeQueries({ queryKey: [EVIDENCE_KEY, deletedMemoryId] });
-    queryClient.setQueriesData<{ items: MemoryListItem[] }>(
+    queryClient.setQueriesData<InfiniteData<MemoryListResponse>>(
       { queryKey: [LIST_KEY] },
       (data) => {
-        if (!data || !Array.isArray(data.items)) return data;
-        const nextItems = data.items.filter((item) => item.memoryId !== deletedMemoryId);
-        return nextItems.length === data.items.length ? data : { ...data, items: nextItems };
+        if (!data || !Array.isArray(data.pages)) return data;
+        const pages = data.pages.map((page) => {
+          const nextItems = page.items.filter((item) => item.memoryId !== deletedMemoryId);
+          return nextItems.length === page.items.length ? page : { ...page, items: nextItems };
+        });
+        return { ...data, pages };
       },
     );
     setDeleteFeedback({ memoryId: deletedMemoryId, text: "已永久删除 1 条记忆。" });
@@ -319,9 +375,29 @@ function MemoryArchive() {
               </button>
             ))}
           </div>
+          <div className="type-filter-row">
+            <label className="type-filter-label" htmlFor="memory-type-select">记忆类型</label>
+            <select
+              id="memory-type-select"
+              className="type-filter-select"
+              value={typeFilter}
+              onChange={(event) => selectType(event.target.value)}
+            >
+              <option value="ALL">全部类型</option>
+              {(Object.keys(memoryTypeLabels) as MemoryType[]).map((type) => (
+                <option key={type} value={type}>{memoryTypeLabels[type]}</option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="index-meta" aria-live="polite">
-          <span>{listQuery.data ? `${listQuery.data.items.length} 条档案` : "读取中"}</span>
+          <span>
+            {listQuery.data
+              ? listQuery.hasNextPage
+                ? `已加载 ${flatItems.length} 条`
+                : `共 ${flatItems.length} 条`
+              : "读取中"}
+          </span>
           <span>最近变化</span>
         </div>
         {deleteFeedback && (
@@ -329,9 +405,19 @@ function MemoryArchive() {
         )}
         <ListResult
           query={debouncedQuery.trim()}
+          filterActive={debouncedQuery.trim() !== "" || filter !== "ALL" || typeFilter !== "ALL"}
           selectedId={memoryId}
-          result={listQuery}
+          items={flatItems}
+          isPending={listQuery.isPending}
+          isInitialError={
+            listQuery.isError && (listQuery.data == null || !listQuery.isFetchNextPageError)
+          }
+          error={listQuery.error}
+          hasNextPage={listQuery.hasNextPage}
+          isFetchingNextPage={listQuery.isFetchingNextPage}
+          nextPageError={listQuery.isFetchNextPageError}
           onSelect={selectMemory}
+          onLoadMore={() => void listQuery.fetchNextPage()}
         />
       </section>
       <article className="memory-detail" aria-live="polite">
@@ -349,32 +435,52 @@ function MemoryArchive() {
   );
 }
 
-type ListQuery = ReturnType<typeof useQuery<{ items: MemoryListItem[] }>>;
-
 function ListResult({
   query,
+  filterActive,
   selectedId,
-  result,
+  items,
+  isPending,
+  isInitialError,
+  error,
+  hasNextPage,
+  isFetchingNextPage,
+  nextPageError,
   onSelect,
+  onLoadMore,
 }: {
   query: string;
+  filterActive: boolean;
   selectedId?: string;
-  result: ListQuery;
+  items: MemoryListItem[];
+  isPending: boolean;
+  isInitialError: boolean;
+  error: unknown;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  nextPageError: boolean;
   onSelect: (id: string) => void;
+  onLoadMore: () => void;
 }) {
-  if (result.isPending) return <LoadingState scope="列表" />;
-  if (result.isError) return <ProblemPanel problem={classifyError(result.error)} />;
-  if (!result.data.items.length) {
-    return (
-      <StatePanel
-        title={query ? "当前搜索没有匹配" : "这里还没有档案"}
-        copy={query ? "档案没有消失；换一个短查询词再试试。" : "完成一次受控确认后，规范记忆才会出现在这里。"}
-      />
-    );
+  if (isPending) return <LoadingState scope="列表" />;
+  if (isInitialError) return <ProblemPanel problem={classifyError(error)} />;
+  if (!items.length) {
+    const emptyTitle = query
+      ? "当前搜索没有匹配"
+      : filterActive
+        ? "当前筛选没有匹配"
+        : "这里还没有档案";
+    const emptyCopy = query
+      ? "档案没有消失；换一个短查询词再试试。"
+      : filterActive
+        ? "档案没有消失；换一个更短的搜索词或调整状态、类型再试试。"
+        : "完成一次受控确认后，规范记忆才会出现在这里。";
+    return <StatePanel title={emptyTitle} copy={emptyCopy} />;
   }
+  const showLoadMore = nextPageError || hasNextPage;
   return (
     <div className="memory-list">
-      {result.data.items.map((item) => (
+      {items.map((item) => (
         <button
           className={item.memoryId === selectedId ? "memory-row selected" : "memory-row"}
           type="button"
@@ -391,6 +497,16 @@ function ListResult({
           <div className="row-footer"><span>第 {item.revisionNo} 版</span><time>{formatDate(item.updatedAt)}</time></div>
         </button>
       ))}
+      {showLoadMore && (
+        <button
+          type="button"
+          className="load-more-button"
+          onClick={onLoadMore}
+          disabled={isFetchingNextPage}
+        >
+          {nextPageError ? "加载更多失败，请重试" : isFetchingNextPage ? "正在加载…" : "加载更多"}
+        </button>
+      )}
     </div>
   );
 }

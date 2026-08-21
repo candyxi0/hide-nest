@@ -2,6 +2,7 @@ package io.github.candyxi0.hidenest.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -70,11 +71,63 @@ class LocalV1ReadContractTest {
 
     @Test
     void cursorIsCanonicalOpaqueAndTamperEvident() {
-        String cursor = LocalV1CursorCodec.encode(50);
-        assertEquals(50, LocalV1CursorCodec.decode(cursor));
-        assertFalse(cursor.contains("50"));
-        assertThrows(IllegalArgumentException.class, () -> LocalV1CursorCodec.decode(cursor + "x"));
-        assertThrows(IllegalArgumentException.class, () -> LocalV1CursorCodec.decode("MA"));
+        long micros = 1_700_000_000_000_000L;
+        java.util.UUID memoryId = java.util.UUID.randomUUID();
+        String canonical = LocalV1CursorCodec.encodeFilterCanonical("ALL", "keyword", "CLAIM");
+        String cursor = LocalV1CursorCodec.encode(micros, memoryId, canonical);
+
+        // Round-trip decode returns the exact seek position.
+        LocalV1CursorCodec.Decoded decoded = LocalV1CursorCodec.decode(cursor, canonical);
+        assertEquals(micros, decoded.lastUpdatedAtMicros());
+        assertEquals(memoryId, decoded.lastMemoryId());
+        // Re-encoding the decoded cursor yields the identical canonical token.
+        assertEquals(
+                cursor,
+                LocalV1CursorCodec.encode(decoded.lastUpdatedAtMicros(), decoded.lastMemoryId(), canonical));
+
+        // Opaque: no plaintext version/uuid/timestamp leaks into the token.
+        assertFalse(cursor.contains("local-v1-memory-seek-v1"));
+        assertFalse(cursor.contains(memoryId.toString()));
+
+        // Tamper-evident: mutation, truncation, a mismatched filter and non-canonical input all fail.
+        assertThrows(IllegalArgumentException.class, () -> LocalV1CursorCodec.decode(cursor + "x", canonical));
+        assertThrows(IllegalArgumentException.class, () -> LocalV1CursorCodec.decode("MA", canonical));
+        assertThrows(IllegalArgumentException.class, () -> LocalV1CursorCodec.decode(cursor, "different-filter"));
+        assertThrows(IllegalArgumentException.class,
+                () -> LocalV1CursorCodec.decode(cursor.substring(0, cursor.length() / 2), canonical));
+    }
+
+    @Test
+    void chineseAndEmojiFilterFingerprintsAreUtf8Distinct() {
+        // US_ASCII would replace Chinese/emoji with '?', so same-length different keywords collided.
+        // Under UTF-8 the canonical hashes must differ.
+        String moon = LocalV1CursorCodec.encodeFilterCanonical("ALL", "月亮", "CLAIM");
+        String pink = LocalV1CursorCodec.encodeFilterCanonical("ALL", "粉色", "CLAIM");
+        assertNotEquals(LocalV1CursorCodec.filterFingerprint(moon), LocalV1CursorCodec.filterFingerprint(pink));
+
+        // Same UTF-16 code-unit length, different emoji, must not collide.
+        String emojiA = LocalV1CursorCodec.encodeFilterCanonical("ALL", "a😀", "CLAIM");
+        String emojiB = LocalV1CursorCodec.encodeFilterCanonical("ALL", "b😁", "CLAIM");
+        assertNotEquals(LocalV1CursorCodec.filterFingerprint(emojiA), LocalV1CursorCodec.filterFingerprint(emojiB));
+    }
+
+    @Test
+    void chineseCursorRoundTripsExactlyAndRejectsAnotherChineseQuery() {
+        String canonical = LocalV1CursorCodec.encodeFilterCanonical("ALL", "月亮", "CLAIM");
+        long micros = 1_700_000_000_000_000L;
+        java.util.UUID memoryId = java.util.UUID.randomUUID();
+        String cursor = LocalV1CursorCodec.encode(micros, memoryId, canonical);
+
+        LocalV1CursorCodec.Decoded decoded = LocalV1CursorCodec.decode(cursor, canonical);
+        assertEquals(micros, decoded.lastUpdatedAtMicros());
+        assertEquals(memoryId, decoded.lastMemoryId());
+        assertEquals(
+                cursor,
+                LocalV1CursorCodec.encode(decoded.lastUpdatedAtMicros(), decoded.lastMemoryId(), canonical));
+
+        // A different Chinese query of the same length must be rejected (fingerprint mismatch).
+        String other = LocalV1CursorCodec.encodeFilterCanonical("ALL", "粉色", "CLAIM");
+        assertThrows(IllegalArgumentException.class, () -> LocalV1CursorCodec.decode(cursor, other));
     }
 
     @Test

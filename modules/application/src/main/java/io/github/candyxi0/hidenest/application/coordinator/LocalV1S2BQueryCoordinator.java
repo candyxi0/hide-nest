@@ -45,6 +45,14 @@ public class LocalV1S2BQueryCoordinator {
     private static final String LOCAL_FILE_STORE = "LOCAL_FILE";
     private static final String UTF8_CONTENT_TYPE = "text/plain; charset=UTF-8";
 
+    private static final java.util.Map<String, String> MEMORY_TYPE_BY_WIRE = java.util.Map.of(
+            "EVENT", "Event",
+            "CLAIM", "Claim",
+            "QUOTE", "Quote",
+            "INTERPRETATION", "Interpretation",
+            "CALIBRATION", "Calibration",
+            "PRINCIPLE", "Principle");
+
     private final MemoryReadPort memoryReadPort;
     private final EvidenceReferencePort evidenceReferencePort;
     private final PayloadStore payloadStore;
@@ -67,13 +75,29 @@ public class LocalV1S2BQueryCoordinator {
         }
         String state = validateState(request.state());
         String keyword = normalizeKeyword(request.keyword());
-        validatePage(request.limit(), request.offset());
+        String memoryType = mapMemoryType(request.memoryType());
+        validateLimit(request.limit());
+        validateAfterPair(request.afterUpdatedAt(), request.afterMemoryId());
 
         List<LocalV1S2BMemoryItem> items = new ArrayList<>();
-        List<MemoryRecord> records = memoryReadPort.listCurrentMemoryRecords(
-                new MemoryReadFilter(state, keyword, request.limit(), request.offset()));
+        List<MemoryRecord> records = memoryReadPort.listCurrentMemoryRecords(new MemoryReadFilter(
+                state,
+                keyword,
+                memoryType,
+                request.limit(),
+                request.afterUpdatedAt(),
+                request.afterMemoryId()));
         for (MemoryRecord record : records) {
             CurrentMemory current = readCurrent(record.memoryId());
+            // Fail closed on a fence appearing after the DB list query; pointer/owner damage is
+            // already fail-closed inside readCurrent.
+            rejectMemoryFence(record.memoryId());
+            // Final recheck closes the TOCTOU window between the DB list query and per-item assembly:
+            // if the current revision/record no longer satisfies state/type/keyword or the ordering
+            // facts changed, skip this page's item and let a fresh first page/refetch converge.
+            if (!stillMatchesFilter(record, current, state, keyword, memoryType)) {
+                continue;
+            }
             int evidenceCount = evidenceCount(current.revision().memoryRevisionId());
             boolean sourceAvailable = evidenceCount > 0
                     && !readFullEvidence(current).messages().isEmpty();
@@ -254,6 +278,27 @@ public class LocalV1S2BQueryCoordinator {
                 messages);
     }
 
+    /**
+     * Fail-closed/retry-safe final recheck of an assembled item against the filter that the DB list
+     * query already applied. It only closes the TOCTOU window between the list query and per-item
+     * assembly; the database remains the primary filter. A returned {@code false} means this page
+     * must skip the item (the result may then be below {@code limit}).
+     */
+    private static boolean stillMatchesFilter(
+            MemoryRecord listRecord, CurrentMemory current, String state, String keyword, String memoryType) {
+        MemoryRecord freshRecord = current.record();
+        MemoryRevision freshRevision = current.revision();
+        boolean stateOk = !"ALL".equals(state) ? state.equals(freshRecord.state()) : true;
+        boolean typeOk = memoryType == null || memoryType.equals(freshRevision.memoryType());
+        boolean kwOk = keyword == null || keyword.isEmpty()
+                || freshRevision.bodyText().toLowerCase(Locale.ROOT).contains(keyword);
+        // Compare timestamps by instant: the same DB timestamptz may be surfaced with a different
+        // offset representation between queries, but must still count as the same ordering fact.
+        boolean orderingOk = listRecord.updatedAt().isEqual(freshRecord.updatedAt())
+                && listRecord.currentRevisionId().equals(freshRecord.currentRevisionId());
+        return stateOk && typeOk && kwOk && orderingOk;
+    }
+
     private CurrentMemory readCurrent(UUID memoryId) {
         if (memoryId == null) {
             throw failure(LocalV1S2BException.Code.INVALID_ARGUMENT);
@@ -357,10 +402,27 @@ public class LocalV1S2BQueryCoordinator {
         return normalized.toLowerCase(Locale.ROOT);
     }
 
-    private static void validatePage(int limit, int offset) {
-        if (limit < 1 || limit > MAX_LIST_LIMIT || offset < 0) {
+    private static void validateLimit(int limit) {
+        if (limit < 1 || limit > MAX_LIST_LIMIT) {
             throw failure(LocalV1S2BException.Code.INVALID_ARGUMENT);
         }
+    }
+
+    private static void validateAfterPair(OffsetDateTime afterUpdatedAt, UUID afterMemoryId) {
+        if ((afterUpdatedAt == null) != (afterMemoryId == null)) {
+            throw failure(LocalV1S2BException.Code.INVALID_ARGUMENT);
+        }
+    }
+
+    private static String mapMemoryType(String wireType) {
+        if (wireType == null) {
+            return null;
+        }
+        String persistence = MEMORY_TYPE_BY_WIRE.get(wireType);
+        if (persistence == null) {
+            throw failure(LocalV1S2BException.Code.INVALID_ARGUMENT);
+        }
+        return persistence;
     }
 
     private static boolean blank(String value) {
