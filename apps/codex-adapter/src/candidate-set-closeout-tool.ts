@@ -14,6 +14,19 @@ export type CandidateSetToolOutcome =
   | { ok: true; result: CandidateSetSuccess }
   | { ok: false; text: string };
 
+/** Local V1's formal write boundary: accepted revisions are not implemented or sent. */
+export function validateFormalCandidateSetCloseoutInput(raw: unknown) {
+  const input = validateCandidateSetCloseoutInput(raw);
+  if (
+    input.candidates.some(
+      (candidate) => candidate.disposition === "ACCEPTED" && candidate.action !== "CREATE",
+    )
+  ) {
+    throw new CandidateSetInputError("accepted candidate action must be CREATE for local v1");
+  }
+  return input;
+}
+
 function sanitized(error: unknown): string {
   if (error instanceof CandidateSetInputError) return error.message;
   if (error instanceof CandidateSetClientError) {
@@ -26,7 +39,7 @@ function sanitized(error: unknown): string {
 export async function handleCandidateSetCloseoutTool(raw: unknown): Promise<CandidateSetToolOutcome> {
   let input;
   try {
-    input = validateCandidateSetCloseoutInput(raw);
+    input = validateFormalCandidateSetCloseoutInput(raw);
   } catch (error) {
     return { ok: false, text: sanitized(error) };
   }

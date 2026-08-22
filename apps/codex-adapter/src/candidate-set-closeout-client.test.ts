@@ -305,6 +305,25 @@ describe("CandidateSet loopback HTTP client", () => {
     await server.close();
   });
 
+  it("preserves multiline evidence and memoryText through JSON and the loopback HTTP body", async () => {
+    const evidence = "第一行\n第二行\t缩进\r\n第三行😀";
+    const memoryText = "结论第一行\r\n\t第二行😀";
+    const raw = canonicalVectorRaw("three-create");
+    raw.evidenceSegments[0].messages[0].bodyText = evidence;
+    raw.candidates[0].memoryText = memoryText;
+    const value = buildCandidateSetCloseoutRequest(validateCandidateSetCloseoutInput(raw));
+    const server = await startServer((_incoming, response, body) => {
+      const received = JSON.parse(body) as CandidateSetCloseoutRequest;
+      expect(received.evidencePool.messages[0].bodyText).toBe(evidence);
+      expect(received.candidates[0].memoryText).toBe(memoryText);
+      json(response, 202, responseFor(value));
+    });
+    const result = await submitCandidateSet(value, { baseUrl: server.baseUrl, token: TOKEN });
+    expect(result.phase).toBe("INDEX_READY");
+    expect(JSON.parse(server.captured[0].body)).toEqual(value);
+    await server.close();
+  });
+
   it("does not access the capability environment property", () => {
     const env = {
       HIDE_NEST_SYNTHETIC_TOKEN: TOKEN,

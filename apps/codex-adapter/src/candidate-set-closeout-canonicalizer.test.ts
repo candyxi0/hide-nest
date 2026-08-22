@@ -103,6 +103,20 @@ function request(kind: "three-create" | "mixed" | "revise" = "three-create") {
 }
 
 describe("CandidateSet deterministic identity and evidence mapping", () => {
+  it("keeps multiline evidence and memoryText byte-for-byte in the canonical request", () => {
+    const evidence = "第一行\n第二行\t缩进\r\n第三行😀";
+    const memoryText = "结论第一行\r\n\t第二行😀";
+    const raw = canonicalVectorRaw("three-create");
+    raw.evidenceSegments[0].messages[0].bodyText = evidence;
+    raw.candidates[0].memoryText = memoryText;
+    const value = buildCandidateSetCloseoutRequest(validateCandidateSetCloseoutInput(raw));
+    expect(value.evidencePool.messages[0].bodyText).toBe(evidence);
+    expect(value.candidates[0].memoryText).toBe(memoryText);
+    const reparsed = JSON.parse(JSON.stringify(value)) as typeof value;
+    expect(reparsed.evidencePool.messages[0].bodyText).toBe(evidence);
+    expect(reparsed.candidates[0].memoryText).toBe(memoryText);
+  });
+
   it("keeps three meanings as ordinals 1..3 with distinct deterministic candidate IDs", () => {
     const value = request();
     expect(value.candidates.map((candidate) => candidate.ordinal)).toEqual([1, 2, 3]);

@@ -11,6 +11,11 @@ import {
   MEMORY_EVIDENCE_TOOL_NAME,
   TOOL_NAME,
 } from "./mcp.js";
+import {
+  CLOSEOUT_TOOL_DESCRIPTION,
+  CONTEXT_PACK_TOOL_DESCRIPTION,
+  MEMORY_EVIDENCE_TOOL_DESCRIPTION,
+} from "./memory-tool-guidance.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "../../..");
@@ -401,10 +406,15 @@ describe("real MCP stdio + loopback CandidateSet gate", () => {
 
   it("initialize + tools/list exposes exactly three closed tools with frozen annotations", async () => {
     const list = await client.listTools();
+    expect(list.tools).toHaveLength(3);
     expect(list.tools.map((tool) => tool.name).sort()).toEqual(
       [CONTEXT_PACK_TOOL_NAME, MEMORY_EVIDENCE_TOOL_NAME, TOOL_NAME].sort(),
     );
+    expect(list.tools.map((tool) => tool.name)).not.toContain("hide_nest_closeout_synthetic_confirmed");
+    expect(list.tools.map((tool) => tool.name)).not.toContain("hide_nest_retrieve_context_pack_synthetic");
+    expect(list.tools.map((tool) => tool.name)).not.toContain("hide_nest_get_memory_evidence_synthetic");
     const candidateTool = list.tools.find((tool) => tool.name === TOOL_NAME);
+    expect(candidateTool?.description).toBe(CLOSEOUT_TOOL_DESCRIPTION);
     expect(candidateTool?.inputSchema.additionalProperties).toBe(false);
     const properties = candidateTool?.inputSchema.properties as Record<string, unknown>;
     expect(Object.keys(properties).sort()).toEqual([
@@ -425,6 +435,7 @@ describe("real MCP stdio + loopback CandidateSet gate", () => {
     expect(candidateTool?.description).toContain("Embedding 不负责切分");
     expect(candidateTool?.description).toContain("最小必要证据段");
     const contextTool = list.tools.find((tool) => tool.name === CONTEXT_PACK_TOOL_NAME);
+    expect(contextTool?.description).toBe(CONTEXT_PACK_TOOL_DESCRIPTION);
     expect(contextTool?.description).toContain("回答前静默调用");
     expect(contextTool?.description).toContain("之前、上次、又、还是、回家、记得");
     expect(contextTool?.description).toContain("偏好、边界、关系、承诺、计划或长期项目");
@@ -467,6 +478,7 @@ describe("real MCP stdio + loopback CandidateSet gate", () => {
     expect(contextTool?.description).toContain("降低 minScore 凑数");
     expect(contextTool?.description).toContain("EXACT replay");
     const evidenceTool = list.tools.find((tool) => tool.name === MEMORY_EVIDENCE_TOOL_NAME);
+    expect(evidenceTool?.description).toBe(MEMORY_EVIDENCE_TOOL_DESCRIPTION);
     expect(evidenceTool?.inputSchema.additionalProperties).toBe(false);
     expect(
       Object.keys((evidenceTool?.inputSchema.properties as Record<string, unknown>) ?? {}).sort(),

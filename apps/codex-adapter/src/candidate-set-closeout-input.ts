@@ -85,6 +85,21 @@ function hasControlCharacter(value: string): boolean {
   return false;
 }
 
+/** Text evidence may preserve normal chat formatting, but never transport/database-unsafe controls. */
+function hasUnsafeTextControlCharacter(value: string): boolean {
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    if (
+      ((code <= 0x1f && code !== 0x09 && code !== 0x0a && code !== 0x0d) ||
+        code === 0x7f ||
+        (code >= 0x80 && code <= 0x9f))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function hasUnpairedSurrogate(value: string): boolean {
   for (let index = 0; index < value.length; index++) {
     const code = value.charCodeAt(index);
@@ -110,6 +125,16 @@ function stringWithin(
     throw new CandidateSetInputError(`invalid ${label}`);
   }
   if (hasUnpairedSurrogate(value) || (rejectControl && hasControlCharacter(value))) {
+    throw new CandidateSetInputError(`invalid ${label}`);
+  }
+  return value;
+}
+
+function textWithin(value: unknown, min: number, max: number, label: string): string {
+  if (typeof value !== "string" || value.length < min || value.length > max) {
+    throw new CandidateSetInputError(`invalid ${label}`);
+  }
+  if (hasUnpairedSurrogate(value) || hasUnsafeTextControlCharacter(value)) {
     throw new CandidateSetInputError(`invalid ${label}`);
   }
   return value;
@@ -160,7 +185,7 @@ function validateMessage(value: unknown): CandidateSetEvidenceMessageInput {
   if (
     typeof value.bodyText !== "string" ||
     value.bodyText.trim().length === 0 ||
-    hasControlCharacter(value.bodyText) ||
+    hasUnsafeTextControlCharacter(value.bodyText) ||
     hasUnpairedSurrogate(value.bodyText) ||
     Buffer.byteLength(value.bodyText, "utf8") > MAX_EVIDENCE_BYTES
   ) {
@@ -219,7 +244,7 @@ function validateCandidate(
   if (value.memoryText === null) {
     memoryText = null;
   } else {
-    memoryText = stringWithin(value.memoryText, 0, MAX_MEMORY_TEXT_LENGTH, "memoryText", false);
+    memoryText = textWithin(value.memoryText, 0, MAX_MEMORY_TEXT_LENGTH, "memoryText");
   }
   const memoryType =
     value.memoryType === null

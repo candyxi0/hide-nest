@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CandidateSetInputError,
+  MAX_EVIDENCE_BYTES,
   validateCandidateSetCloseoutInput,
 } from "./candidate-set-closeout-input.js";
 
@@ -159,11 +160,26 @@ describe("CandidateSet closed input and atomic candidates", () => {
     }
   });
 
-  it("rejects blank/control/unpaired-surrogate evidence and invalid offset dates", () => {
-    for (const bodyText of ["   ", "bad\u0000text", "bad\ud800text"]) {
+  it("preserves evidence and memoryText with LF, CRLF, Tab and emoji byte-for-byte", () => {
+    const evidence = "第一行\n第二行\t缩进\r\n第三行😀";
+    const memoryText = "结论第一行\r\n\t第二行😀";
+    const raw = validRaw();
+    raw.evidenceSegments[0].messages[0].bodyText = evidence;
+    raw.candidates = [candidate({ memoryText })];
+    const input = validateCandidateSetCloseoutInput(raw);
+    expect(input.evidenceSegments[0].messages[0].bodyText).toBe(evidence);
+    expect(input.candidates[0].memoryText).toBe(memoryText);
+  });
+
+  it("rejects blank, unsafe controls and unpaired surrogates in evidence and memoryText", () => {
+    for (const bodyText of ["   \n\t\r", "bad\u0000text", "bad\u000btext", "bad\u000ctext", "bad\u007ftext", "bad\u0080text", "bad\ud800text"]) {
       const raw = validRaw();
       raw.evidenceSegments[0].messages[0].bodyText = bodyText;
       reject(raw);
+
+      const memory = validRaw();
+      memory.candidates = [candidate({ memoryText: bodyText })];
+      reject(memory);
     }
     const raw = validRaw();
     raw.evidenceSegments[0].messages[0].occurredAt = "2026-02-30T00:00:00Z";
@@ -182,6 +198,20 @@ describe("CandidateSet closed input and atomic candidates", () => {
       { messages: [message(1, "xiaolin", "a".repeat(600_000)), message(2, "xiaolin", "b".repeat(600_000))] },
     ];
     reject(totalTooLarge);
+  });
+
+  it("accepts the exact UTF-8 boundary and rejects one byte beyond it", () => {
+    const exact = validRaw();
+    exact.evidenceSegments = [{ messages: [message(1, "xiaolin", "a".repeat(MAX_EVIDENCE_BYTES))] }];
+    expect(validateCandidateSetCloseoutInput(exact).evidenceSegments[0].messages[0].bodyText).toHaveLength(
+      MAX_EVIDENCE_BYTES,
+    );
+
+    const tooLarge = validRaw();
+    tooLarge.evidenceSegments = [
+      { messages: [message(1, "xiaolin", "a".repeat(MAX_EVIDENCE_BYTES + 1))] },
+    ];
+    reject(tooLarge);
   });
 
   it("rejects duplicate candidateKey and invalid segment indexes", () => {

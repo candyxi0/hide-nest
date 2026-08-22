@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "status": "ITERATION1_FORMAL_MEMORY_MCP_GUIDANCE_R1_READY_FOR_LOCAL_COMMIT",
+  "baseline": {
+    "head": "6d00a7868d156794269b67585145c33ec53fb891",
+    "branch": "main"
+  },
+  "publicTools": {
+    "count": 3,
+    "registered": [
+      "hide_nest_closeout_confirmed",
+      "hide_nest_retrieve_context_pack",
+      "hide_nest_get_memory_evidence"
+    ],
+    "oldSyntheticNamesRegistered": 0,
+    "aliasesRegistered": 0,
+    "toolsListIntegration": "PASS"
+  },
+  "guidance": {
+    "version": "2026-08-22-formal-memory-mcp-v1",
+    "singleSource": "apps/codex-adapter/src/memory-tool-guidance.ts",
+    "mcpLongDescriptionResidual": 0,
+    "toolsListComposition": "PASS",
+    "commonSafety": "PASS",
+    "closeoutConfirmationAndActionBoundary": "PASS",
+    "contextPackPolicyRegression": "PASS",
+    "memoryEvidenceBindingRegression": "PASS"
+  },
+  "r1MultilineText": {
+    "evidenceLfCrlfTabEmojiVerbatim": "PASS",
+    "memoryTextMultilineVerbatim": "PASS",
+    "canonicalJsonLoopbackVerbatim": "PASS",
+    "dangerousControlsRejectedBeforeHttp": "PASS",
+    "dangerousControlHttpReached": 0,
+    "utf8ByteBoundary": "PASS",
+    "guidanceIncorrectSentenceResidual": 0,
+    "mcpSyntheticCommentResidual": 0,
+    "nonTestOldPublicToolNameResidual": 0,
+    "syntheticOnlyApplicabilityResidual": 0
+  },
+  "formalWriteBoundary": {
+    "acceptedCreate": "PASS",
+    "acceptedReviseHttpReached": 0,
+    "acceptedSupersedeHttpReached": 0,
+    "rejectedCandidatesProduceResources": 0,
+    "indexReadyProjection": "PASS",
+    "canonicalCommittedProjection": "PASS",
+    "externalAuthorizationSystemClaimed": false
+  },
+  "verification": {
+    "adapterTypecheck": "PASS",
+    "adapterLint": "PASS_WITH_2_PREEXISTING_GENERATED_WARNINGS",
+    "adapterTests": { "filesPassed": 18, "testsPassed": 294, "testsSkipped": 1, "testsFailed": 0 },
+    "adapterBuild": "PASS",
+    "rootNodeTypecheck": "NOT_RUN_R1_REUSE_TASK46A_PASS",
+    "rootNodeLint": "NOT_RUN_R1_REUSE_TASK46A_PASS",
+    "rootNodeTest": "NOT_RUN_R1_REUSE_TASK46A_PASS",
+    "rootNodeBuild": "NOT_RUN_R1_REUSE_TASK46A_PASS",
+    "realStdioInitialize": "PASS",
+    "realStdioToolsList": "PASS",
+    "realStdioLoopbackCall": "PASS",
+    "diffCheck": "PASS",
+    "threeJsonParseGates": "PASS"
+  },
+  "scope": {
+    "modified": 8,
+    "added": 4,
+    "deleted": 0,
+    "taskPaths": 12,
+    "pathSet": [
+      "apps/codex-adapter/src/candidate-set-closeout-canonicalizer.test.ts",
+      "apps/codex-adapter/src/candidate-set-closeout-client.test.ts",
+      "apps/codex-adapter/src/candidate-set-closeout-input.test.ts",
+      "apps/codex-adapter/src/candidate-set-closeout-input.ts",
+      "apps/codex-adapter/src/candidate-set-closeout-tool.test.ts",
+      "apps/codex-adapter/src/candidate-set-closeout-tool.ts",
+      "apps/codex-adapter/src/mcp.integration.test.ts",
+      "apps/codex-adapter/src/mcp.ts",
+      "apps/codex-adapter/src/memory-tool-guidance.test.ts",
+      "apps/codex-adapter/src/memory-tool-guidance.ts",
+      "reports/Iteration1-FormalMemoryMcpGuidance-Evidence.json",
+      "reports/Iteration1-FormalMemoryMcpGuidance-执行报告.md"
+    ],
+    "excluded": ["reports/local-v1-read-browser-qa/"],
+    "javaChanged": 0,
+    "mavenChanged": 0,
+    "openApiChanged": 0,
+    "databaseChanged": 0,
+    "generatedChanged": 0,
+    "reactChanged": 0,
+    "prototypeChanged": 0,
+    "deploymentStarted": false,
+    "familyApiCalled": false,
+    "networkAccess": false,
+    "gitWriteOperations": false
+  },
+  "leakage": {
+    "bodyText": 0,
+    "query": 0,
+    "credential": 0,
+    "capability": 0,
+    "secret": 0,
+    "absolutePath": 0
+  },
+  "gitIndex": {
+    "headMatchesBaseline": true,
+    "staged": 0,
+    "outOfBounds": 0
+  }
+}

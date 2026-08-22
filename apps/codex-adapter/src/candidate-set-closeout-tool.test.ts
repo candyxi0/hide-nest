@@ -8,6 +8,55 @@ const TOKEN = "tool-token-0123456789abcdefghijklmnopqrstuvwxyz-ABCDE";
 afterEach(() => vi.unstubAllEnvs());
 
 describe("CandidateSet closeout tool orchestration", () => {
+  it("rejects accepted REVISE and SUPERSEDE before HTTP", async () => {
+    let httpReached = 0;
+    const server = createServer(() => {
+      httpReached++;
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (address === null || typeof address === "string") throw new Error("server address");
+    vi.stubEnv("HIDE_NEST_API_BASE_URL", `http://127.0.0.1:${address.port}`);
+    vi.stubEnv("HIDE_NEST_SYNTHETIC_TOKEN", TOKEN);
+    for (const action of ["REVISE", "SUPERSEDE"]) {
+      const raw = candidateSetTestRaw("revise");
+      raw.candidates[0].action = action;
+      const result = await handleCandidateSetCloseoutTool(raw);
+      expect(result).toEqual({
+        ok: false,
+        text: "accepted candidate action must be CREATE for local v1",
+      });
+    }
+    expect(httpReached).toBe(0);
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+
+  it("rejects dangerous evidence and memoryText controls before HTTP", async () => {
+    let httpReached = 0;
+    const server = createServer(() => {
+      httpReached++;
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (address === null || typeof address === "string") throw new Error("server address");
+    vi.stubEnv("HIDE_NEST_API_BASE_URL", `http://127.0.0.1:${address.port}`);
+    vi.stubEnv("HIDE_NEST_SYNTHETIC_TOKEN", TOKEN);
+
+    for (const dangerous of ["\u0000", "\u000b", "\u000c", "\u007f", "\u0080", "\ud800"]) {
+      const evidence = candidateSetTestRaw("three-create");
+      evidence.evidenceSegments[0].messages[0].bodyText = `before${dangerous}after`;
+      expect((await handleCandidateSetCloseoutTool(evidence)).ok).toBe(false);
+
+      const memory = candidateSetTestRaw("three-create");
+      memory.candidates[0].memoryText = `before${dangerous}after`;
+      expect((await handleCandidateSetCloseoutTool(memory)).ok).toBe(false);
+    }
+    expect(httpReached).toBe(0);
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+
   it("rejects old input before consulting missing configuration", async () => {
     const result = await handleCandidateSetCloseoutTool({
       closeoutKey: "old",
