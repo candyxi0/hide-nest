@@ -14,7 +14,7 @@ import {
 
 describe("formal local-private memory guidance", () => {
   it("has a diagnostic version and composes each model-visible description from one source", () => {
-    expect(MEMORY_GUIDANCE_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}-formal-memory-mcp-v1$/);
+    expect(MEMORY_GUIDANCE_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}-formal-memory-mcp-v2$/);
     expect(CLOSEOUT_TOOL_DESCRIPTION).toBe(`${COMMON_MEMORY_SAFETY_GUIDANCE}\n\n${CLOSEOUT_GUIDANCE}`);
     expect(CONTEXT_PACK_TOOL_DESCRIPTION).toBe(
       `${COMMON_MEMORY_SAFETY_GUIDANCE}\n\n${CONTEXT_PACK_GUIDANCE}`,
@@ -50,6 +50,11 @@ describe("formal local-private memory guidance", () => {
     expect(CONTEXT_PACK_GUIDANCE).toContain("默认 maxResults=3、minScore=0.6");
     expect(CONTEXT_PACK_GUIDANCE).toContain("maxResults=5、minScore=0.4");
     expect(CONTEXT_PACK_GUIDANCE).toContain("24 小时内已成功返回的 memoryId 会自动冷却过滤");
+    expect(CONTEXT_PACK_GUIDANCE).toContain("正常返回是精简数组，空数组表示未找到相关记忆");
+    expect(CONTEXT_PACK_GUIDANCE).toContain("不得向小林展示或复述原始 JSON、内部 UUID 或检索元数据");
+    expect(CONTEXT_PACK_GUIDANCE).toContain(
+      "memoryId、memoryRevisionId、revisionNo 仅供确需核实原文时原样传给完整证据工具",
+    );
     expect(MEMORY_EVIDENCE_GUIDANCE).toContain("不得猜测、拼接或跨记忆混用");
   });
 

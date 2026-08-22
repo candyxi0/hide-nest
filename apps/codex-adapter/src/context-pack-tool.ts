@@ -8,22 +8,21 @@ import {
 import type { ContextPackSuccess } from "./context-pack-canonicalizer.js";
 
 /**
- * Orchestrates a single synthetic context-pack tool call: validate → config gate → deterministic
+ * Orchestrates a single local-private context-pack tool call: validate → config gate → deterministic
  * identity → loopback POST → strict re-check → minimal projection. Only sanitized outcomes leave
  * this module; query, keys, token and base URL are never echoed, and the memory body appears only
  * in the authorized success result.
  */
 
-export interface ContextPackProjection {
-  status: "CONTEXT_READY" | "NO_RELEVANT_MEMORY";
-  resultCategory: ContextPackSuccess["resultCategory"];
-  requestId: string;
-  deliveryId: string;
-  issuedAt: string;
-  expiresAt: string;
-  budgetLimited: boolean;
-  memories: ContextPackSuccess["memories"];
+export interface ContextPackMemoryProjection {
+  memoryId: string;
+  memoryRevisionId: string;
+  revisionNo: number;
+  text: string;
+  daysAgo: number;
 }
+
+export type ContextPackProjection = ContextPackMemoryProjection[];
 
 export type ContextPackToolOutcome =
   | { ok: true; result: ContextPackProjection }
@@ -44,16 +43,13 @@ function sanitizeError(error: unknown): string {
 
 /** Projects the validated response down to the minimal shape hide is allowed to receive. */
 export function projectContextPack(result: ContextPackSuccess): ContextPackProjection {
-  return {
-    status: result.resultCategory === "SUCCEEDED" ? "CONTEXT_READY" : "NO_RELEVANT_MEMORY",
-    resultCategory: result.resultCategory,
-    requestId: result.requestId,
-    deliveryId: result.deliveryId,
-    issuedAt: result.issuedAt,
-    expiresAt: result.expiresAt,
-    budgetLimited: result.budgetLimited,
-    memories: result.memories,
-  };
+  return result.memories.map((memory) => ({
+    memoryId: memory.memoryId,
+    memoryRevisionId: memory.memoryRevisionId,
+    revisionNo: memory.revisionNo,
+    text: memory.bodyText,
+    daysAgo: memory.evidenceAgeDays,
+  }));
 }
 
 export async function handleContextPackTool(rawArgs: unknown): Promise<ContextPackToolOutcome> {

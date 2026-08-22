@@ -605,19 +605,34 @@ describe("real MCP stdio + loopback CandidateSet gate", () => {
   it("context-pack tools/call remains a real loopback POST with exact safe projection", async () => {
     const result = await client.callTool({ name: CONTEXT_PACK_TOOL_NAME, arguments: contextPackArgs() });
     expect(resultIsError(result)).toBe(false);
-    const parsed = JSON.parse(resultText(result)) as Record<string, unknown>;
-    expect(Object.keys(parsed).sort()).toEqual([
-      "budgetLimited",
-      "deliveryId",
-      "expiresAt",
-      "issuedAt",
-      "memories",
-      "requestId",
-      "resultCategory",
-      "status",
+    const parsed = JSON.parse(resultText(result)) as Array<Record<string, unknown>>;
+    expect(parsed).toHaveLength(1);
+    expect(Object.keys(parsed[0]).sort()).toEqual([
+      "daysAgo",
+      "memoryId",
+      "memoryRevisionId",
+      "revisionNo",
+      "text",
     ]);
-    expect(parsed.status).toBe("CONTEXT_READY");
-    expect((parsed.memories as Array<Record<string, unknown>>)[0].bodyText).toBe(CONTEXT_MEMORY_BODY);
+    expect(parsed[0].text).toBe(CONTEXT_MEMORY_BODY);
+    expect(parsed[0].daysAgo).toBe(3);
+    for (const forbidden of [
+      "status",
+      "resultCategory",
+      "requestId",
+      "deliveryId",
+      "issuedAt",
+      "expiresAt",
+      "budgetLimited",
+      "policyRevisionNo",
+      "memoryType",
+      "bodyText",
+      "score",
+      "evidenceOccurredAt",
+      "evidenceAgeDays",
+    ]) {
+      expect(resultText(result)).not.toContain(`"${forbidden}"`);
+    }
     const post = requests.find(
       (request) => request.method === "POST" && request.url === "/v1/context-packs",
     );
@@ -651,7 +666,7 @@ describe("real MCP stdio + loopback CandidateSet gate", () => {
   it("context-pack replay/new-key and NO_RELEVANT_RESULT semantics are unchanged", async () => {
     const first = await client.callTool({ name: CONTEXT_PACK_TOOL_NAME, arguments: contextPackArgs() });
     const retry = await client.callTool({ name: CONTEXT_PACK_TOOL_NAME, arguments: contextPackArgs() });
-    expect(JSON.parse(resultText(retry)).requestId).toBe(JSON.parse(resultText(first)).requestId);
+    expect(resultText(retry)).toBe(resultText(first));
     const fresh = await client.callTool({
       name: CONTEXT_PACK_TOOL_NAME,
       arguments: contextPackArgs({
@@ -659,13 +674,15 @@ describe("real MCP stdio + loopback CandidateSet gate", () => {
         turnKey: `${CONTEXT_TURN_CANARY}-new`,
       }),
     });
-    expect(JSON.parse(resultText(fresh)).requestId).not.toBe(JSON.parse(resultText(first)).requestId);
+    expect((JSON.parse(resultText(fresh)) as Array<Record<string, unknown>>)[0].memoryId).not.toBe(
+      (JSON.parse(resultText(first)) as Array<Record<string, unknown>>)[0].memoryId,
+    );
     const empty = await client.callTool({
       name: CONTEXT_PACK_TOOL_NAME,
       arguments: contextPackArgs({ query: "NO_RELEVANT 合成空结果" }),
     });
     expect(resultIsError(empty)).toBe(false);
-    expect(JSON.parse(resultText(empty)).memories).toEqual([]);
+    expect(JSON.parse(resultText(empty))).toEqual([]);
   });
 
   it("context-pack error/result leak hygiene remains unchanged", async () => {
