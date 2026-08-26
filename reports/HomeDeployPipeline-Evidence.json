@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "reportName": "HomeDeployPipeline",
+  "task": "Task49A-R2-hide-nest家庭一键发布流水线真实可用闭环",
+  "generatedAt": "2026-08-25T00:00:00Z",
+  "status": "HOME_DEPLOY_PIPELINE_V1_R2B_READY_FOR_LOCAL_COMMIT",
+  "head": "3a56e5ffe85715666ca9729d85f6ef79cc3dd4c8",
+  "originMain": "3a56e5ffe85715666ca9729d85f6ef79cc3dd4c8",
+  "gitStaged": 0,
+  "verification": {
+    "powerShellParser": "PASS",
+    "bashN": "PASS",
+    "gitDiffCheck": "PASS",
+    "selfTest": { "pass": 58, "fail": 0 },
+    "evidenceJsonNodeParse": "PASS",
+    "evidenceJsonPowerShellParse": "PASS",
+    "evidenceJsonStrictDuplicateKey": "PASS",
+    "realHostWrites": 0,
+    "realInitializeState": "NOT_RUN",
+    "realExecute": "NOT_RUN"
+  },
+  "r2AbAttribution": {
+    "frozenRepoJooqGate": "PASS",
+    "gitArchiveBuildJooqGate": "FAIL",
+    "ruling": "snapshot-materialization/EOL defect (not env blocker)",
+    "fix": "temp-index checkout (core.autocrlf=false) + git init in snapshot",
+    "apiOfflineBuild": {
+      "command": "mvnw.cmd -o clean verify",
+      "result": "BUILD SUCCESS",
+      "jooqABTrackedMatch": "PASS",
+      "portBoundaryTest": "PASS",
+      "apiExecJarSha256": "1ee29f0022d5085727dca2459fca25d481b4b3d7dd8544971b390e30b583819b"
+    }
+  },
+  "r2": {
+    "apiRealOfflineBuild": "PASS",
+    "consoleRealOfflineBuild": "PASS",
+    "adapterRealOfflineBuild": "PASS",
+    "npmCacheWarmup": "CONTROLLED_IGNORE_SCRIPTS_NO_LOCKFILE_CHANGE",
+    "realBuildNotImplementedResidue": 0,
+    "singlePackageUpload_05_06_07": "PASS",
+    "fakeRealMixRejected": "PASS",
+    "strictStateSchema": "PASS",
+    "hostInvariantsPreserved": "PASS",
+    "nonSwitchedStatePreserved": "EXACT",
+    "pipelineCommitIsolated": "PASS",
+    "pathBoundManifest": "PASS",
+    "fakeServiceStateRecording": "PASS",
+    "launcherExitCodeCaptured": "PASS",
+    "r1_02BareBlockFixed": "PASS"
+  },
+  "realBuilds": {
+    "api": { "command": "mvnw.cmd -o clean verify", "result": "BUILD SUCCESS", "execJarSha256": "1ee29f0022d5085727dca2459fca25d481b4b3d7dd8544971b390e30b583819b" },
+    "console": { "gates": "typecheck/lint/test/build", "result": "PASS", "deployArtifact": { "files": 3, "maps": 0 }, "collectionHash": "aa96a83ba5c4227f4f19e7e9fe35126ef4c11765abc6aca728f18ead072bc83d" },
+    "adapter": { "gates": "typecheck/lint/test/build", "result": "PASS", "rawBuild": { "files": 196, "maps": 98 }, "deployArtifact": { "files": 98, "maps": 0, "tools": 3 }, "collectionHash": "527045466f4b897b5ba064a2f6a3c96676a10ffed29af968085d3ef1fc2c7c2d" }
+  },
+  "r2a": {
+    "realScpCodePath": "CODE_PATH_PASS",
+    "realScpRun": "REAL_RUN_NOT_RUN",
+    "realExecute": "NOT_RUN",
+    "realInitializeState": "NOT_RUN",
+    "manifestRemoteVerified": "PASS",
+    "sourcemapGateOrder": "PASS",
+    "incomingPrepareCleanup": "PASS",
+    "bundleTwoComponent": "PASS",
+    "bundleThreeComponent": "PASS"
+  },
+  "r2b": {
+    "scpTargetHideNestRootBound": "PASS",
+    "remoteHostTailscaleClosure": "PASS",
+    "unifiedSshSshPath": "PASS",
+    "cmdStringConcatResidue": 0,
+    "remoteHostValidatedBeforeAnyRemoteCall": "PASS",
+    "multiLevelTsNet": "PASS",
+    "rawLfStdin": "PASS",
+    "prepareScpExecuteCleanupFakeBranch": "PASS",
+    "bundleShaUnderLock": "PASS",
+    "doubleLock": 0
+  },
+  "gitScope": {
+    "totalTaskPaths": 13,
+    "modified": 0,
+    "added": 13,
+    "deleted": 0,
+    "pathSet": [
+      ".gitattributes",
+      "ops/home-deploy/Deploy-Home.ps1",
+      "ops/home-deploy/README.md",
+      "ops/home-deploy/component-map.json",
+      "ops/home-deploy/remote-deploy.sh",
+      "ops/home-deploy/tests/Test-DeployHome.ps1",
+      "ops/home-deploy/tests/fake-remote.sh",
+      "ops/home-deploy/tests/fake-ssh.sh",
+      "ops/home-deploy/tests/fake-scp.sh",
+      "ops/home-deploy/tests/fixtures/README.md",
+      "ops/home-deploy/tests/fixtures/sample-request.json",
+      "reports/HomeDeployPipeline-Evidence.json",
+      "reports/HomeDeployPipeline-执行报告.md"
+    ],
+    "excludedQaDir": "reports/local-v1-read-browser-qa/**"
+  },
+  "realHomePlanOnly": {
+    "targetCommit": "3a56e5ffe85715666ca9729d85f6ef79cc3dd4c8",
+    "targetShort": "3a56e5f",
+    "verdict": "PLAN_NO_OP",
+    "apiImpact": false,
+    "consoleImpact": false,
+    "adapterImpact": false,
+    "migrationImpact": false,
+    "remoteWrites": 0,
+    "remoteHasPipelineState": false
+  },
+  "network": "only existing Tailscale SSH read-only PlanOnly",
+  "gitWriteOperations": false,
+  "leakage": { "secretBody": 0, "query": 0, "token": 0, "capability": 0, "databasePassword": 0, "absoluteSecretPath": 0, "fullVector": 0 }
+}

@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "operation": "execute",
+  "targetCommit": "0123456789abcdef0123456789abcdef01234567",
+  "targetShort": "0123456",
+  "flywayMaxVersion": 21,
+  "components": {
+    "api": {
+      "switch": true,
+      "type": "jar",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "target": "app/hide-nest-api-0.0.1-SNAPSHOT-exec.jar",
+      "staging": "staging/api/hide-nest-api-0.0.1-SNAPSHOT-exec.jar.new",
+      "artifactHash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "console": {
+      "switch": true,
+      "type": "dir",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "target": "console/dist",
+      "staging": "staging/console/dist.new",
+      "artifactHash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "adapter": {
+      "switch": false,
+      "type": "dir",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "target": "codex-adapter/dist",
+      "staging": "staging/adapter/dist.new",
+      "artifactHash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "migration": { "switch": false },
+  "migrationManifestHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "hostInvariants": {
+    "postgresContainerId": "postgres00000000",
+    "embeddingContainerId": "embedding0000000"
+  }
+}

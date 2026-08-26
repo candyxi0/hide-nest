@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "description": "hide-nest home deploy component map. Maps repo paths to impacted deployable components. Used by Deploy-Home.ps1 for Auto classification and freeze gates. V1: fail-closed — any path not matched here is UNCLASSIFIED_PATH and stops the pipeline.",
+  "componentMap": {
+    "api": {
+      "impactPaths": [
+        "pom.xml",
+        ".mvn/**",
+        "mvnw",
+        "mvnw.cmd",
+        "apps/api/**",
+        "apps/worker/**",
+        "modules/**",
+        "contracts/**",
+        "generated/**"
+      ]
+    },
+    "console": {
+      "impactPaths": [
+        "apps/nest-console/**",
+        "packages/api-client-ts/**",
+        "packages/ui-contract-fixtures/**"
+      ]
+    },
+    "adapter": {
+      "impactPaths": [
+        "apps/codex-adapter/**"
+      ]
+    },
+    "migration": {
+      "impactPaths": [
+        "modules/database-adapter/src/main/resources/db/migration/**"
+      ]
+    }
+  },
+  "sharedNodePaths": [
+    "package.json",
+    "package-lock.json",
+    "tsconfig.base.json",
+    "eslint.config.mjs",
+    ".prettierrc.json"
+  ],
+  "migrationDir": "modules/database-adapter/src/main/resources/db/migration",
+  "deployedMigrationBoundary": 21,
+  "noRuntimeImpactWhitelist": {
+    "reports/**": "pure report artifacts (no runtime impact)",
+    "docs/**": "documentation",
+    "README.md": "repo readme",
+    "scripts/**": "dev tooling only",
+    ".gitignore": "ignore rules",
+    ".gitattributes": "line-ending rules"
+  },
+  "highRiskPaths": [
+    "deploy-r1-grants.sql",
+    "**/deploy-r1-grants.sql"
+  ],
+  "pipelineSelfPaths": [
+    "ops/home-deploy/**"
+  ]
+}
