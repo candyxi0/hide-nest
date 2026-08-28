@@ -30,6 +30,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.flywaydb.core.Flyway;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
@@ -37,7 +40,10 @@ import org.jooq.impl.DefaultConfiguration;
 import org.jooq.impl.DefaultDSLContext;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext;
@@ -57,6 +63,7 @@ import tools.jackson.databind.node.ObjectNode;
  * HTTP-level assembly proof for {@code POST /v1/context-packs}: bearer gate, exact cosine ranking,
  * idempotent replay and pre-embedding request rejection.
  */
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class LocalV1ContextPackHttpIntegrationTest {
 
     private static final String IMAGE =
@@ -77,6 +84,7 @@ class LocalV1ContextPackHttpIntegrationTest {
     private static ConfigurableApplicationContext api;
     private static URI base;
     private static HttpServer embeddingServer;
+    private static final AtomicInteger embeddingCalls = new AtomicInteger();
 
     @BeforeAll
     static void setUp() throws Exception {
@@ -91,7 +99,7 @@ class LocalV1ContextPackHttpIntegrationTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(21, Flyway.configure()
+        assertEquals(22, Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), USER, password)
                 .defaultSchema("public")
                 .locations("classpath:db/migration")
@@ -110,6 +118,7 @@ class LocalV1ContextPackHttpIntegrationTest {
 
         embeddingServer = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
         embeddingServer.createContext("/embed", exchange -> {
+            embeddingCalls.incrementAndGet();
             byte[] body = exchange.getRequestBody().readAllBytes();
             JsonNode root = JSON.readTree(body);
             String text = root.path("texts").get(0).asText();
@@ -164,6 +173,7 @@ class LocalV1ContextPackHttpIntegrationTest {
     }
 
     @Test
+    @Order(1)
     void createReturnsAFirstWithHigherScore() throws Exception {
         UUID memoryA = submit("颜色A");
         UUID memoryB = submit("颜色B");
@@ -338,6 +348,181 @@ class LocalV1ContextPackHttpIntegrationTest {
         assertEquals(409, post("/v1/context-packs", different, key).status());
     }
 
+    // ── Task50A Bubble HTTP vertical ─────────────────────────────────────
+
+    @Test
+    void bubbleResolveUsesBearerNoStoreAndExactMinimalProjection() throws Exception {
+        submit("泡泡HTTP投影");
+        String turn = "bubble-http-projection-" + UUID.randomUUID();
+        Response response = post("/v1/bubbles/resolve", bubbleBody("room-http", turn, "相关语义查询"), null);
+
+        assertEquals(200, response.status());
+        assertEquals("no-store", response.cacheControl());
+        JsonNode body = JSON.readTree(response.body());
+        assertEquals(java.util.Set.of("status", "items"), propertySet(body));
+        assertEquals("BUBBLE_READY", body.get("status").asText());
+        assertEquals(1, body.get("items").size());
+        assertEquals(
+                java.util.Set.of("bodyText", "memoryType", "evidenceAgeDays"),
+                propertySet(body.get("items").get(0)));
+
+        assertEquals(
+                401,
+                postWithoutBearer("/v1/bubbles/resolve", bubbleBody("r", "t", "q"))
+                        .status());
+    }
+
+    @Test
+    void bubbleNoMatchReplayConflictAndQueryNonPersistenceAreExact() throws Exception {
+        String marker = "泡泡查询不持久化-" + UUID.randomUUID();
+        String turn = "bubble-http-replay-" + UUID.randomUUID();
+        String request = bubbleBody("room-replay", turn, "仅空检索目标" + marker);
+        int before = embeddingCalls.get();
+        Response first = post("/v1/bubbles/resolve", request, null);
+        int afterFirst = embeddingCalls.get();
+        Response replay = post("/v1/bubbles/resolve", request, null);
+
+        assertEquals(200, first.status());
+        assertEquals("NO_MATCH", JSON.readTree(first.body()).get("status").asText());
+        assertEquals(JSON.readTree(first.body()), JSON.readTree(replay.body()));
+        assertEquals(before + 1, afterFirst);
+        assertEquals(afterFirst, embeddingCalls.get());
+        assertEquals(
+                409,
+                post("/v1/bubbles/resolve", bubbleBody("room-replay", turn, "仅空检索目标-异值"), null)
+                        .status());
+        assertEquals(afterFirst, embeddingCalls.get());
+        assertEquals(
+                0,
+                dsl.fetchOne(
+                                "SELECT count(*) FROM ("
+                                        + "SELECT row_to_json(r)::text AS value FROM runtime.bubble_turn_receipt r "
+                                        + "UNION ALL SELECT row_to_json(i)::text FROM runtime.bubble_delivery_item i "
+                                        + "UNION ALL SELECT row_to_json(l)::text FROM runtime.bubble_room_revision_ledger l"
+                                        + ") facts WHERE value LIKE ?",
+                                "%" + marker + "%")
+                        .get(0, Integer.class));
+    }
+
+    @Test
+    void bubbleSchemaSpaceAndPolicyFieldsFailBeforeEmbedding() throws Exception {
+        int before = embeddingCalls.get();
+        for (String forbidden : List.of("minScore", "maxResults", "bubbleEnabled", "bootstrapCount")) {
+            String body = bubbleBody("room-schema", "turn-" + forbidden, "query");
+            body = body.substring(0, body.length() - 1) + ",\"" + forbidden + "\":1}";
+            assertEquals(422, post("/v1/bubbles/resolve", body, null).status());
+        }
+        assertEquals(
+                403,
+                post(
+                                "/v1/bubbles/resolve",
+                                "{\"spaceKey\":\"other-space\",\"roomKey\":\"r\",\"turnKey\":\"t\",\"queryText\":\"q\"}",
+                                null)
+                        .status());
+        assertEquals(before, embeddingCalls.get());
+    }
+
+    @Test
+    void bubbleWrongSpaceRejectsBeforeAnyFactProbe() throws Exception {
+        String room = "room-wrong-space-" + UUID.randomUUID();
+        String turn = "turn-wrong-space-" + UUID.randomUUID();
+        assertEquals(
+                200,
+                post("/v1/bubbles/resolve", bubbleBody(room, turn, "仅空检索目标"), null)
+                        .status());
+        int embeddingBefore = embeddingCalls.get();
+        int receiptsBefore = dsl.fetchOne("SELECT count(*) FROM runtime.bubble_turn_receipt")
+                .get(0, Integer.class);
+
+        Response rejected = post(
+                "/v1/bubbles/resolve",
+                "{\"spaceKey\":\"other-space\",\"roomKey\":\"" + room + "\",\"turnKey\":\"" + turn
+                        + "\",\"queryText\":\"仅空检索目标\"}",
+                null);
+
+        assertEquals(403, rejected.status());
+        assertTrue(rejected.body().contains("ACCESS_DENIED"), "unexpected body: " + rejected.body());
+        assertEquals(embeddingBefore, embeddingCalls.get());
+        assertEquals(
+                receiptsBefore,
+                dsl.fetchOne("SELECT count(*) FROM runtime.bubble_turn_receipt").get(0, Integer.class));
+        assertEquals(
+                1,
+                dsl.fetchOne("SELECT count(*) FROM runtime.bubble_turn_receipt WHERE turn_key=?", turn)
+                        .get(0, Integer.class));
+        assertEquals(
+                0,
+                dsl.fetchOne("SELECT count(*) FROM runtime.bubble_delivery_item WHERE turn_key=?", turn)
+                        .get(0, Integer.class));
+        assertEquals(
+                0,
+                dsl.fetchOne("SELECT count(*) FROM runtime.bubble_room_revision_ledger WHERE turn_key=?", turn)
+                        .get(0, Integer.class));
+    }
+
+    @Test
+    void bubbleRoomPurgeIsExactAndIdempotent() throws Exception {
+        String roomPurge = "room-purge-" + UUID.randomUUID();
+        String roomKeep = "room-keep-" + UUID.randomUUID();
+        assertEquals(
+                200,
+                post("/v1/bubbles/resolve", bubbleBody(roomPurge, "turn-purge-http", "仅空检索目标"), null)
+                        .status());
+        assertEquals(
+                200,
+                post("/v1/bubbles/resolve", bubbleBody(roomKeep, "turn-keep-http", "仅空检索目标"), null)
+                        .status());
+        String purge = "{\"spaceKey\":\"local-v1-synthetic-space\",\"roomKey\":\"" + roomPurge + "\"}";
+        assertEquals(200, post("/v1/bubbles/rooms/purge", purge, null).status());
+        assertEquals(200, post("/v1/bubbles/rooms/purge", purge, null).status());
+        assertEquals(
+                0,
+                dsl.fetchOne("SELECT count(*) FROM runtime.bubble_turn_receipt WHERE room_key = ?", roomPurge)
+                        .get(0, Integer.class));
+        assertEquals(
+                1,
+                dsl.fetchOne("SELECT count(*) FROM runtime.bubble_turn_receipt WHERE room_key = ?", roomKeep)
+                        .get(0, Integer.class));
+    }
+
+    @Test
+    void bubbleConcurrentSameTurnIsOneFactAndSameRoomRevisionIsUnique() throws Exception {
+        submit("泡泡并发候选A");
+        submit("泡泡并发候选B");
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            String sameTurn = "turn-same-" + UUID.randomUUID();
+            String sameRequest = bubbleBody("room-same-turn", sameTurn, "并发查询");
+            CompletableFuture<Response> first =
+                    CompletableFuture.supplyAsync(() -> uncheckedPost("/v1/bubbles/resolve", sameRequest), executor);
+            CompletableFuture<Response> second =
+                    CompletableFuture.supplyAsync(() -> uncheckedPost("/v1/bubbles/resolve", sameRequest), executor);
+            Response firstResponse = first.join();
+            Response secondResponse = second.join();
+            assertEquals(200, firstResponse.status());
+            assertEquals(JSON.readTree(firstResponse.body()), JSON.readTree(secondResponse.body()));
+            assertEquals(
+                    1,
+                    dsl.fetchOne("SELECT count(*) FROM runtime.bubble_turn_receipt WHERE turn_key=?", sameTurn)
+                            .get(0, Integer.class));
+
+            String room = "room-concurrent-" + UUID.randomUUID();
+            String requestA = bubbleBody(room, "turn-a-" + UUID.randomUUID(), "并发查询");
+            String requestB = bubbleBody(room, "turn-b-" + UUID.randomUUID(), "并发查询");
+            CompletableFuture<Response> roomA =
+                    CompletableFuture.supplyAsync(() -> uncheckedPost("/v1/bubbles/resolve", requestA), executor);
+            CompletableFuture<Response> roomB =
+                    CompletableFuture.supplyAsync(() -> uncheckedPost("/v1/bubbles/resolve", requestB), executor);
+            assertEquals(200, roomA.join().status());
+            assertEquals(200, roomB.join().status());
+            var counts = dsl.fetchOne(
+                    "SELECT count(*), count(DISTINCT memory_revision_id) "
+                            + "FROM runtime.bubble_room_revision_ledger WHERE room_key=?",
+                    room);
+            assertEquals(counts.get(0, Integer.class), counts.get(1, Integer.class));
+            assertTrue(counts.get(0, Integer.class) >= 1);
+        }
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────
 
     private static ConfigurableApplicationContext startApi(String password) {
@@ -429,6 +614,21 @@ class LocalV1ContextPackHttpIntegrationTest {
         return sb.toString();
     }
 
+    private static String bubbleBody(String roomKey, String turnKey, String queryText) throws Exception {
+        ObjectNode body = JSON.createObjectNode();
+        body.put("spaceKey", "local-v1-synthetic-space");
+        body.put("roomKey", roomKey);
+        body.put("turnKey", turnKey);
+        body.put("queryText", queryText);
+        return JSON.writeValueAsString(body);
+    }
+
+    private static java.util.Set<String> propertySet(JsonNode node) {
+        java.util.Set<String> names = new java.util.LinkedHashSet<>();
+        node.propertyNames().forEach(names::add);
+        return names;
+    }
+
     private static Response post(String path, String body, String idempotencyKey) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder(base.resolve(path))
                 .timeout(Duration.ofSeconds(20))
@@ -439,7 +639,31 @@ class LocalV1ContextPackHttpIntegrationTest {
             builder.header("Idempotency-Key", idempotencyKey);
         }
         HttpResponse<String> response = HTTP.send(builder.build(), HttpResponse.BodyHandlers.ofString());
-        return new Response(response.statusCode(), response.body());
+        return new Response(
+                response.statusCode(),
+                response.body(),
+                response.headers().firstValue("Cache-Control").orElse(""));
+    }
+
+    private static Response postWithoutBearer(String path, String body) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(base.resolve(path))
+                .timeout(Duration.ofSeconds(20))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+        HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+        return new Response(
+                response.statusCode(),
+                response.body(),
+                response.headers().firstValue("Cache-Control").orElse(""));
+    }
+
+    private static Response uncheckedPost(String path, String body) {
+        try {
+            return post(path, body, null);
+        } catch (Exception exception) {
+            throw new java.util.concurrent.CompletionException(exception);
+        }
     }
 
     private static Response post(String path, String body, String idempotencyKey, String capability)
@@ -452,7 +676,10 @@ class LocalV1ContextPackHttpIntegrationTest {
                 .header("Idempotency-Key", idempotencyKey)
                 .POST(HttpRequest.BodyPublishers.ofString(body));
         HttpResponse<String> response = HTTP.send(builder.build(), HttpResponse.BodyHandlers.ofString());
-        return new Response(response.statusCode(), response.body());
+        return new Response(
+                response.statusCode(),
+                response.body(),
+                response.headers().firstValue("Cache-Control").orElse(""));
     }
 
     private static String toJson(LocalV1CloseoutSubmission s) {
@@ -540,5 +767,5 @@ class LocalV1ContextPackHttpIntegrationTest {
 
     private record Built(LocalV1CloseoutSubmission submission, String json) {}
 
-    private record Response(int status, String body) {}
+    private record Response(int status, String body, String cacheControl) {}
 }

@@ -138,7 +138,7 @@ class LocalV1V017SharedEvidenceMigrationTest {
             String password = container.getPassword();
             Flyway fw = Flyway.configure().dataSource(container.getJdbcUrl(), USER, password)
                     .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load();
-            assertEquals(5, fw.migrate().migrationsExecuted);
+            assertEquals(6, fw.migrate().migrationsExecuted);
             assertEquals(0, fw.migrate().migrationsExecuted);
 
             try (Connection conn = DriverManager.getConnection(container.getJdbcUrl(), USER, password);

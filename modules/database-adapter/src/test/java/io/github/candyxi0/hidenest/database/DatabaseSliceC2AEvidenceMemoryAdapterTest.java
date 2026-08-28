@@ -73,7 +73,7 @@ class DatabaseSliceC2AEvidenceMemoryAdapterTest {
                 .outOfOrder(false)
                 .validateMigrationNaming(true)
                 .load();
-        assertEquals(21, flyway.migrate().migrationsExecuted);
+        assertEquals(22, flyway.migrate().migrationsExecuted);
 
         var rds = new DriverManagerDataSource(POSTGRES.getJdbcUrl(), USER, PASSWORD);
         DataSource pds = new TransactionAwareDataSourceProxy(rds);

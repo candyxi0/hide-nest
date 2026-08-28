@@ -14,6 +14,9 @@ import io.github.candyxi0.hidenest.database.generated.memory.tables.DeletionClos
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.ChangeEventRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.DecisionRecord;
 import io.github.candyxi0.hidenest.database.generated.memory.tables.records.DeletionClosureRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.BubbleDeliveryItem;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.BubbleRoomRevisionLedger;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.BubbleTurnReceipt;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScope;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScopeUnit;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.Checkpoint;
@@ -31,6 +34,9 @@ import io.github.candyxi0.hidenest.database.generated.runtime.tables.ModelRun;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.OutboxEvent;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.RetrievalTrace;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.WorkArtifact;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.BubbleDeliveryItemRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.BubbleRoomRevisionLedgerRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.BubbleTurnReceiptRecord;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.CaptureScopeRecord;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.CaptureScopeUnitRecord;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.CheckpointRecord;
@@ -76,6 +82,11 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
+    public static final UniqueKey<BubbleDeliveryItemRecord> BUBBLE_DELIVERY_ITEM_PK = Internal.createUniqueKey(BubbleDeliveryItem.BUBBLE_DELIVERY_ITEM, DSL.name("bubble_delivery_item_pk"), new TableField[] { BubbleDeliveryItem.BUBBLE_DELIVERY_ITEM.SPACE_KEY, BubbleDeliveryItem.BUBBLE_DELIVERY_ITEM.ROOM_KEY, BubbleDeliveryItem.BUBBLE_DELIVERY_ITEM.TURN_KEY }, true);
+    public static final UniqueKey<BubbleRoomRevisionLedgerRecord> BUBBLE_ROOM_REVISION_LEDGER_PK = Internal.createUniqueKey(BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER, DSL.name("bubble_room_revision_ledger_pk"), new TableField[] { BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER.SPACE_KEY, BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER.ROOM_KEY, BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER.MEMORY_REVISION_ID }, true);
+    public static final UniqueKey<BubbleRoomRevisionLedgerRecord> BUBBLE_ROOM_REVISION_LEDGER_TURN_UNIQUE = Internal.createUniqueKey(BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER, DSL.name("bubble_room_revision_ledger_turn_unique"), new TableField[] { BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER.SPACE_KEY, BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER.ROOM_KEY, BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER.TURN_KEY }, true);
+    public static final UniqueKey<BubbleTurnReceiptRecord> BUBBLE_TURN_RECEIPT_PK = Internal.createUniqueKey(BubbleTurnReceipt.BUBBLE_TURN_RECEIPT, DSL.name("bubble_turn_receipt_pk"), new TableField[] { BubbleTurnReceipt.BUBBLE_TURN_RECEIPT.SPACE_KEY, BubbleTurnReceipt.BUBBLE_TURN_RECEIPT.ROOM_KEY, BubbleTurnReceipt.BUBBLE_TURN_RECEIPT.TURN_KEY }, true);
+    public static final UniqueKey<BubbleTurnReceiptRecord> BUBBLE_TURN_RECEIPT_TURN_UNIQUE = Internal.createUniqueKey(BubbleTurnReceipt.BUBBLE_TURN_RECEIPT, DSL.name("bubble_turn_receipt_turn_unique"), new TableField[] { BubbleTurnReceipt.BUBBLE_TURN_RECEIPT.TURN_KEY }, true);
     public static final UniqueKey<CaptureScopeRecord> CAPTURE_SCOPE_PKEY = Internal.createUniqueKey(CaptureScope.CAPTURE_SCOPE, DSL.name("capture_scope_pkey"), new TableField[] { CaptureScope.CAPTURE_SCOPE.SCOPE_ID }, true);
     public static final UniqueKey<CaptureScopeUnitRecord> CAPTURE_SCOPE_UNIT_PKEY = Internal.createUniqueKey(CaptureScopeUnit.CAPTURE_SCOPE_UNIT, DSL.name("capture_scope_unit_pkey"), new TableField[] { CaptureScopeUnit.CAPTURE_SCOPE_UNIT.SCOPE_ID, CaptureScopeUnit.CAPTURE_SCOPE_UNIT.ORDINAL }, true);
     public static final UniqueKey<CaptureScopeUnitRecord> CAPTURE_SCOPE_UNIT_SCOPE_UNIT_UNIQUE = Internal.createUniqueKey(CaptureScopeUnit.CAPTURE_SCOPE_UNIT, DSL.name("capture_scope_unit_scope_unit_unique"), new TableField[] { CaptureScopeUnit.CAPTURE_SCOPE_UNIT.SCOPE_ID, CaptureScopeUnit.CAPTURE_SCOPE_UNIT.SOURCE_UNIT_ID }, true);
@@ -105,6 +116,8 @@ public class Keys {
     // FOREIGN KEY definitions
     // -------------------------------------------------------------------------
 
+    public static final ForeignKey<BubbleDeliveryItemRecord, BubbleTurnReceiptRecord> BUBBLE_DELIVERY_ITEM__BUBBLE_DELIVERY_ITEM_RECEIPT_FK = Internal.createForeignKey(BubbleDeliveryItem.BUBBLE_DELIVERY_ITEM, DSL.name("bubble_delivery_item_receipt_fk"), new TableField[] { BubbleDeliveryItem.BUBBLE_DELIVERY_ITEM.SPACE_KEY, BubbleDeliveryItem.BUBBLE_DELIVERY_ITEM.ROOM_KEY, BubbleDeliveryItem.BUBBLE_DELIVERY_ITEM.TURN_KEY }, Keys.BUBBLE_TURN_RECEIPT_PK, new TableField[] { BubbleTurnReceipt.BUBBLE_TURN_RECEIPT.SPACE_KEY, BubbleTurnReceipt.BUBBLE_TURN_RECEIPT.ROOM_KEY, BubbleTurnReceipt.BUBBLE_TURN_RECEIPT.TURN_KEY }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<BubbleRoomRevisionLedgerRecord, BubbleTurnReceiptRecord> BUBBLE_ROOM_REVISION_LEDGER__BUBBLE_ROOM_REVISION_LEDGER_RECEIPT_FK = Internal.createForeignKey(BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER, DSL.name("bubble_room_revision_ledger_receipt_fk"), new TableField[] { BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER.SPACE_KEY, BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER.ROOM_KEY, BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER.TURN_KEY }, Keys.BUBBLE_TURN_RECEIPT_PK, new TableField[] { BubbleTurnReceipt.BUBBLE_TURN_RECEIPT.SPACE_KEY, BubbleTurnReceipt.BUBBLE_TURN_RECEIPT.ROOM_KEY, BubbleTurnReceipt.BUBBLE_TURN_RECEIPT.TURN_KEY }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<CaptureScopeRecord, SourceRecord> CAPTURE_SCOPE__CAPTURE_SCOPE_SOURCE_FK = Internal.createForeignKey(CaptureScope.CAPTURE_SCOPE, DSL.name("capture_scope_source_fk"), new TableField[] { CaptureScope.CAPTURE_SCOPE.SOURCE_ID }, io.github.candyxi0.hidenest.database.generated.evidence.Keys.SOURCE_PKEY, new TableField[] { Source.SOURCE.SOURCE_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<CaptureScopeUnitRecord, CaptureScopeRecord> CAPTURE_SCOPE_UNIT__CAPTURE_SCOPE_UNIT_SCOPE_FK = Internal.createForeignKey(CaptureScopeUnit.CAPTURE_SCOPE_UNIT, DSL.name("capture_scope_unit_scope_fk"), new TableField[] { CaptureScopeUnit.CAPTURE_SCOPE_UNIT.SCOPE_ID }, Keys.CAPTURE_SCOPE_PKEY, new TableField[] { CaptureScope.CAPTURE_SCOPE.SCOPE_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<CaptureScopeUnitRecord, SourceUnitRecord> CAPTURE_SCOPE_UNIT__CAPTURE_SCOPE_UNIT_SOURCE_UNIT_FK = Internal.createForeignKey(CaptureScopeUnit.CAPTURE_SCOPE_UNIT, DSL.name("capture_scope_unit_source_unit_fk"), new TableField[] { CaptureScopeUnit.CAPTURE_SCOPE_UNIT.SOURCE_UNIT_ID }, io.github.candyxi0.hidenest.database.generated.evidence.Keys.SOURCE_UNIT_PKEY, new TableField[] { SourceUnit.SOURCE_UNIT.SOURCE_UNIT_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);

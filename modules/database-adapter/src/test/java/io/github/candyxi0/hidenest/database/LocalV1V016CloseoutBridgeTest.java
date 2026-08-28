@@ -94,7 +94,7 @@ class LocalV1V016CloseoutBridgeTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(21, Flyway.configure()
+        assertEquals(22, Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), USER, password)
                 .defaultSchema("public")
                 .locations("classpath:db/migration")
@@ -144,7 +144,7 @@ class LocalV1V016CloseoutBridgeTest {
     @Test
     @DisplayName("0. V016 empty 16, V015→V016 upgrade 1, repeat 0")
     void migrationCounts() throws Exception {
-        assertEquals(21L, count("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(22L, count("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
 
         String upgradePassword = UUID.randomUUID().toString();
         PostgreSQLContainer<?> upgradeContainer = new PostgreSQLContainer<>(
@@ -166,7 +166,7 @@ class LocalV1V016CloseoutBridgeTest {
             var fw16 = Flyway.configure().dataSource(upgradeContainer.getJdbcUrl(), USER, upgradePassword)
                     .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true)
                     .load();
-            assertEquals(6, fw16.migrate().migrationsExecuted);
+            assertEquals(7, fw16.migrate().migrationsExecuted);
             assertEquals(0, fw16.migrate().migrationsExecuted);
         } finally {
             upgradeContainer.stop();

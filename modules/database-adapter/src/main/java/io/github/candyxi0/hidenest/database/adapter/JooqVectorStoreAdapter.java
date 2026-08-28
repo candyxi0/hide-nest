@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.jooq.DSLContext;
 import org.jooq.Record;
@@ -78,10 +79,22 @@ public class JooqVectorStoreAdapter implements MemoryVectorStorePort {
 
     @Override
     public List<VectorMatch> searchSimilar(VectorSearchRequest request) {
+        return searchSimilarExcluding(request, Set.of());
+    }
+
+    @Override
+    public List<VectorMatch> searchSimilarExcluding(
+            VectorSearchRequest request, Set<UUID> excludedMemoryRevisionIds) {
         if (request == null) {
             throw new IllegalArgumentException("request must not be null");
         }
         validateSearchRequest(request);
+        if (excludedMemoryRevisionIds == null
+                || excludedMemoryRevisionIds.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("excluded revision ids must not be null");
+        }
+
+        UUID[] excluded = excludedMemoryRevisionIds.toArray(UUID[]::new);
 
         List<Record> rows = dsl.fetch(
                 "SELECT e.memory_revision_id, mr.memory_id, rev.revision_no, "
@@ -94,6 +107,7 @@ public class JooqVectorStoreAdapter implements MemoryVectorStorePort {
                         + "WHERE e.model_name = ? AND e.gguf_sha256 = ? "
                         + "AND e.dimension = ? AND e.normalization = ? "
                         + "AND mr.state = 'ACTIVE' "
+                        + "AND NOT (e.memory_revision_id = ANY(?::uuid[])) "
                         + "AND NOT EXISTS ("
                         + "  SELECT 1 FROM memory.deletion_fence f "
                         + "  WHERE f.target_kind = 'MEMORY' AND f.target_id = mr.memory_id "
@@ -105,6 +119,7 @@ public class JooqVectorStoreAdapter implements MemoryVectorStorePort {
                 request.ggufSha256(),
                 request.dimension(),
                 request.normalization(),
+                excluded,
                 request.limit());
 
         List<VectorMatch> result = new ArrayList<>(rows.size());

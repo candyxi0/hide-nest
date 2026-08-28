@@ -1203,6 +1203,110 @@ components:
           description: Number of complete 24-hour periods between evidenceOccurredAt and issuedAt (existing algorithm; not calendar days).
       additionalProperties: false
 
+    # ─── Bubble V1 DTOs ────────────────────────────────────
+    BubbleResolveRequest:
+      type: object
+      required:
+        - spaceKey
+        - roomKey
+        - turnKey
+        - queryText
+      properties:
+        spaceKey:
+          type: string
+          description: Platform-neutral opaque relationship-space key; maximum 128 UTF-8 bytes.
+        roomKey:
+          type: string
+          description: Platform-neutral opaque room key; maximum 128 UTF-8 bytes.
+        turnKey:
+          type: string
+          description: Platform-neutral Bubble idempotency key; maximum 128 UTF-8 bytes.
+        queryText:
+          type: string
+          description: Verbatim semantic query text; maximum 480 UTF-8 bytes and never persisted.
+      additionalProperties: false
+
+    BubbleResolveResponse:
+      type: object
+      required:
+        - status
+        - items
+      properties:
+        status:
+          type: string
+          enum:
+            - BUBBLE_READY
+            - NO_MATCH
+        items:
+          type: array
+          minItems: 0
+          maxItems: 1
+          items:
+            $ref: "#/components/schemas/BubbleItem"
+      allOf:
+        - if:
+            properties:
+              status:
+                const: BUBBLE_READY
+          then:
+            properties:
+              items:
+                minItems: 1
+                maxItems: 1
+        - if:
+            properties:
+              status:
+                const: NO_MATCH
+          then:
+            properties:
+              items:
+                minItems: 0
+                maxItems: 0
+      additionalProperties: false
+
+    BubbleItem:
+      type: object
+      required:
+        - bodyText
+        - memoryType
+        - evidenceAgeDays
+      properties:
+        bodyText:
+          type: string
+        memoryType:
+          $ref: "#/components/schemas/MemoryType"
+        evidenceAgeDays:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Complete 24-hour periods fixed at first Bubble delivery.
+      additionalProperties: false
+
+    BubbleRoomPurgeRequest:
+      type: object
+      required:
+        - spaceKey
+        - roomKey
+      properties:
+        spaceKey:
+          type: string
+          description: Platform-neutral opaque relationship-space key; maximum 128 UTF-8 bytes.
+        roomKey:
+          type: string
+          description: Exact opaque room key; broad patterns are not accepted.
+      additionalProperties: false
+
+    BubbleRoomPurgeResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - PURGED
+      additionalProperties: false
+
     DeepSearchRequest:
       type: object
       required:
@@ -2154,6 +2258,78 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContextPackResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+      security:
+        - bearerSession: []
+
+  /bubbles/resolve:
+    post:
+      operationId: resolveBubble
+      x-caller-role: session
+      tags:
+        - bubbles
+      description: "Resolve one ordinary Bubble. Server policy only; no bootstrap semantics and no capability header."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BubbleResolveRequest"
+      responses:
+        "200":
+          description: Bubble ready or normal no-match result
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BubbleResolveResponse"
+        "401":
+          $ref: "#/components/responses/ProblemUnauthorized"
+        "403":
+          $ref: "#/components/responses/ProblemForbidden"
+        "409":
+          $ref: "#/components/responses/ProblemConflict"
+        "422":
+          $ref: "#/components/responses/ProblemUnprocessable"
+        "503":
+          $ref: "#/components/responses/ProblemUnavailable"
+      security:
+        - bearerSession: []
+
+  /bubbles/rooms/purge:
+    post:
+      operationId: purgeBubbleRoom
+      x-caller-role: session
+      tags:
+        - bubbles
+      description: "Physically purge only one exact Room's Bubble receipts, delivery items, and revision ledger. Capability: NOT_REQUIRED."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BubbleRoomPurgeRequest"
+      responses:
+        "200":
+          description: Room Bubble facts are absent
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BubbleRoomPurgeResponse"
         "401":
           $ref: "#/components/responses/ProblemUnauthorized"
         "403":

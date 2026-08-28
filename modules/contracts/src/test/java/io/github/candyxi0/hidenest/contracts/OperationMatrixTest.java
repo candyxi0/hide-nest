@@ -88,7 +88,7 @@ class OperationMatrixTest {
             Map<String, JsonNode> expected = expectedOperations(inventory);
             Map<String, JsonNode> actual = actualOperations(spec);
             require(expected.keySet().equals(actual.keySet()), "method + effective path set must match Inventory");
-            require(actual.size() == 30, "expected exactly 30 operations, found " + actual.size());
+            require(actual.size() == 32, "expected exactly 32 operations, found " + actual.size());
 
             int idempotent = 0;
             int nonIdempotent = 0;
@@ -135,11 +135,11 @@ class OperationMatrixTest {
                 noStore++;
             }
 
-            require(idempotent == 20 && nonIdempotent == 10, "idempotency totals must be 20/10");
+            require(idempotent == 20 && nonIdempotent == 12, "idempotency totals must be 20/12");
             require(
-                    requiredCapability == 8 && conditionalCapability == 1 && noCapability == 21,
-                    "capability totals must be 8/1/21");
-            require(noStore == 30, "no-store total must be 30");
+                    requiredCapability == 8 && conditionalCapability == 1 && noCapability == 23,
+                    "capability totals must be 8/1/23");
+            require(noStore == 32, "no-store total must be 32");
         }
 
         private static Map<String, JsonNode> expectedOperations(JsonNode inventory) {

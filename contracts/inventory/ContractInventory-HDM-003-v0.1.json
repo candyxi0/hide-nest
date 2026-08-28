@@ -367,6 +367,56 @@
     },
     {
       "method": "POST",
+      "path": "/v1/bubbles/resolve",
+      "operationId": "resolveBubble",
+      "callerRole": "session",
+      "parameters": [],
+      "requestSchema": "BubbleResolveRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "BubbleResolveResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        409,
+        422,
+        503
+      ],
+      "idempotencyRequired": false,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "Task50A-3.1",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
+      "path": "/v1/bubbles/rooms/purge",
+      "operationId": "purgeBubbleRoom",
+      "callerRole": "session",
+      "parameters": [],
+      "requestSchema": "BubbleRoomPurgeRequest",
+      "successResponses": [
+        {
+          "status": 200,
+          "schema": "BubbleRoomPurgeResponse"
+        }
+      ],
+      "problemStatuses": [
+        401,
+        403,
+        422
+      ],
+      "idempotencyRequired": false,
+      "capabilityRequired": "NOT_REQUIRED",
+      "noStoreRequired": true,
+      "source": "Task50A-3.3",
+      "unresolved": []
+    },
+    {
+      "method": "POST",
       "path": "/v1/context-packs/hook-bootstrap",
       "operationId": "hookBootstrapContextPack",
       "callerRole": "hook",
@@ -1126,6 +1176,31 @@
         "name": "ContextPackMemory",
         "type": "response",
         "source": "S04-3.2"
+      },
+      {
+        "name": "BubbleResolveRequest",
+        "type": "request",
+        "source": "Task50A-3.1"
+      },
+      {
+        "name": "BubbleResolveResponse",
+        "type": "response",
+        "source": "Task50A-3.2"
+      },
+      {
+        "name": "BubbleItem",
+        "type": "response",
+        "source": "Task50A-2.5"
+      },
+      {
+        "name": "BubbleRoomPurgeRequest",
+        "type": "request",
+        "source": "Task50A-3.3"
+      },
+      {
+        "name": "BubbleRoomPurgeResponse",
+        "type": "response",
+        "source": "Task50A-3.3"
       },
       {
         "name": "DeepSearchRequest",
@@ -2771,13 +2846,13 @@
     }
   ],
   "statistics": {
-    "remoteApiOperations": 30,
+    "remoteApiOperations": 32,
     "localExcludedOperations": 3,
     "privateExcludedEndpoints": 2,
-  "apiSchemas": 53,
+  "apiSchemas": 58,
   "sharedEnums": 15,
     "eventSchemas": 4,
-  "totalSchemaCount": 72,
+  "totalSchemaCount": 77,
     "failureCodes": 50,
     "asyncStages": 5,
     "eventTypes": 12,

@@ -117,7 +117,7 @@ class LocalV1S3C2FileDeletionTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(21, Flyway.configure().dataSource(jdbcUrl, USER, password)
+        assertEquals(22, Flyway.configure().dataSource(jdbcUrl, USER, password)
                 .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true).load()
                 .migrate().migrationsExecuted);
         rawDataSource = new DriverManagerDataSource(jdbcUrl, USER, password);
@@ -165,7 +165,7 @@ class LocalV1S3C2FileDeletionTest {
     @Order(1)
     @DisplayName("1. V015 empty 15, V014→V015 upgrade 1, repeat 0")
     void migrationCounts() throws Exception {
-        assertEquals(21, count("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(22, count("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
 
         String upgradePassword = UUID.randomUUID().toString();
         PostgreSQLContainer<?> upgradeContainer = new PostgreSQLContainer<>(
@@ -189,7 +189,7 @@ class LocalV1S3C2FileDeletionTest {
             var fw15 = Flyway.configure().dataSource(upgradeContainer.getJdbcUrl(), USER, upgradePassword)
                     .defaultSchema("public").locations("classpath:db/migration").cleanDisabled(true)
                     .load();
-            assertEquals(7, fw15.migrate().migrationsExecuted);
+            assertEquals(8, fw15.migrate().migrationsExecuted);
             // Repeat: 0
             assertEquals(0, fw15.migrate().migrationsExecuted);
         } finally {

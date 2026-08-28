@@ -84,7 +84,7 @@ class DatabaseSliceBContractTest {
                 .validateMigrationNaming(true)
                 .load();
         MigrateResult result = flyway.migrate();
-        assertEquals(21, result.migrationsExecuted);
+        assertEquals(22, result.migrationsExecuted);
     }
 
     @AfterAll
@@ -105,7 +105,7 @@ class DatabaseSliceBContractTest {
         MigrateResult repeated = flyway.migrate();
         assertEquals(0, repeated.migrationsExecuted);
         assertEquals(before, catalogFingerprint());
-        assertEquals(21, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(22, scalarLong("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
     }
 
     @Test
@@ -140,7 +140,7 @@ class DatabaseSliceBContractTest {
 
     @Test
     @Order(3)
-    @DisplayName("CoreDatabaseInventoryIT: four schemas and thirty-nine approved tables")
+    @DisplayName("CoreDatabaseInventoryIT: four schemas and forty-five approved tables")
     void coreDatabaseInventoryIT() throws SQLException {
         assertEquals(
                 Set.of("evidence", "memory", "runtime", "security"),
@@ -186,6 +186,9 @@ class DatabaseSliceBContractTest {
                         "runtime.retrieval_trace",
                         "runtime.context_delivery",
                         "runtime.context_pack_delivery_item",
+                        "runtime.bubble_turn_receipt",
+                        "runtime.bubble_delivery_item",
+                        "runtime.bubble_room_revision_ledger",
                         "runtime.consumer_effect",
                         "runtime.deletion_erasure_marker",
                         "runtime.deletion_payload_task",
@@ -382,7 +385,7 @@ class DatabaseSliceBContractTest {
     @DisplayName("DatabasePrivilegeIT: migrator ownership and runtime least privilege")
     void databasePrivilegeIT() throws SQLException {
         assertEquals(
-                42,
+                45,
                 scalarLong("SELECT count(*) FROM pg_catalog.pg_tables "
                         + "WHERE schemaname IN ('evidence','memory','runtime','security') "
                         + "AND tableowner='hide_nest_migrator'"));
@@ -1475,7 +1478,7 @@ class DatabaseSliceBContractTest {
     @Order(44)
     @DisplayName("V013: migration history = 13, repeat migrate executes 0")
     void v010MigrationHistoryAndRepeat() {
-        assertEquals(21, flyway.info().applied().length, "history must be 21");
+        assertEquals(22, flyway.info().applied().length, "history must be 22");
         MigrateResult repeat = flyway.migrate();
         assertEquals(0, repeat.migrationsExecuted, "repeat migrate must execute 0");
     }

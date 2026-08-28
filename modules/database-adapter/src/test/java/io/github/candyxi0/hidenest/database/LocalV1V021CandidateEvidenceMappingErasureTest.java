@@ -45,8 +45,6 @@ import io.github.candyxi0.hidenest.evidence.port.PayloadStore;
 import io.github.candyxi0.hidenest.memory.port.CandidateSetGovernancePort;
 import io.github.candyxi0.hidenest.memory.port.DeletionBindingPort;
 import io.github.candyxi0.hidenest.memory.port.DeletionExecutionPort;
-import io.github.candyxi0.hidenest.memory.port.DeletionFencePort;
-import io.github.candyxi0.hidenest.memory.port.DeletionPreviewPort;
 import io.github.candyxi0.hidenest.memory.port.EmbeddingProviderPort;
 import io.github.candyxi0.hidenest.memory.port.MemoryGovernancePort;
 import io.github.candyxi0.hidenest.memory.port.MemoryVectorStorePort;
@@ -201,9 +199,9 @@ class LocalV1V021CandidateEvidenceMappingErasureTest {
 
     @Test
     @Order(1)
-    @DisplayName("V021 empty/V020 upgrade/repeat = 21/1/0; table count and narrow privileges unchanged")
+    @DisplayName("full empty = 22; isolated V020→V021 upgrade/repeat = 1/0")
     void migrationAndPrivilegeContract() throws Exception {
-        assertEquals(21, emptyMigrations);
+        assertEquals(22, emptyMigrations);
         assertEquals(0, flyway.migrate().migrationsExecuted);
 
         String upgradePassword = UUID.randomUUID().toString();
@@ -213,7 +211,7 @@ class LocalV1V021CandidateEvidenceMappingErasureTest {
             Flyway v20 = flyway(upgrade, "20");
             assertEquals(20, v20.migrate().migrationsExecuted);
             long tablesBefore = tableCount(upgrade, upgradePassword);
-            Flyway v21 = flyway(upgrade, null);
+            Flyway v21 = flyway(upgrade, "21");
             assertEquals(1, v21.migrate().migrationsExecuted);
             assertEquals(0, v21.migrate().migrationsExecuted);
             assertEquals(tablesBefore, tableCount(upgrade, upgradePassword));
@@ -237,6 +235,7 @@ class LocalV1V021CandidateEvidenceMappingErasureTest {
     @DisplayName("exclusive mapping erases; CONFIRMED+fence+NO_RUN replay creates one COMPLETED run and EXACT replay adds zero facts")
     void exclusiveNoRunReplayRecovery() {
         Projected projected = project(1, "exclusive");
+        String bubbleTurn = insertBubbleFact(projected.memoryIds().getFirst());
         ConfirmedNoRun confirmed = confirmWithoutRun(projected, 0, "exclusive-no-run");
 
         assertEquals("CONFIRMED", text("SELECT state FROM memory.deletion_closure WHERE closure_id=?", confirmed.closureId()));
@@ -267,6 +266,10 @@ class LocalV1V021CandidateEvidenceMappingErasureTest {
         assertEquals(0L, count("SELECT count(*) FROM evidence.source_anchor WHERE anchor_id=?", projected.anchorId()));
         assertEquals(0L, count("SELECT count(*) FROM evidence.source_unit WHERE source_unit_id=?", projected.unitId()));
         assertEquals(0L, count("SELECT count(*) FROM evidence.source_payload WHERE payload_id=?", projected.payloadId()));
+        assertEquals(1L, count("SELECT count(*) FROM runtime.bubble_delivery_item WHERE turn_key=?", bubbleTurn));
+        assertEquals(0L, count("SELECT count(*) FROM information_schema.columns "
+                + "WHERE table_schema='runtime' AND table_name='bubble_delivery_item' "
+                + "AND column_name LIKE '%body%'"));
         assertEquals(1L, count("SELECT count(*) FROM memory.candidate_set WHERE candidate_set_id=?", projected.setId()));
         assertEquals(1L, count("SELECT count(*) FROM memory.candidate_set_member WHERE candidate_set_id=?", projected.setId()));
 
@@ -489,6 +492,38 @@ class LocalV1V021CandidateEvidenceMappingErasureTest {
                 result.previewId(), memoryId, result.previewRevision(),
                 HexFormat.of().formatHex(requestHash), HexFormat.of().formatHex(result.manifestHash()),
                 confirmKey);
+    }
+
+    private static String insertBubbleFact(UUID memoryId) {
+        UUID revisionId = dsl.fetchOne(
+                        "SELECT current_revision_id FROM memory.memory_record WHERE memory_id=?", memoryId)
+                .get(0, UUID.class);
+        String turnKey = "bubble-before-delete-" + UUID.randomUUID();
+        OffsetDateTime issuedAt = OffsetDateTime.now(CLOCK);
+        transactions.executeInTransaction(() -> {
+            dsl.execute(
+                    "INSERT INTO runtime.bubble_turn_receipt(space_key,room_key,turn_key,request_hash,"
+                            + "query_utf8_bytes,result_category,policy_version,min_score,result_manifest_hash,issued_at) "
+                            + "VALUES('family-space','deletion-room',?,decode(repeat('11',32),'hex'),12,"
+                            + "'BUBBLE_READY','BUBBLE_V1_R1',0.70,decode(repeat('22',32),'hex'),?::timestamptz)",
+                    turnKey,
+                    issuedAt);
+            dsl.execute(
+                    "INSERT INTO runtime.bubble_delivery_item(space_key,room_key,turn_key,memory_id,"
+                            + "memory_revision_id,revision_no,policy_revision_no,score,memory_type,evidence_age_days) "
+                            + "VALUES('family-space','deletion-room',?,?::uuid,?::uuid,1,1,0.80,'EVENT',0)",
+                    turnKey,
+                    memoryId,
+                    revisionId);
+            dsl.execute(
+                    "INSERT INTO runtime.bubble_room_revision_ledger(space_key,room_key,memory_revision_id,"
+                            + "turn_key,delivered_at) VALUES('family-space','deletion-room',?::uuid,?,?::timestamptz)",
+                    revisionId,
+                    turnKey,
+                    issuedAt);
+            return null;
+        });
+        return turnKey;
     }
 
     private static LocalV1RunStatus replayConfirmed(ConfirmedNoRun confirmed) {

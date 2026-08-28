@@ -3,6 +3,7 @@ package io.github.candyxi0.hidenest.memory.port;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /** Memory vector store/search port for the Local V1 embedding vertical. */
@@ -21,6 +22,14 @@ public interface MemoryVectorStorePort {
      * descending similarity, then ascending memory id.
      */
     List<VectorMatch> searchSimilar(VectorSearchRequest request);
+
+    /**
+     * Exact cosine search that excludes already-delivered revision identities in storage before
+     * LIMIT is applied. Bubble requires this to happen in the store, rather than filtering a
+     * truncated top-N result in application memory.
+     */
+    List<VectorMatch> searchSimilarExcluding(
+            VectorSearchRequest request, Set<UUID> excludedMemoryRevisionIds);
 
     /**
      * Read-only exact verification: returns {@code true} iff a derived vector fact exists for the

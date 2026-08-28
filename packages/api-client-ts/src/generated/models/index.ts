@@ -2,6 +2,11 @@
 /* eslint-disable */
 export * from './ActionResultResponse.js';
 export * from './AsyncAcceptedResponse.js';
+export * from './BubbleItem.js';
+export * from './BubbleResolveRequest.js';
+export * from './BubbleResolveResponse.js';
+export * from './BubbleRoomPurgeRequest.js';
+export * from './BubbleRoomPurgeResponse.js';
 export * from './CandidateAction.js';
 export * from './CandidateAuthorKind.js';
 export * from './CandidateDisposition.js';

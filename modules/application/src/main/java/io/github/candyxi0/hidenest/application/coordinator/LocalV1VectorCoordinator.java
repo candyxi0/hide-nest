@@ -16,6 +16,7 @@ import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -66,16 +67,27 @@ public class LocalV1VectorCoordinator {
     }
 
     public List<LocalV1VectorMatch> searchSimilar(String query, int limit) {
+        return searchSimilarExcluding(query, limit, Set.of());
+    }
+
+    /** Bubble-only narrow extension: exclusions are applied by the vector store before LIMIT. */
+    public List<LocalV1VectorMatch> searchSimilarExcluding(
+            String query, int limit, Set<UUID> excludedMemoryRevisionIds) {
         validateQuery(query, limit);
+        if (excludedMemoryRevisionIds == null
+                || excludedMemoryRevisionIds.stream().anyMatch(Objects::isNull)) {
+            throw failure(LocalV1VectorException.Code.INVALID_ARGUMENT);
+        }
         double[] unit = embedAndNormalize(query);
-        List<MemoryVectorStorePort.VectorMatch> matches = vectorStore.searchSimilar(
+        List<MemoryVectorStorePort.VectorMatch> matches = vectorStore.searchSimilarExcluding(
                 new MemoryVectorStorePort.VectorSearchRequest(
                         fingerprint.modelName(),
                         fingerprint.ggufSha256(),
                         fingerprint.dimension(),
                         fingerprint.normalization(),
                         unit,
-                        limit));
+                        limit),
+                Set.copyOf(excludedMemoryRevisionIds));
         return matches.stream()
                 .map(match -> new LocalV1VectorMatch(
                         match.memoryId(), match.memoryRevisionId(), match.revisionNo(), match.score()))

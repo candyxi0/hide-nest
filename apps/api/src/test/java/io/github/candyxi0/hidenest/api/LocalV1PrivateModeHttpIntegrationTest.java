@@ -97,7 +97,7 @@ class LocalV1PrivateModeHttpIntegrationTest {
             connection.createStatement().execute("CREATE ROLE hide_nest_api NOLOGIN");
             connection.createStatement().execute("CREATE ROLE hide_nest_worker NOLOGIN");
         }
-        assertEquals(21, Flyway.configure()
+        assertEquals(22, Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), USER, password)
                 .defaultSchema("public")
                 .locations("classpath:db/migration")
@@ -292,6 +292,7 @@ class LocalV1PrivateModeHttpIntegrationTest {
         defaults.put("spring.datasource.username", USER);
         defaults.put("spring.datasource.password", password);
         defaults.put("hidenest.local-v1.payload-root", payloadRoot.toString());
+        defaults.put("hidenest.bubble.default-space-key", "local-private-test-space");
         if (token != null) {
             defaults.put("hidenest.local-v1.synthetic-token", token);
         }

@@ -1,5 +1,6 @@
 package io.github.candyxi0.hidenest.api;
 
+import io.github.candyxi0.hidenest.application.coordinator.LocalV1BubbleException;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1CandidateSetException;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1CloseoutException;
 import io.github.candyxi0.hidenest.application.coordinator.LocalV1ContextPackException;
@@ -207,6 +208,48 @@ public final class LocalV1ExceptionHandler {
                     ResultCategory.STALE,
                     FailureCode.POLICY_REVISION_STALE,
                     "本机上下文包已因治理变化失效",
+                    false);
+            default -> integrityFailure(request);
+        };
+    }
+
+    @ExceptionHandler(LocalV1BubbleException.class)
+    ResponseEntity<ProblemDetail> bubble(LocalV1BubbleException exception, HttpServletRequest request) {
+        return switch (exception.code()) {
+            case REQUEST_SCHEMA_INVALID -> problem(
+                    request,
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    ResultCategory.FAILED,
+                    FailureCode.REQUEST_SCHEMA_INVALID,
+                    "记忆泡泡请求不符合契约约束",
+                    false);
+            case SPACE_KEY_MISMATCH -> problem(
+                    request,
+                    HttpStatus.FORBIDDEN,
+                    ResultCategory.DENIED,
+                    FailureCode.ACCESS_DENIED,
+                    "记忆泡泡空间绑定无效",
+                    false);
+            case TURN_KEY_REUSED -> problem(
+                    request,
+                    HttpStatus.CONFLICT,
+                    ResultCategory.FAILED,
+                    FailureCode.IDEMPOTENCY_KEY_REUSED,
+                    "记忆泡泡回合键已被不同请求复用",
+                    false);
+            case EMBEDDING_UNAVAILABLE -> problem(
+                    request,
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    ResultCategory.FAILED,
+                    FailureCode.MODEL_PROVIDER_UNAVAILABLE,
+                    "记忆泡泡嵌入依赖当前不可用",
+                    true);
+            case BUBBLE_STALE -> problem(
+                    request,
+                    HttpStatus.CONFLICT,
+                    ResultCategory.STALE,
+                    FailureCode.POLICY_REVISION_STALE,
+                    "记忆泡泡既有交付事实已因治理变化失效",
                     false);
             default -> integrityFailure(request);
         };

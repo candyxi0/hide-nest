@@ -5,6 +5,9 @@ package io.github.candyxi0.hidenest.database.generated.runtime;
 
 
 import io.github.candyxi0.hidenest.database.generated.DefaultCatalog;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.BubbleDeliveryItem;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.BubbleRoomRevisionLedger;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.BubbleTurnReceipt;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScope;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.CaptureScopeUnit;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.Checkpoint;
@@ -22,12 +25,14 @@ import io.github.candyxi0.hidenest.database.generated.runtime.tables.FailureCode
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.IdempotencyReceipt;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.ModelRun;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.OutboxEvent;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.PurgeBubbleRoom;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.RecordDeletionFileFailure;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.RetrievalTrace;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.SettleDeletionPayloadTask;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.WorkArtifact;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.CompleteDeletionRunRecord;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.ExecuteConfirmedDeletionDatabasePhaseRecord;
+import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.PurgeBubbleRoomRecord;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.RecordDeletionFileFailureRecord;
 import io.github.candyxi0.hidenest.database.generated.runtime.tables.records.SettleDeletionPayloadTaskRecord;
 
@@ -65,6 +70,21 @@ public class Runtime extends SchemaImpl {
      * The reference instance of <code>runtime</code>
      */
     public static final Runtime RUNTIME = new Runtime();
+
+    /**
+     * The table <code>runtime.bubble_delivery_item</code>.
+     */
+    public final BubbleDeliveryItem BUBBLE_DELIVERY_ITEM = BubbleDeliveryItem.BUBBLE_DELIVERY_ITEM;
+
+    /**
+     * The table <code>runtime.bubble_room_revision_ledger</code>.
+     */
+    public final BubbleRoomRevisionLedger BUBBLE_ROOM_REVISION_LEDGER = BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER;
+
+    /**
+     * The table <code>runtime.bubble_turn_receipt</code>.
+     */
+    public final BubbleTurnReceipt BUBBLE_TURN_RECEIPT = BubbleTurnReceipt.BUBBLE_TURN_RECEIPT;
 
     /**
      * The table <code>runtime.capture_scope</code>.
@@ -240,6 +260,51 @@ public class Runtime extends SchemaImpl {
     public final OutboxEvent OUTBOX_EVENT = OutboxEvent.OUTBOX_EVENT;
 
     /**
+     * The table <code>runtime.purge_bubble_room</code>.
+     */
+    public final PurgeBubbleRoom PURGE_BUBBLE_ROOM = PurgeBubbleRoom.PURGE_BUBBLE_ROOM;
+
+    /**
+     * Call <code>runtime.purge_bubble_room</code>.
+     */
+    public static Result<PurgeBubbleRoomRecord> PURGE_BUBBLE_ROOM(
+          Configuration configuration
+        , String pSpaceKey
+        , String pRoomKey
+    ) {
+        return configuration.dsl().selectFrom(io.github.candyxi0.hidenest.database.generated.runtime.tables.PurgeBubbleRoom.PURGE_BUBBLE_ROOM.call(
+              pSpaceKey
+            , pRoomKey
+        )).fetch();
+    }
+
+    /**
+     * Get <code>runtime.purge_bubble_room</code> as a table.
+     */
+    public static PurgeBubbleRoom PURGE_BUBBLE_ROOM(
+          String pSpaceKey
+        , String pRoomKey
+    ) {
+        return io.github.candyxi0.hidenest.database.generated.runtime.tables.PurgeBubbleRoom.PURGE_BUBBLE_ROOM.call(
+            pSpaceKey,
+            pRoomKey
+        );
+    }
+
+    /**
+     * Get <code>runtime.purge_bubble_room</code> as a table.
+     */
+    public static PurgeBubbleRoom PURGE_BUBBLE_ROOM(
+          Field<String> pSpaceKey
+        , Field<String> pRoomKey
+    ) {
+        return io.github.candyxi0.hidenest.database.generated.runtime.tables.PurgeBubbleRoom.PURGE_BUBBLE_ROOM.call(
+            pSpaceKey,
+            pRoomKey
+        );
+    }
+
+    /**
      * The table <code>runtime.record_deletion_file_failure</code>.
      */
     public final RecordDeletionFileFailure RECORD_DELETION_FILE_FAILURE = RecordDeletionFileFailure.RECORD_DELETION_FILE_FAILURE;
@@ -367,6 +432,9 @@ public class Runtime extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            BubbleDeliveryItem.BUBBLE_DELIVERY_ITEM,
+            BubbleRoomRevisionLedger.BUBBLE_ROOM_REVISION_LEDGER,
+            BubbleTurnReceipt.BUBBLE_TURN_RECEIPT,
             CaptureScope.CAPTURE_SCOPE,
             CaptureScopeUnit.CAPTURE_SCOPE_UNIT,
             Checkpoint.CHECKPOINT,
@@ -384,6 +452,7 @@ public class Runtime extends SchemaImpl {
             IdempotencyReceipt.IDEMPOTENCY_RECEIPT,
             ModelRun.MODEL_RUN,
             OutboxEvent.OUTBOX_EVENT,
+            PurgeBubbleRoom.PURGE_BUBBLE_ROOM,
             RecordDeletionFileFailure.RECORD_DELETION_FILE_FAILURE,
             RetrievalTrace.RETRIEVAL_TRACE,
             SettleDeletionPayloadTask.SETTLE_DELETION_PAYLOAD_TASK,
