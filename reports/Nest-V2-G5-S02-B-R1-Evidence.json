@@ -1,0 +1,28 @@
+{
+  "ticket": "Nest-V2-G5-S02-B-R1",
+  "status": "G5_S02_B_R1_READY_FOR_COMMANDER_REVIEW",
+  "baseline_commit": "1d73a86361459146879dbdd15808926db1bd003a",
+  "jdk": "25.0.4",
+  "database": "PostgreSQL 18.4",
+  "pre_fix_counterexample": {
+    "tests": 11,
+    "failures": 2,
+    "observed": ["premature_attention_at_budget_2", "premature_retry_wait_at_budget_3"]
+  },
+  "v2_full_targeted": { "status": "PASS", "tests": 21, "failures": 0, "errors": 0, "skipped": 0 },
+  "sibling_renewal": "PASS",
+  "predecessor_blocking": "PASS",
+  "fail_settle_interleaving": "PASS",
+  "late_valid_result_after_attention": "PASS",
+  "v2_spotless": "PASS",
+  "git_diff_check": "PASS",
+  "staged_paths": 0,
+  "task_produced_forbidden_path_changes": 0,
+  "v1_regression_prior_receipt": { "status": "PASS", "tests": 441, "failures": 0, "skipped": 1, "rerun_in_r1": false },
+  "sql_migration_changed_in_r1": false,
+  "runtime_port_changed_in_r1": false,
+  "model_call": false,
+  "network_install": false,
+  "deployment": false,
+  "command_history_note": "The first targeted command did not start tests because PowerShell split an unquoted Maven property; the quoted rerun produced the pre-fix counterexample."
+}

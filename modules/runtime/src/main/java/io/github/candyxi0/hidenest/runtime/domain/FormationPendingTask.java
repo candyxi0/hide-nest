@@ -8,6 +8,7 @@ import java.util.UUID;
 public record FormationPendingTask(
         UUID taskId,
         UUID sourceId,
+        UUID predecessorTaskId,
         SourceBoundary fromExclusive,
         SourceBoundary toInclusive,
         SourceReadBinding readBinding,
@@ -27,8 +28,8 @@ public record FormationPendingTask(
         if (fromExclusive != null && fromExclusive.sequence() >= toInclusive.sequence()) {
             throw new IllegalArgumentException("Formation range must advance beyond fromExclusive");
         }
-        if (generation != 0) {
-            throw new IllegalArgumentException("S02-A pending generation must be zero");
+        if (generation < 0) {
+            throw new IllegalArgumentException("generation must be nonnegative");
         }
     }
 }

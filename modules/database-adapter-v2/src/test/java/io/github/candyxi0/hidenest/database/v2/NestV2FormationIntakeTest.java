@@ -53,7 +53,7 @@ class NestV2FormationIntakeTest {
         postgres.start();
         createRoles(postgres, password);
         Flyway flyway = flyway(postgres, null);
-        assertEquals(1, flyway.migrate().migrationsExecuted);
+        assertEquals(2, flyway.migrate().migrationsExecuted);
         assertEquals(0, flyway.migrate().migrationsExecuted);
         dsl = DSL.using(new DriverManagerDataSource(postgres.getJdbcUrl(), USER, password), SQLDialect.POSTGRES);
     }
@@ -67,6 +67,8 @@ class NestV2FormationIntakeTest {
 
     @BeforeEach
     void createSource() {
+        dsl.execute("DELETE FROM runtime.formation_attention_notice");
+        dsl.execute("DELETE FROM runtime.formation_attempt");
         dsl.execute("DELETE FROM runtime.formation_task");
         dsl.execute("DELETE FROM runtime.source_progress");
         dsl.execute("DELETE FROM runtime.source_registration");
@@ -82,8 +84,8 @@ class NestV2FormationIntakeTest {
 
     @Test
     void freshV2BaselineHasNoEvidenceOrMemorySchema() {
-        assertEquals(1, scalarInt("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
-        assertEquals(3, scalarInt("SELECT count(*) FROM information_schema.tables WHERE table_schema='runtime'"));
+        assertEquals(2, scalarInt("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(5, scalarInt("SELECT count(*) FROM information_schema.tables WHERE table_schema='runtime'"));
         assertFalse(bool("SELECT EXISTS (SELECT 1 FROM information_schema.schemata "
                 + "WHERE schema_name IN ('memory','evidence'))"));
     }

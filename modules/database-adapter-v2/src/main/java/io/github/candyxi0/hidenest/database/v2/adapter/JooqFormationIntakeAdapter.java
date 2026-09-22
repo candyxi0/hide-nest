@@ -119,12 +119,17 @@ public final class JooqFormationIntakeAdapter implements FormationIntakePort {
         }
         OffsetDateTime asOf = OffsetDateTime.now(clock).withOffsetSameInstant(ZoneOffset.UTC);
         var rows = dsl.fetch(
-                "SELECT t.task_id, t.source_id, t.from_sequence, t.from_cursor, t.from_source_version, "
+                "SELECT t.task_id, t.source_id, t.predecessor_task_id, t.from_sequence, t.from_cursor, t.from_source_version, "
                         + "t.to_sequence, t.to_cursor, t.to_source_version, t.read_kind, t.read_ref, "
                         + "t.read_version, t.read_expires_at, t.ready_at, t.generation, t.created_at, t.updated_at "
                         + "FROM runtime.formation_task t JOIN runtime.source_progress p ON p.source_id=t.source_id "
                         + "WHERE t.state='PENDING' AND t.ready_at <= ?::timestamptz "
-                        + "AND t.to_sequence=p.stable_sequence AND p.stable_sequence=p.discovered_sequence "
+                        + "AND t.to_sequence<=p.stable_sequence AND p.stable_sequence=p.discovered_sequence "
+                        + "AND p.stable_cursor=p.discovered_cursor "
+                        + "AND p.stable_source_version=p.discovered_source_version "
+                        + "AND p.read_kind<>'UNAVAILABLE' "
+                        + "AND (t.predecessor_task_id IS NULL OR EXISTS (SELECT 1 FROM runtime.formation_task pred "
+                        + "WHERE pred.task_id=t.predecessor_task_id AND pred.state IN ('COMMITTED_WRITE','COMMITTED_NO_CHANGE'))) "
                         + "AND (t.read_kind='STABLE_REREAD' "
                         + "OR (t.read_kind='BOUNDED_SNAPSHOT' AND t.read_expires_at > ?::timestamptz)) "
                         + "ORDER BY t.ready_at, t.task_id LIMIT ?",
@@ -136,6 +141,7 @@ public final class JooqFormationIntakeAdapter implements FormationIntakePort {
             tasks.add(new FormationPendingTask(
                     row.get("task_id", UUID.class),
                     row.get("source_id", UUID.class),
+                    row.get("predecessor_task_id", UUID.class),
                     nullableBoundary(row, "from"),
                     boundary(row, "to"),
                     readBinding(row),
@@ -235,24 +241,32 @@ public final class JooqFormationIntakeAdapter implements FormationIntakePort {
             SourceReadBinding binding,
             OffsetDateTime now,
             OffsetDateTime readyAt) {
-        if (stable == null || (processed != null && stable.sequence() <= processed.sequence())) {
-            return findPendingTaskId(tx, sourceId);
-        }
         Record pending = tx.fetchOne(
                 "SELECT task_id FROM runtime.formation_task WHERE source_id=?::uuid AND state='PENDING' FOR UPDATE",
                 sourceId);
         if (pending == null) {
+            Record predecessor = tx.fetchOne(
+                    "SELECT task_id,to_sequence,to_cursor,to_source_version FROM runtime.formation_task "
+                            + "WHERE source_id=?::uuid AND state NOT IN ('COMMITTED_WRITE','COMMITTED_NO_CHANGE') "
+                            + "ORDER BY to_sequence DESC LIMIT 1",
+                    sourceId);
+            UUID predecessorId = predecessor == null ? null : predecessor.get("task_id", UUID.class);
+            SourceBoundary from = predecessor == null ? processed : boundary(predecessor, "to");
+            if (stable == null || (from != null && stable.sequence() <= from.sequence())) {
+                return null;
+            }
             UUID taskId = UUID.randomUUID();
             tx.execute(
-                    "INSERT INTO runtime.formation_task (task_id,source_id,state,from_sequence,from_cursor,"
+                    "INSERT INTO runtime.formation_task (task_id,source_id,predecessor_task_id,state,from_sequence,from_cursor,"
                             + "from_source_version,to_sequence,to_cursor,to_source_version,read_kind,read_ref,read_version,"
                             + "read_expires_at,ready_at,generation,created_at,updated_at) "
-                            + "VALUES (?::uuid,?::uuid,'PENDING',?,?,?,?,?,?,?,?,?,?::timestamptz,?::timestamptz,0,?::timestamptz,?::timestamptz)",
+                            + "VALUES (?::uuid,?::uuid,?::uuid,'PENDING',?,?,?,?,?,?,?,?,?,?::timestamptz,?::timestamptz,0,?::timestamptz,?::timestamptz)",
                     taskId,
                     sourceId,
-                    sequence(processed),
-                    cursor(processed),
-                    version(processed),
+                    predecessorId,
+                    sequence(from),
+                    cursor(from),
+                    version(from),
                     stable.sequence(),
                     stable.cursor(),
                     stable.sourceVersion(),
@@ -264,6 +278,9 @@ public final class JooqFormationIntakeAdapter implements FormationIntakePort {
                     now,
                     now);
             return taskId;
+        }
+        if (stable == null) {
+            return pending.get("task_id", UUID.class);
         }
         UUID taskId = pending.get("task_id", UUID.class);
         tx.execute(
