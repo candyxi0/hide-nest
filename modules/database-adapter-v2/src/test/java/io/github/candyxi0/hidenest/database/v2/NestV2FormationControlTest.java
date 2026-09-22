@@ -69,7 +69,7 @@ class NestV2FormationControlTest {
         Flyway first = flyway("1");
         assertEquals(1, first.migrate().migrationsExecuted);
         Flyway all = flyway(null);
-        assertEquals(1, all.migrate().migrationsExecuted);
+        assertEquals(2, all.migrate().migrationsExecuted);
         assertEquals(0, all.migrate().migrationsExecuted);
         all.validate();
         dsl = DSL.using(new DriverManagerDataSource(postgres.getJdbcUrl(), USER, password), SQLDialect.POSTGRES);
@@ -84,7 +84,8 @@ class NestV2FormationControlTest {
 
     @BeforeEach
     void source() {
-        dsl.execute("TRUNCATE runtime.formation_attention_notice,runtime.formation_attempt,runtime.formation_task");
+        dsl.execute(
+                "TRUNCATE runtime.formation_attention_notice,runtime.formation_attempt,runtime.formation_task CASCADE");
         dsl.execute("DELETE FROM runtime.source_progress");
         dsl.execute("DELETE FROM runtime.source_registration");
         sourceId = UUID.randomUUID();
@@ -98,8 +99,8 @@ class NestV2FormationControlTest {
 
     @Test
     void migrationAndPermissionsAreBodyFree() {
-        assertEquals(2, number("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
-        assertEquals(5, number("SELECT count(*) FROM information_schema.tables WHERE table_schema='runtime'"));
+        assertEquals(3, number("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(6, number("SELECT count(*) FROM information_schema.tables WHERE table_schema='runtime'"));
         assertEquals(
                 1,
                 number("SELECT count(*) FROM information_schema.columns WHERE table_schema='runtime' "
