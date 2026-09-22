@@ -1,0 +1,40 @@
+{
+  "evidenceVersion": "nest.worker.v1.r1",
+  "status": "G5_S01_R1_READY_FOR_COMMANDER_REVIEW",
+  "baseline": "7423c715d1de7ab81b26219e3cc56eb71be62e0f",
+  "changedPaths": [
+    "contracts/worker/fixture-manifest.json",
+    "reports/Nest-V2-G5-S01-R1-执行报告.md",
+    "reports/Nest-V2-G5-S01-R1-Evidence.json",
+    "modules/contracts/src/test/java/io/github/candyxi0/hidenest/contracts/WorkerContractTest.java",
+    "reports/Nest-V2-G5-S01-A-执行报告.md",
+    "reports/Nest-V2-G5-S01-A-Evidence.json"
+  ],
+  "rootPathExpectations": {
+    "task.unknown-top-level.invalid": "",
+    "task.missing-required.invalid": "",
+    "result.failed-without-code.invalid": ""
+  },
+  "gates": {
+    "jdk25": {"status":"PASS","javaVersion":"25.0.4","mavenJavaVersion":"25.0.4"},
+    "contractsTests": {"status":"PASS","tests":63,"failures":0,"errors":0,"skipped":0,"exitCode":0},
+    "targetedWorkerTests": {"status":"PASS","tests":6,"failures":0,"errors":0,"skipped":0,"exitCode":0},
+    "rootFixturesManifestValidated": {"status":"PASS","count":3},
+    "fixturePathSet": {"status":"MATCH","manifestCount":28,"actualCount":28},
+    "gitDiffCheck": {"status":"PASS","exitCode":0},
+    "allowedPathOverrun": 0,
+    "staged": 0,
+    "commit": false,
+    "push": false,
+    "deployment": false,
+    "model": false,
+    "network": false,
+    "docker": false
+  },
+  "testAttempts": [
+    {"phase":"preR1","command":"mvnw.cmd -pl modules/contracts -am test -o","exitCode":1,"tests":63,"failures":1,"error":"task.unknown-top-level.invalid root instance path expected /"},
+    {"phase":"rootPathsCorrected","command":"mvnw.cmd -pl modules/contracts -am test -o","exitCode":1,"tests":63,"failures":1,"error":"task.bad-deadline.invalid unexpectedly passed schema validation"},
+    {"phase":"formatAssertionsEnabled","command":"mvnw.cmd -q -pl modules/contracts -am test -o","exitCode":0},
+    {"phase":"final","command":"mvnw.cmd -pl modules/contracts -am test -o","exitCode":0,"tests":63,"failures":0,"errors":0,"skipped":0}
+  ]
+}

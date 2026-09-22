@@ -1,0 +1,46 @@
+{
+  "evidenceVersion": "nest.worker.v1",
+  "status": "G5_S01_A_READY_FOR_COMMANDER_REVIEW",
+  "baseline": "7423c715d1de7ab81b26219e3cc56eb71be62e0f",
+  "modifiedPaths": [
+    "contracts/worker/worker-task-envelope-v1.schema.json",
+    "contracts/worker/retrieval-result-v1.schema.json",
+    "contracts/worker/formation-result-v1.schema.json",
+    "contracts/worker/index-projection-result-v1.schema.json",
+    "contracts/worker/fixture-manifest.json",
+    "contracts/worker/fixtures/valid/**",
+    "contracts/worker/fixtures/invalid/**",
+    "modules/contracts/src/test/java/io/github/candyxi0/hidenest/contracts/WorkerContractTest.java",
+    "reports/Nest-V2-G5-S01-A-执行报告.md",
+    "reports/Nest-V2-G5-S01-A-Evidence.json"
+  ],
+  "offlineChecks": {
+    "nodeJsonParse": {"status":"PASS","fileCount":33},
+    "ajvFixtureValidation": {"status":"PASS","fixtureCount":28},
+    "fixturePathSet": {"status":"PASS","manifestCount":28,"actualCount":28},
+    "crossWorldRule": "PASS",
+    "semanticRelevance": "NOT_APPLICABLE"
+  },
+  "qualityGates": {
+    "mavenOffline": {"status":"PASS","exitCode":0,"tests":63,"failures":0,"errors":0,"skipped":0},
+    "targetedWorkerTests": {"status":"PASS","exitCode":0,"tests":6,"failures":0,"errors":0,"skipped":0},
+    "gitDiffCheck": {"status":"PASS","exitCode":0},
+    "staged": 0,
+    "commit": false,
+    "push": false,
+    "deployment": false
+  },
+  "leakageCounts": {
+    "userBody": 0,
+    "queryText": 0,
+    "hostToken": 0,
+    "secret": 0,
+    "absolutePath": 0
+  },
+  "modelNetworkDeployment": {"model":false,"network":false,"deployment":false},
+  "historicalFailures": [
+    {"stage":"JDK17","exitCode":1,"evidence":"JDK 17.0.1 cannot compile parent release 25"},
+    {"stage":"JDK25-before-R1","exitCode":1,"tests":63,"failures":1,"evidence":"task.unknown-top-level.invalid root path expected /"},
+    {"stage":"R1-before-format-assertion","exitCode":1,"tests":63,"failures":1,"evidence":"task.bad-deadline.invalid unexpectedly passed schema validation"}
+  ]
+}

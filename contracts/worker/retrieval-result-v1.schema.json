@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hide-nest.local/contracts/worker/retrieval-result-v1.schema.json",
+  "title": "Core to Cognitive Worker retrieval result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "taskRef", "worldRef", "taskKind", "generation", "targetTurnRef", "inputVersion", "executionStatus", "semanticStatus"],
+  "properties": {
+    "contractVersion": { "const": "nest.worker.v1" },
+    "taskRef": { "type": "string", "pattern": "^task:[a-z0-9-]+$" },
+    "worldRef": { "type": "string", "pattern": "^world:[a-z0-9-]+$" },
+    "taskKind": { "const": "RETRIEVAL" },
+    "generation": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+    "targetTurnRef": { "type": "string", "pattern": "^turn:[a-z0-9-]+$" },
+    "inputVersion": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "executionStatus": { "enum": ["COMPLETED", "FAILED", "TIMED_OUT", "BUDGET_EXHAUSTED", "CANCELLED", "UNAVAILABLE"] },
+    "semanticStatus": { "enum": ["NO_QUERY", "NO_NEW_CONTRIBUTION", "SUFFICIENT", "PARTIAL", "NO_SUPPORT", "NOT_EVALUATED"] },
+    "selected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["memoryId", "revisionId", "type", "current", "historical", "subject", "scope", "perspective", "conditions", "uncertainty", "relations", "sourceEntry"],
+        "properties": {
+          "memoryId": { "type": "string", "pattern": "^memory:[a-z0-9-]+$" },
+          "revisionId": { "type": "string", "pattern": "^revision:[a-z0-9-]+$" },
+          "type": { "enum": ["EVENT", "CLAIM", "QUOTE", "UNDERSTANDING"] },
+          "current": { "type": "boolean" },
+          "historical": { "type": "boolean" },
+          "subject": { "type": "string", "minLength": 1 },
+          "scope": { "type": "string", "minLength": 1 },
+          "perspective": { "type": "string", "minLength": 1 },
+          "conditions": { "type": "array", "items": { "type": "string" } },
+          "uncertainty": { "type": "string", "minLength": 1 },
+          "relations": { "type": "array", "items": { "type": "string", "pattern": "^revision:[a-z0-9-]+$" } },
+          "sourceEntry": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sourceRef", "locator"],
+            "properties": {
+              "sourceRef": { "type": "string", "pattern": "^source:[a-z0-9-]+$" },
+              "locator": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "oneOf": [
+          { "properties": { "current": { "const": true }, "historical": { "const": false } } },
+          { "properties": { "current": { "const": false }, "historical": { "const": true } } }
+        ]
+      }
+    },
+    "candidateRefs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revisionRef", "worldRef", "projectionGeneration", "score", "navigation"],
+        "properties": {
+          "revisionRef": { "type": "string", "pattern": "^revision:[a-z0-9-]+$" },
+          "worldRef": { "type": "string", "pattern": "^world:[a-z0-9-]+$" },
+          "projectionGeneration": { "type": "integer", "minimum": 0 },
+          "score": { "type": "number", "minimum": 0, "maximum": 1 },
+          "navigation": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "failureCode": { "enum": ["CORE_RESOLVE_FAILED", "TIMEOUT", "BUDGET_EXHAUSTED", "CANCELLED", "INDEX_UNAVAILABLE"] }
+  },
+  "allOf": [
+    { "if": { "properties": { "executionStatus": { "const": "COMPLETED" } } }, "then": { "required": ["selected", "candidateRefs"], "not": { "anyOf": [{ "required": ["failureCode"] }, { "properties": { "semanticStatus": { "const": "NOT_EVALUATED" } } }] } } },
+    { "if": { "properties": { "executionStatus": { "enum": ["FAILED", "TIMED_OUT", "BUDGET_EXHAUSTED", "CANCELLED", "UNAVAILABLE"] } } }, "then": { "properties": { "semanticStatus": { "const": "NOT_EVALUATED" } }, "required": ["failureCode"], "not": { "anyOf": [{ "required": ["selected"] }, { "required": ["candidateRefs"] }] }, "oneOf": [
+      { "properties": { "executionStatus": { "const": "FAILED" }, "failureCode": { "const": "CORE_RESOLVE_FAILED" } } },
+      { "properties": { "executionStatus": { "const": "TIMED_OUT" }, "failureCode": { "const": "TIMEOUT" } } },
+      { "properties": { "executionStatus": { "const": "BUDGET_EXHAUSTED" }, "failureCode": { "const": "BUDGET_EXHAUSTED" } } },
+      { "properties": { "executionStatus": { "const": "CANCELLED" }, "failureCode": { "const": "CANCELLED" } } },
+      { "properties": { "executionStatus": { "const": "UNAVAILABLE" }, "failureCode": { "const": "INDEX_UNAVAILABLE" } } }
+    ] } },
+    { "if": { "properties": { "semanticStatus": { "enum": ["NO_QUERY", "NO_NEW_CONTRIBUTION", "NO_SUPPORT"] } } }, "then": { "properties": { "selected": { "maxItems": 0 } } } },
+    { "if": { "properties": { "semanticStatus": { "enum": ["SUFFICIENT", "PARTIAL"] } } }, "then": { "properties": { "selected": { "minItems": 1 } } } }
+  ]
+}

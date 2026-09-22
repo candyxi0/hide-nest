@@ -1,0 +1,1 @@
+{"contractVersion":"nest.worker.v1","taskRef":"task:missing-source-work","worldRef":"world:alpha","taskKind":"FORMATION","attempt":1,"generation":1,"deadlineAt":"2026-09-22T10:00:00Z","budget":{"modelCalls":1,"toolCalls":2,"inputTokens":1000,"outputTokens":1000,"totalClockMs":30000},"allowedCapabilities":["READ_SOURCE","SUBMIT_WRITE_SET"],"outputContractVersion":"nest.worker.v1"}

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hide-nest.local/contracts/worker/index-projection-result-v1.schema.json",
+  "title": "Core to Cognitive Worker index projection result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "taskRef", "worldRef", "taskKind", "generation", "projectionGeneration", "embeddingManifest", "schemaManifest", "outcome", "idempotencyKey", "watermark", "revisionRefs"],
+  "properties": {
+    "contractVersion": { "const": "nest.worker.v1" },
+    "taskRef": { "type": "string", "pattern": "^task:[a-z0-9-]+$" },
+    "worldRef": { "type": "string", "pattern": "^world:[a-z0-9-]+$" },
+    "taskKind": { "const": "INDEX_PROJECTION" },
+    "generation": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+    "projectionGeneration": { "type": "integer", "minimum": 0 },
+    "embeddingManifest": {
+      "type": "object", "additionalProperties": false, "required": ["modelRef", "dimensions", "version"],
+      "properties": { "modelRef": { "type": "string", "pattern": "^embedding:[a-z0-9-]+$" }, "dimensions": { "type": "integer", "minimum": 1, "maximum": 4096 }, "version": { "type": "string", "minLength": 1 } }
+    },
+    "schemaManifest": {
+      "type": "object", "additionalProperties": false, "required": ["schemaRef", "version"],
+      "properties": { "schemaRef": { "type": "string", "pattern": "^index-schema:[a-z0-9-]+$" }, "version": { "type": "string", "minLength": 1 } }
+    },
+    "outcome": { "enum": ["APPLIED", "RETRY_WAIT", "FAILED"] },
+    "idempotencyKey": { "type": "string", "pattern": "^projection:[a-z0-9-]+:[0-9]+$" },
+    "watermark": { "type": "object", "additionalProperties": false, "required": ["revisionRef", "sequence"], "properties": { "revisionRef": { "type": "string", "pattern": "^revision:[a-z0-9-]+$" }, "sequence": { "type": "integer", "minimum": 0 } } },
+    "revisionRefs": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^revision:[a-z0-9-]+$" } },
+    "failureCode": { "enum": ["INDEX_WRITE_UNAVAILABLE", "SCHEMA_MISMATCH"] }
+  },
+  "allOf": [
+    { "if": { "properties": { "outcome": { "enum": ["APPLIED", "RETRY_WAIT"] } } }, "then": { "not": { "required": ["failureCode"] } } },
+    { "if": { "properties": { "outcome": { "const": "FAILED" } } }, "then": { "required": ["failureCode"] } }
+  ]
+}

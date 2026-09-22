@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hide-nest.local/contracts/worker/formation-result-v1.schema.json",
+  "title": "Core to Cognitive Worker formation result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "taskRef", "worldRef", "taskKind", "generation", "executionStatus", "resultType"],
+  "properties": {
+    "contractVersion": { "const": "nest.worker.v1" },
+    "taskRef": { "type": "string", "pattern": "^task:[a-z0-9-]+$" },
+    "worldRef": { "type": "string", "pattern": "^world:[a-z0-9-]+$" },
+    "taskKind": { "const": "FORMATION" },
+    "generation": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+    "executionStatus": { "enum": ["COMPLETED", "FAILED", "BUDGET_EXHAUSTED", "TIMED_OUT", "CANCELLED", "UNAVAILABLE"] },
+    "resultType": { "enum": ["WRITE_SET", "NO_LONG_TERM_CHANGE", "SOURCE_INCOMPLETE", "FAILED", "BUDGET_EXHAUSTED"] },
+    "writeSet": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "sourceAnchors", "type", "content", "conditions", "subject", "scope", "perspective", "uncertainty", "supporting", "counterExamples"],
+        "properties": {
+          "action": { "enum": ["CREATE", "REVISE", "SUPERSEDE"] },
+          "sourceAnchors": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sourceRef", "sourceVersion", "locator"],
+              "properties": {
+                "sourceRef": { "type": "string", "pattern": "^source:[a-z0-9-]+$" },
+                "sourceVersion": { "type": "string", "minLength": 1, "maxLength": 128, "not": { "pattern": "^revision:" } },
+                "locator": { "type": "string", "minLength": 1, "maxLength": 256 }
+              }
+            }
+          },
+          "type": { "enum": ["EVENT", "CLAIM", "QUOTE", "UNDERSTANDING"] },
+          "content": { "type": "string", "minLength": 1 },
+          "conditions": { "type": "array", "items": { "type": "string" } },
+          "subject": { "type": "string", "minLength": 1 },
+          "scope": { "type": "string", "minLength": 1 },
+          "perspective": { "type": "string", "minLength": 1 },
+          "uncertainty": { "type": "string", "minLength": 1 },
+          "supporting": { "type": "array", "items": { "type": "string", "pattern": "^revision:[a-z0-9-]+$" } },
+          "counterExamples": { "type": "array", "items": { "type": "string", "pattern": "^revision:[a-z0-9-]+$" } },
+          "expectedCurrent": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["memoryId", "revisionId"],
+            "properties": {
+              "memoryId": { "type": "string", "pattern": "^memory:[a-z0-9-]+$" },
+              "revisionId": { "type": "string", "pattern": "^revision:[a-z0-9-]+$" }
+            }
+          }
+        },
+        "allOf": [
+          { "if": { "properties": { "action": { "enum": ["REVISE", "SUPERSEDE"] } } }, "then": { "required": ["expectedCurrent"] } },
+          { "if": { "properties": { "action": { "const": "CREATE" } } }, "then": { "not": { "required": ["expectedCurrent"] } } }
+        ]
+      }
+    },
+    "checkedInputs": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "reason": { "enum": ["ALREADY_CAPTURED", "NO_DURABLE_DELTA", "DUPLICATE_PROPOSAL"] },
+    "failureCode": { "enum": ["SOURCE_UNREADABLE", "SOURCE_PENDING", "FORMATION_FAILED", "TIMEOUT", "CANCELLED", "UNAVAILABLE", "BUDGET_EXHAUSTED"] }
+  },
+  "allOf": [
+    { "if": { "properties": { "resultType": { "const": "WRITE_SET" } } }, "then": { "required": ["writeSet"], "properties": { "executionStatus": { "const": "COMPLETED" } }, "not": { "anyOf": [{ "required": ["checkedInputs"] }, { "required": ["reason"] }, { "required": ["failureCode"] }] } } },
+    { "if": { "properties": { "resultType": { "const": "NO_LONG_TERM_CHANGE" } } }, "then": { "required": ["checkedInputs", "reason"], "properties": { "executionStatus": { "const": "COMPLETED" } }, "not": { "anyOf": [{ "required": ["writeSet"] }, { "required": ["failureCode"] }] } } },
+    { "if": { "properties": { "resultType": { "const": "SOURCE_INCOMPLETE" } } }, "then": { "required": ["failureCode"], "properties": { "executionStatus": { "const": "COMPLETED" }, "failureCode": { "enum": ["SOURCE_UNREADABLE", "SOURCE_PENDING"] } }, "not": { "anyOf": [{ "required": ["writeSet"] }, { "required": ["checkedInputs"] }, { "required": ["reason"] }] } } },
+    { "if": { "properties": { "resultType": { "const": "FAILED" } } }, "then": { "required": ["failureCode"], "properties": { "executionStatus": { "enum": ["FAILED", "TIMED_OUT", "CANCELLED", "UNAVAILABLE"] } }, "not": { "anyOf": [{ "required": ["writeSet"] }, { "required": ["checkedInputs"] }, { "required": ["reason"] }] }, "oneOf": [
+      { "properties": { "executionStatus": { "const": "FAILED" }, "failureCode": { "const": "FORMATION_FAILED" } } },
+      { "properties": { "executionStatus": { "const": "TIMED_OUT" }, "failureCode": { "const": "TIMEOUT" } } },
+      { "properties": { "executionStatus": { "const": "CANCELLED" }, "failureCode": { "const": "CANCELLED" } } },
+      { "properties": { "executionStatus": { "const": "UNAVAILABLE" }, "failureCode": { "const": "UNAVAILABLE" } } }
+    ] } },
+    { "if": { "properties": { "resultType": { "const": "BUDGET_EXHAUSTED" } } }, "then": { "required": ["failureCode"], "properties": { "executionStatus": { "const": "BUDGET_EXHAUSTED" }, "failureCode": { "const": "BUDGET_EXHAUSTED" } }, "not": { "anyOf": [{ "required": ["writeSet"] }, { "required": ["checkedInputs"] }, { "required": ["reason"] }] } } }
+  ]
+}

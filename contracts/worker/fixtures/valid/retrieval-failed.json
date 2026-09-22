@@ -1,0 +1,1 @@
+{"contractVersion":"nest.worker.v1","taskRef":"task:retrieval-failed","worldRef":"world:alpha","taskKind":"RETRIEVAL","generation":4,"targetTurnRef":"turn:failed","inputVersion":"input-v1","executionStatus":"FAILED","semanticStatus":"NOT_EVALUATED","failureCode":"CORE_RESOLVE_FAILED"}

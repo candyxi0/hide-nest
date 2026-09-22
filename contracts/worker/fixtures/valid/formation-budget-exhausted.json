@@ -1,0 +1,1 @@
+{"contractVersion":"nest.worker.v1","taskRef":"task:formation-budget","worldRef":"world:alpha","taskKind":"FORMATION","generation":2,"executionStatus":"BUDGET_EXHAUSTED","resultType":"BUDGET_EXHAUSTED","failureCode":"BUDGET_EXHAUSTED"}

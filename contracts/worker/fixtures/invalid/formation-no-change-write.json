@@ -1,0 +1,1 @@
+{"contractVersion":"nest.worker.v1","taskRef":"task:bad","worldRef":"world:alpha","taskKind":"FORMATION","generation":2,"executionStatus":"COMPLETED","resultType":"NO_LONG_TERM_CHANGE","checkedInputs":["source:fixture-1"],"reason":"ALREADY_CAPTURED","writeSet":[]}

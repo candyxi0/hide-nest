@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hide-nest.local/contracts/worker/worker-task-envelope-v1.schema.json",
+  "title": "Core to Cognitive Worker task envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "taskRef",
+    "worldRef",
+    "taskKind",
+    "attempt",
+    "generation",
+    "deadlineAt",
+    "budget",
+    "allowedCapabilities",
+    "outputContractVersion"
+  ],
+  "properties": {
+    "contractVersion": { "const": "nest.worker.v1" },
+    "taskRef": { "type": "string", "pattern": "^task:[a-z0-9-]+$" },
+    "worldRef": { "type": "string", "pattern": "^world:[a-z0-9-]+$" },
+    "taskKind": { "enum": ["RETRIEVAL", "FORMATION", "INDEX_PROJECTION"] },
+    "attempt": { "type": "integer", "minimum": 1, "maximum": 20 },
+    "generation": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+    "deadlineAt": { "type": "string", "format": "date-time" },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelCalls", "toolCalls", "inputTokens", "outputTokens", "totalClockMs"],
+      "properties": {
+        "modelCalls": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "toolCalls": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "inputTokens": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "outputTokens": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "totalClockMs": { "type": "integer", "minimum": 1, "maximum": 3600000 }
+      }
+    },
+    "allowedCapabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "READ_MEMORY",
+          "READ_RELATIONS",
+          "READ_EVIDENCE",
+          "READ_SOURCE",
+          "RESOLVE_CANDIDATES",
+          "SUBMIT_WRITE_SET",
+          "PROJECT_INDEX"
+        ]
+      }
+    },
+    "sessionRef": { "type": "string", "pattern": "^session:[a-z0-9-]+$" },
+    "targetTurnRef": { "type": "string", "pattern": "^turn:[a-z0-9-]+$" },
+    "inputVersion": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "sourceWorkRef": { "type": "string", "pattern": "^source-work:[a-z0-9-]+$" },
+    "sourceExclusion": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sourceRef", "sourceVersion", "startCursor", "endCursor"],
+        "properties": {
+          "sourceRef": { "type": "string", "pattern": "^source:[a-z0-9-]+$" },
+          "sourceVersion": { "type": "string", "minLength": 1, "maxLength": 128, "not": { "pattern": "^revision:" } },
+          "startCursor": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "endCursor": { "type": "string", "minLength": 1, "maxLength": 256 }
+        }
+      }
+    },
+    "deliveredRevisionRefs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^revision:[a-z0-9-]+$" }
+    },
+    "contextMaterials": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "contains": { "type": "object", "required": ["kind"], "properties": { "kind": { "const": "CURRENT_USER_TURN" } } },
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["materialRef", "kind", "text"],
+        "properties": {
+          "materialRef": { "type": "string", "pattern": "^material:[a-z0-9-]+$" },
+          "kind": { "enum": ["CURRENT_USER_TURN", "NEARBY_MESSAGE", "MAINTAINED_ANCHOR"] },
+          "text": { "type": "string", "minLength": 1, "maxLength": 8192 }
+        }
+      }
+    },
+    "outputContractVersion": { "type": "string", "const": "nest.worker.v1" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "taskKind": { "const": "RETRIEVAL" } } },
+      "then": {
+        "required": ["sessionRef", "targetTurnRef", "inputVersion", "sourceExclusion", "deliveredRevisionRefs", "contextMaterials"],
+        "properties": {
+          "allowedCapabilities": {
+            "contains": { "const": "RESOLVE_CANDIDATES" },
+            "items": { "enum": ["READ_MEMORY", "READ_RELATIONS", "READ_EVIDENCE", "READ_SOURCE", "RESOLVE_CANDIDATES"] }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "taskKind": { "const": "FORMATION" } } },
+      "then": {
+        "required": ["sourceWorkRef"],
+        "properties": {
+          "allowedCapabilities": {
+            "allOf": [
+              { "contains": { "const": "SUBMIT_WRITE_SET" } },
+              { "contains": { "const": "READ_SOURCE" } }
+            ],
+            "items": { "enum": ["READ_MEMORY", "READ_RELATIONS", "READ_EVIDENCE", "READ_SOURCE", "SUBMIT_WRITE_SET"] }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "taskKind": { "const": "INDEX_PROJECTION" } } },
+      "then": {
+        "properties": {
+          "allowedCapabilities": {
+            "contains": { "const": "PROJECT_INDEX" },
+            "items": { "const": "PROJECT_INDEX" }
+          }
+        }
+      }
+    }
+  ]
+}

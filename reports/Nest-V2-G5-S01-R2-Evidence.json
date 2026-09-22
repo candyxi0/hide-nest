@@ -1,0 +1,77 @@
+{
+  "evidenceVersion": "nest.worker.v1.r2",
+  "status": "G5_S01_R2_READY_FOR_COMMANDER_REVIEW",
+  "baseline": "7423c715d1de7ab81b26219e3cc56eb71be62e0f",
+  "jdkVersion": "25.0.4",
+  "changedPaths": [
+    "contracts/worker/README.md",
+    "contracts/worker/fixture-manifest.json",
+    "contracts/worker/worker-task-envelope-v1.schema.json",
+    "contracts/worker/retrieval-result-v1.schema.json",
+    "contracts/worker/formation-result-v1.schema.json",
+    "contracts/worker/index-projection-result-v1.schema.json",
+    "contracts/worker/fixtures/valid/retrieval-task-no-query.json",
+    "contracts/worker/fixtures/valid/retrieval-task-sufficient.json",
+    "contracts/worker/fixtures/valid/formation-task.json",
+    "contracts/worker/fixtures/valid/retrieval-no-query.json",
+    "contracts/worker/fixtures/valid/retrieval-sufficient.json",
+    "contracts/worker/fixtures/valid/retrieval-no-support.json",
+    "contracts/worker/fixtures/valid/retrieval-failed.json",
+    "contracts/worker/fixtures/valid/formation-create.json",
+    "contracts/worker/fixtures/valid/formation-revise.json",
+    "contracts/worker/fixtures/valid/formation-supersede.json",
+    "contracts/worker/fixtures/valid/formation-no-change.json",
+    "contracts/worker/fixtures/valid/formation-source-incomplete.json",
+    "contracts/worker/fixtures/valid/formation-budget-exhausted.json",
+    "contracts/worker/fixtures/valid/formation-failed.json",
+    "contracts/worker/fixtures/valid/index-applied.json",
+    "contracts/worker/fixtures/valid/index-retry.json",
+    "contracts/worker/fixtures/invalid/formation-bad-combination.json",
+    "contracts/worker/fixtures/invalid/formation-no-change-write.json",
+    "contracts/worker/fixtures/invalid/formation-failed-no-code.json",
+    "contracts/worker/fixtures/invalid/retrieval-no-support-selected.json",
+    "contracts/worker/fixtures/invalid/index-negative-generation.json",
+    "contracts/worker/fixtures/invalid/task-missing-current-user.json",
+    "contracts/worker/fixtures/invalid/task-formation-missing-source-work.json",
+    "modules/contracts/src/test/java/io/github/candyxi0/hidenest/contracts/WorkerContractTest.java",
+    "reports/Nest-V2-G5-S01-R2-执行报告.md",
+    "reports/Nest-V2-G5-S01-R2-Evidence.json"
+  ],
+  "semanticChecks": {
+    "R2-01": "PASS",
+    "R2-02": "PASS",
+    "R2-03": "PASS",
+    "R2-04": "PASS",
+    "R2-05": "PASS"
+  },
+  "priorFailures": [
+    {"phase": "S01-A-JDK17", "exitCode": 1, "failure": "JDK 17 cannot compile release 25"},
+    {"phase": "S01-A-JDK25-before-R1", "exitCode": 1, "tests": 63, "failures": 1, "failure": "root instance path expected / instead of empty string"},
+    {"phase": "R1-before-format-assertion", "exitCode": 1, "tests": 63, "failures": 1, "failure": "task.bad-deadline.invalid unexpectedly passed schema validation"}
+  ],
+  "testAttempts": [
+    {"phase": "targeted-initial", "command": "mvnw.cmd -q -pl modules/contracts -am -Dtest=WorkerContractTest -Dsurefire.failIfNoSpecifiedTests=false test -o", "exitCode": 1, "tests": 11, "failures": 1, "failure": "task.missing-current-user.invalid expected contains; NetworkNT returned minContains at /contextMaterials"},
+    {"phase": "targeted-after-keyword-correction", "command": "mvnw.cmd -q -pl modules/contracts -am -Dtest=WorkerContractTest -Dsurefire.failIfNoSpecifiedTests=false test -o", "exitCode": 0, "tests": 11, "failures": 0},
+    {"phase": "full-before-strengthening", "command": "mvnw.cmd -pl modules/contracts -am test -o", "exitCode": 0, "tests": 68, "failures": 0},
+    {"phase": "targeted-final", "command": "mvnw.cmd -q -pl modules/contracts -am -Dtest=WorkerContractTest -Dsurefire.failIfNoSpecifiedTests=false test -o", "exitCode": 0, "tests": 11, "failures": 0, "errors": 0, "skipped": 0},
+    {"phase": "full-final", "command": "mvnw.cmd -pl modules/contracts -am test -o", "exitCode": 0, "tests": 68, "failures": 0, "errors": 0, "skipped": 0}
+  ],
+  "offlineGates": {
+    "fixturePathSet": {"status": "MATCH", "manifestCount": 31, "actualCount": 31},
+    "ajvCrossCheck": {"status": "PASS", "version": "6.15.0", "fixtureCount": 31, "mismatchCount": 0, "draft202012Authority": false},
+    "strictJson": {"status": "PASS", "fileCount": 36, "duplicateKeys": 0},
+    "gitDiffCheck": {"status": "PASS", "exitCode": 0},
+    "untrackedWhitespace": {"status": "PASS", "fileCount": 38, "violations": 0},
+    "headMatchesBaseline": true,
+    "staged": 0,
+    "allowedPathOverrun": 0
+  },
+  "notApplicable": [
+    "candidate relevance",
+    "real source identity and version truth",
+    "Core batch resolve and governance",
+    "runtime lease, cursor advance, formal write",
+    "final main-model context contribution"
+  ],
+  "externalActions": {"model": false, "network": false, "docker": false, "deployment": false, "commit": false, "push": false, "startS02": false}
+}
