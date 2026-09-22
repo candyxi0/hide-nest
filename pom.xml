@@ -31,6 +31,7 @@
         <module>modules/application</module>
         <module>modules/embedding-adapter</module>
         <module>modules/database-adapter</module>
+        <module>modules/database-adapter-v2</module>
         <module>modules/contracts</module>
         <module>apps/api</module>
         <module>apps/worker</module>
