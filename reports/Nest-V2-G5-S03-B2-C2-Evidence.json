@@ -1,0 +1,137 @@
+{
+  "task": "G5-S03-B2-C2",
+  "status": "G5_S03_B2_C2_IMPLEMENTATION_ACCEPTED",
+  "baselineHead": "59ba6f324b4c6e58e0900ba6f22be1e84ad34842",
+  "baselineIndexTree": "a46f5c0ef63fdbc67516af9718aed22dbad9e940",
+  "finalIndexTree": "a46f5c0ef63fdbc67516af9718aed22dbad9e940",
+  "stagedFiles": 0,
+  "environment": {
+    "jdk": "25.0.4",
+    "postgresql": "18.4",
+    "database": "local Testcontainers"
+  },
+  "runs": [
+    {
+      "name": "first targeted Maven invocation with unquoted PowerShell -D",
+      "exitCode": 1,
+      "reason": "PowerShell split the system property"
+    },
+    {
+      "name": "targeted NestV2CanonicalCreateTest before additional cases",
+      "exitCode": 0,
+      "tests": 30
+    },
+    {
+      "name": "targeted NestV2CanonicalCreateTest with new rollback cases",
+      "exitCode": 1,
+      "tests": 33,
+      "errors": 1,
+      "reason": "test Anchor metadata rejected during preparation"
+    },
+    {
+      "name": "targeted NestV2CanonicalCreateTest after test data correction",
+      "exitCode": 0,
+      "tests": 33
+    },
+    {
+      "name": "first complete V2 suite",
+      "command": "mvn -pl modules/database-adapter-v2 -am test",
+      "exitCode": 1,
+      "reason": "two migration execution counts still expected V005"
+    },
+    {
+      "name": "second complete V2 suite",
+      "command": "mvn -pl modules/database-adapter-v2 -am test",
+      "exitCode": 1,
+      "reason": "two schema history counts still expected five migrations"
+    },
+    {
+      "name": "final complete V2 suite",
+      "command": "mvn -pl modules/database-adapter-v2 -am test",
+      "exitCode": 0,
+      "databaseTests": 54,
+      "applicationTests": 61,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "name": "initial scoped Spotless checks for three new tests",
+      "exitCode": 1,
+      "reason": "format and line ending differences"
+    },
+    {
+      "name": "final scoped Spotless checks for five task Java files",
+      "exitCode": 0,
+      "files": 5
+    },
+    {
+      "name": "whole repository package without test execution",
+      "command": "mvn '-DskipTests' package",
+      "exitCode": 0,
+      "modules": 14
+    },
+    {
+      "name": "first strict Evidence and Git pathSet check",
+      "exitCode": 1,
+      "reason": "Git quoted a non-ASCII report path"
+    },
+    {
+      "name": "second strict Evidence and Git pathSet check",
+      "exitCode": 1,
+      "reason": "intentional Markdown hard-break spaces were treated as trailing whitespace"
+    },
+    {
+      "name": "git diff --check",
+      "exitCode": 0
+    },
+    {
+      "name": "Node JSON.parse, PowerShell ConvertFrom-Json, strict duplicate-key parser",
+      "exitCode": 0
+    },
+    {
+      "name": "Git task pathSet versus report and Evidence",
+      "exitCode": 0,
+      "paths": 8
+    },
+    {
+      "name": "Testcontainers cleanup by container and volume label",
+      "exitCode": 0,
+      "remainingContainers": 0,
+      "remainingVolumes": 0
+    }
+  ],
+  "checks": {
+    "freshV001ToV006": "PASS",
+    "V005RowsUpgradeAndReplay": "PASS",
+    "repeatMigrationAndValidate": "PASS",
+    "V006ConstraintsAndPermissions": "PASS",
+    "mixedActionsAndRelations": "PASS",
+    "twoSuccessionsOneTask": "PASS",
+    "duplicateTargetRejectedBeforeSourceRead": "PASS",
+    "lateFailureAndStaleRollback": "PASS",
+    "oppositeOrderConcurrencyWithTimeout": "PASS",
+    "sameKeyReplayAndDifferentHash": "PASS",
+    "legacyHashAndRegression": "PASS"
+  },
+  "notRun": [
+    "real Worker JSON Adapter",
+    "real source Adapter",
+    "model semantic quality",
+    "index consumption",
+    "Retrieval",
+    "UI",
+    "continuity experience",
+    "B2-D"
+  ],
+  "openItem": "G5-FW-REL-01 real Worker Adapter gate",
+  "taskPathSet": [
+    "modules/application/src/main/java/io/github/candyxi0/hidenest/application/v2/CreatePublication.java",
+    "modules/database-adapter-v2/src/main/java/io/github/candyxi0/hidenest/database/v2/adapter/JdbcCreatePublicationWriter.java",
+    "modules/database-adapter-v2/src/main/resources/db/v2/migration/V006__multiple_successions_per_task.sql",
+    "modules/database-adapter-v2/src/test/java/io/github/candyxi0/hidenest/database/v2/NestV2CanonicalCreateTest.java",
+    "modules/database-adapter-v2/src/test/java/io/github/candyxi0/hidenest/database/v2/NestV2FormationControlTest.java",
+    "modules/database-adapter-v2/src/test/java/io/github/candyxi0/hidenest/database/v2/NestV2FormationIntakeTest.java",
+    "reports/Nest-V2-G5-S03-B2-C2-执行报告.md",
+    "reports/Nest-V2-G5-S03-B2-C2-Evidence.json"
+  ]
+}

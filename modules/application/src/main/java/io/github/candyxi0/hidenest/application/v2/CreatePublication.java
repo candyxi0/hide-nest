@@ -110,19 +110,26 @@ public final class CreatePublication {
         List<List<Verified>> verified = new ArrayList<>();
         boolean replacement = set.items().stream()
                 .anyMatch(i -> i != null && ("REVISE".equals(i.action()) || "SUPERSEDE".equals(i.action())));
-        if (replacement && set.items().size() != 1)
-            throw new IllegalArgumentException("MIXED_OR_MULTIPLE_REPLACEMENT_UNSUPPORTED");
         boolean localGraph = set.items().stream()
                 .filter(Objects::nonNull)
                 .flatMap(i -> i.relations() == null ? java.util.stream.Stream.empty() : i.relations().stream())
                 .anyMatch(r -> r != null && r.itemRef() != null);
         Set<String> itemRefs = new HashSet<>();
-        if (localGraph) {
-            for (CreateItem item : set.items()) {
-                if (item == null || !"CREATE".equals(item.action()))
-                    throw new IllegalArgumentException("MIXED_OR_MULTIPLE_REPLACEMENT_UNSUPPORTED");
-                required(item.itemRef(), 128);
-                if (!itemRefs.add(item.itemRef())) throw new IllegalArgumentException("DUPLICATE_ITEM_REF");
+        Set<UUID> changedRecords = new HashSet<>();
+        boolean namedBatch = replacement || localGraph;
+        for (CreateItem item : set.items()) {
+            if (item == null) throw new IllegalArgumentException("INVALID_CREATE");
+            if (namedBatch) required(item.itemRef(), 128);
+            else optional(item.itemRef(), 128);
+            if (item.itemRef() != null && !itemRefs.add(item.itemRef()))
+                throw new IllegalArgumentException("DUPLICATE_ITEM_REF");
+            if ("REVISE".equals(item.action()) || "SUPERSEDE".equals(item.action())) {
+                if (item.expectedCurrent() == null
+                        || item.expectedCurrent().recordId() == null
+                        || item.expectedCurrent().revisionId() == null)
+                    throw new IllegalArgumentException("EXPECTED_CURRENT_REQUIRED");
+                if (!changedRecords.add(item.expectedCurrent().recordId()))
+                    throw new IllegalArgumentException("DUPLICATE_CHANGE_TARGET");
             }
         }
         for (CreateItem item : set.items()) {
@@ -135,16 +142,8 @@ public final class CreatePublication {
                     || item.relations() == null
                     || item.anchors().size() > 100
                     || item.relations().size() > 100) throw new IllegalArgumentException("INVALID_CREATE");
-            if ("REVISE".equals(item.action()) || "SUPERSEDE".equals(item.action())) {
-                required(item.itemRef(), 128);
-                if (item.expectedCurrent() == null
-                        || item.expectedCurrent().recordId() == null
-                        || item.expectedCurrent().revisionId() == null)
-                    throw new IllegalArgumentException("EXPECTED_CURRENT_REQUIRED");
-            } else {
-                if (item.expectedCurrent() != null) throw new IllegalArgumentException("CREATE_EXPECTED_CURRENT");
-                optional(item.itemRef(), 128);
-            }
+            if ("CREATE".equals(item.action()) && item.expectedCurrent() != null)
+                throw new IllegalArgumentException("CREATE_EXPECTED_CURRENT");
             required(item.content(), MAX_CONTENT_BYTES);
             required(item.subject(), 512);
             required(item.scope(), 512);
@@ -196,9 +195,7 @@ public final class CreatePublication {
                 String target;
                 if (r.itemRef() != null) {
                     required(r.itemRef(), 128);
-                    if (!localGraph
-                            || !itemRefs.contains(r.itemRef())
-                            || r.itemRef().equals(item.itemRef()))
+                    if (!itemRefs.contains(r.itemRef()) || r.itemRef().equals(item.itemRef()))
                         throw new IllegalArgumentException("INVALID_ITEM_RELATION");
                     target = "item:" + r.itemRef();
                 } else {

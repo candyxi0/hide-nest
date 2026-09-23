@@ -15,6 +15,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -102,19 +103,50 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
         }
         if (uuid(c, "SELECT idempotency_key FROM memory.create_receipt WHERE task_id=?", candidate.taskId()) != null)
             throw new SQLException("TASK_ALREADY_PUBLISHED");
+        // Acquire every predecessor lock in one stable order before writing any facts.
+        Map<UUID, CreateItem> changes = new HashMap<>();
+        for (CreateItem item : request.writeSet().items()) {
+            if (item.expectedCurrent() != null
+                    && changes.put(item.expectedCurrent().recordId(), item) != null)
+                throw new SQLException("DUPLICATE_CHANGE_TARGET");
+        }
+        Map<UUID, Integer> revisionNumbers = new HashMap<>();
+        List<UUID> targets = new ArrayList<>(changes.keySet());
+        targets.sort(Comparator.naturalOrder());
+        for (UUID targetId : targets) {
+            CreateItem item = changes.get(targetId);
+            boolean revise = "REVISE".equals(item.action());
+            try (PreparedStatement p = c.prepareStatement(
+                    "SELECT type,current_revision_id,participation_state FROM memory.record WHERE record_id=? FOR UPDATE")) {
+                bind(p, targetId);
+                try (ResultSet r = p.executeQuery()) {
+                    if (!r.next() || !"ACTIVE".equals(r.getString("participation_state")))
+                        throw new SQLException(revise ? "REVISE_TARGET_INVALID" : "SUPERSEDE_TARGET_INVALID");
+                    if (revise && !item.type().name().equals(r.getString("type")))
+                        throw new SQLException("REVISE_TARGET_INVALID");
+                    if (!item.expectedCurrent().revisionId().equals(r.getObject("current_revision_id", UUID.class)))
+                        throw new SQLException("CURRENT_CONFLICT");
+                }
+            }
+            try (PreparedStatement p =
+                    c.prepareStatement("SELECT revision_no FROM memory.revision WHERE record_id=? AND revision_id=?")) {
+                bind(p, targetId, item.expectedCurrent().revisionId());
+                try (ResultSet r = p.executeQuery()) {
+                    if (!r.next()) throw new SQLException("CURRENT_CONFLICT");
+                    revisionNumbers.put(targetId, r.getInt(1));
+                }
+            }
+        }
         List<UUID> recordIds = new ArrayList<>();
         List<UUID> revisionIds = new ArrayList<>();
         Map<String, UUID> localRevisions = new HashMap<>();
-        boolean localGraph = request.writeSet().items().stream()
-                .flatMap(item -> item.relations().stream())
-                .anyMatch(relation -> relation.itemRef() != null);
         for (CreateItem item : request.writeSet().items()) {
             UUID recordId =
                     "REVISE".equals(item.action()) ? item.expectedCurrent().recordId() : UUID.randomUUID();
             UUID revisionId = UUID.randomUUID();
             recordIds.add(recordId);
             revisionIds.add(revisionId);
-            if (item.itemRef() != null && localRevisions.put(item.itemRef(), revisionId) != null && localGraph)
+            if (item.itemRef() != null && localRevisions.put(item.itemRef(), revisionId) != null)
                 throw new SQLException("DUPLICATE_ITEM_REF");
         }
         UUID unit = UUID.randomUUID();
@@ -135,33 +167,9 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
         for (int index = 0; index < request.writeSet().items().size(); index++) {
             CreateItem item = request.writeSet().items().get(index);
             boolean revise = "REVISE".equals(item.action());
-            boolean supersede = "SUPERSEDE".equals(item.action());
             UUID recordId = recordIds.get(index);
             UUID revisionId = revisionIds.get(index);
-            int revisionNo = 1;
-            if (revise || supersede) {
-                UUID targetId = item.expectedCurrent().recordId();
-                try (PreparedStatement p = c.prepareStatement(
-                        "SELECT type,current_revision_id,participation_state FROM memory.record WHERE record_id=? FOR UPDATE")) {
-                    bind(p, targetId);
-                    try (ResultSet r = p.executeQuery()) {
-                        if (!r.next() || !"ACTIVE".equals(r.getString("participation_state")))
-                            throw new SQLException(supersede ? "SUPERSEDE_TARGET_INVALID" : "REVISE_TARGET_INVALID");
-                        if (revise && !item.type().name().equals(r.getString("type")))
-                            throw new SQLException("REVISE_TARGET_INVALID");
-                        if (!item.expectedCurrent().revisionId().equals(r.getObject("current_revision_id", UUID.class)))
-                            throw new SQLException("CURRENT_CONFLICT");
-                    }
-                }
-                try (PreparedStatement p = c.prepareStatement(
-                        "SELECT revision_no FROM memory.revision WHERE record_id=? AND revision_id=?")) {
-                    bind(p, targetId, item.expectedCurrent().revisionId());
-                    try (ResultSet r = p.executeQuery()) {
-                        if (!r.next()) throw new SQLException("CURRENT_CONFLICT");
-                        if (revise) revisionNo = Math.addExact(r.getInt(1), 1);
-                    }
-                }
-            }
+            int revisionNo = revise ? Math.addExact(revisionNumbers.get(recordId), 1) : 1;
             for (Verified anchor : request.anchors().get(index)) {
                 if (anchor.source().frame() != null
                         && !item.scope().equals(anchor.source().frame()))
@@ -229,35 +237,6 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
                         revisionId,
                         anchorId);
             }
-            if (revise) {
-                int switched;
-                try (PreparedStatement p = c.prepareStatement(
-                        "UPDATE memory.record SET current_revision_id=? WHERE record_id=? AND current_revision_id=?")) {
-                    bind(p, revisionId, recordId, item.expectedCurrent().revisionId());
-                    switched = p.executeUpdate();
-                }
-                if (switched != 1) throw new SQLException("CURRENT_CONFLICT");
-            }
-            if (supersede) {
-                UUID predecessor = item.expectedCurrent().recordId();
-                UUID previous = item.expectedCurrent().revisionId();
-                execute(
-                        c,
-                        "INSERT INTO memory.record_succession(predecessor_record_id,predecessor_revision_id,"
-                                + "successor_record_id,successor_revision_id,task_id,created_at) VALUES(?,?,?,?,?,?)",
-                        predecessor,
-                        previous,
-                        recordId,
-                        revisionId,
-                        candidate.taskId(),
-                        OffsetDateTime.now(ZoneOffset.UTC));
-                try (PreparedStatement p = c.prepareStatement(
-                        "UPDATE memory.record SET participation_state='SUPERSEDED' WHERE record_id=? "
-                                + "AND current_revision_id=? AND participation_state='ACTIVE'")) {
-                    bind(p, predecessor, previous);
-                    if (p.executeUpdate() != 1) throw new SQLException("CURRENT_CONFLICT");
-                }
-            }
         }
         for (int index = 0; index < request.writeSet().items().size(); index++) {
             CreateItem item = request.writeSet().items().get(index);
@@ -303,6 +282,40 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
             if (request.writeSet().items().get(index).type()
                             == io.github.candyxi0.hidenest.memory.v2.CreateWriteSet.MemoryType.UNDERSTANDING
                     && !hasAnchorPath(c, revisionId)) throw new SQLException("SUPPORT_PATH_REQUIRED");
+        }
+        // Apply current and participation changes after the complete new graph is valid.
+        for (int index = 0; index < request.writeSet().items().size(); index++) {
+            CreateItem item = request.writeSet().items().get(index);
+            if ("REVISE".equals(item.action())) {
+                try (PreparedStatement p = c.prepareStatement(
+                        "UPDATE memory.record SET current_revision_id=? WHERE record_id=? AND current_revision_id=?")) {
+                    bind(
+                            p,
+                            revisionIds.get(index),
+                            recordIds.get(index),
+                            item.expectedCurrent().revisionId());
+                    if (p.executeUpdate() != 1) throw new SQLException("CURRENT_CONFLICT");
+                }
+            } else if ("SUPERSEDE".equals(item.action())) {
+                UUID predecessor = item.expectedCurrent().recordId();
+                UUID previous = item.expectedCurrent().revisionId();
+                execute(
+                        c,
+                        "INSERT INTO memory.record_succession(predecessor_record_id,predecessor_revision_id,"
+                                + "successor_record_id,successor_revision_id,task_id,created_at) VALUES(?,?,?,?,?,?)",
+                        predecessor,
+                        previous,
+                        recordIds.get(index),
+                        revisionIds.get(index),
+                        candidate.taskId(),
+                        OffsetDateTime.now(ZoneOffset.UTC));
+                try (PreparedStatement p = c.prepareStatement(
+                        "UPDATE memory.record SET participation_state='SUPERSEDED' WHERE record_id=? "
+                                + "AND current_revision_id=? AND participation_state='ACTIVE'")) {
+                    bind(p, predecessor, previous);
+                    if (p.executeUpdate() != 1) throw new SQLException("CURRENT_CONFLICT");
+                }
+            }
         }
         execute(
                 c,

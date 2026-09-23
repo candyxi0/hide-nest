@@ -144,9 +144,23 @@ class NestV2CanonicalCreateTest {
                     T0,
                     revision);
         });
+        assertEquals(1, flyway("5").migrate().migrationsExecuted);
+        legacy.newSource();
+        FormationAttempt supersedeTask = legacy.attempt();
+        CreatePublication.Prepared supersede =
+                legacy.prepare(List.of(supersede(MemoryType.CLAIM, record, revisedRevision, "a")));
+        UUID supersedeKey = UUID.randomUUID();
+        assertEquals(
+                FormationSettlementOutcome.COMMITTED_WRITE,
+                legacy.publish(legacy.candidate(supersedeTask, supersede, supersedeKey), supersede));
+        assertEquals(1, legacy.n("SELECT count(*) FROM memory.record_succession"));
         assertEquals(1, flyway(null).migrate().migrationsExecuted);
         assertEquals(0, flyway(null).migrate().migrationsExecuted);
         flyway(null).validate();
+        assertEquals(
+                FormationSettlementOutcome.IDEMPOTENT_REPLAY,
+                legacy.publish(legacy.candidate(supersedeTask, supersede, supersedeKey), supersede));
+        assertEquals(1, legacy.n("SELECT count(*) FROM memory.record_succession"));
         assertEquals(
                 "legacy",
                 db.fetchOne("SELECT content FROM memory.revision WHERE revision_id=?::uuid", revision)
@@ -201,7 +215,19 @@ class NestV2CanonicalCreateTest {
 
     @Test
     void migrationPermissionsAndNoV1Tables() {
-        assertEquals(5, n("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(6, n("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(
+                0,
+                n("SELECT count(*) FROM pg_constraint WHERE conrelid='memory.record_succession'::regclass "
+                        + "AND conname='record_succession_task_id_key'"));
+        assertEquals(
+                1,
+                n("SELECT count(*) FROM pg_constraint WHERE conrelid='memory.record_succession'::regclass "
+                        + "AND conname='record_succession_task_id_fkey' AND contype='f'"));
+        assertEquals(
+                1,
+                n("SELECT count(*) FROM pg_constraint WHERE conrelid='memory.record_succession'::regclass "
+                        + "AND conname='record_succession_pkey' AND contype='p'"));
         assertTrue(Boolean.TRUE.equals(db.fetchOne("SELECT has_column_privilege('hide_nest_api',"
                         + "'memory.record','current_revision_id','UPDATE')")
                 .get(0, Boolean.class)));
@@ -1503,7 +1529,7 @@ class NestV2CanonicalCreateTest {
     }
 
     @Test
-    void supersedeRequiresOneItemAndConcreteExpectedCurrent() {
+    void supersedeRequiresConcreteExpectedCurrentAndEveryMixedItemRef() {
         FormationAttempt initial = attempt();
         CreateItem incomplete = new CreateItem(
                 "SUPERSEDE",
@@ -1527,6 +1553,334 @@ class NestV2CanonicalCreateTest {
                 () -> prepare(List.of(specified, item(MemoryType.CLAIM, List.of(anchor("b")), List.of()))));
         assertEquals(0, n("SELECT count(*) FROM memory.record"));
         assertNotNull(initial);
+    }
+
+    @Test
+    void mixedGraphPublishesTwoSuccessionsAndReplaysAfterTargetsChange() throws Exception {
+        FormationAttempt initial = attempt();
+        CreatePublication.Prepared old = prepare(List.of(
+                item(MemoryType.UNDERSTANDING, List.of(anchor("a")), List.of()),
+                item(MemoryType.CLAIM, List.of(anchor("b")), List.of()),
+                item(MemoryType.CLAIM, List.of(anchor("c")), List.of())));
+        UUID oldKey = UUID.randomUUID();
+        assertEquals(FormationSettlementOutcome.COMMITTED_WRITE, publish(candidate(initial, old, oldKey), old));
+        UUID[] records = new UUID[3];
+        UUID[] revisions = new UUID[3];
+        for (int i = 0; i < 3; i++) {
+            var row = db.fetchOne(
+                    "SELECT record_id,revision_id FROM memory.create_receipt_item "
+                            + "WHERE idempotency_key=?::uuid AND item_index=?",
+                    oldKey,
+                    i);
+            records[i] = row.get("record_id", UUID.class);
+            revisions[i] = row.get("revision_id", UUID.class);
+        }
+        newSource();
+        FormationAttempt task = attempt();
+        CreatePublication.Prepared mixed = prepare(List.of(
+                change(
+                        "SUPERSEDE",
+                        "successor-b",
+                        MemoryType.CLAIM,
+                        records[1],
+                        revisions[1],
+                        "b",
+                        List.of(RevisionRef.item("revised-a", RelationKind.COUNTER))),
+                named(
+                        "event",
+                        MemoryType.EVENT,
+                        List.of(anchor("a")),
+                        List.of(RevisionRef.item("successor-c", RelationKind.SUPPORT))),
+                change(
+                        "REVISE",
+                        "revised-a",
+                        MemoryType.UNDERSTANDING,
+                        records[0],
+                        revisions[0],
+                        "c",
+                        List.of(RevisionRef.item("event", RelationKind.SUPPORT))),
+                change(
+                        "SUPERSEDE",
+                        "successor-c",
+                        MemoryType.CLAIM,
+                        records[2],
+                        revisions[2],
+                        "c",
+                        List.of(RevisionRef.item("revised-a", RelationKind.COUNTER)))));
+        UUID key = UUID.randomUUID();
+        FormationSettlementCandidate submitted = candidate(task, mixed, key);
+        assertEquals(FormationSettlementOutcome.COMMITTED_WRITE, publish(submitted, mixed));
+        assertEquals(2, n("SELECT count(*) FROM memory.record_succession WHERE task_id='" + task.taskId() + "'"));
+        assertEquals(2, n("SELECT count(*) FROM memory.record WHERE participation_state='SUPERSEDED'"));
+        assertEquals(
+                2,
+                n("SELECT count(*) FROM memory.record_succession WHERE predecessor_record_id IN ('" + records[1] + "','"
+                        + records[2] + "')"));
+        assertEquals(4, n("SELECT count(*) FROM memory.create_receipt_item WHERE idempotency_key='" + key + "'"));
+        assertEquals(
+                4,
+                n("SELECT count(*) FROM memory.projection_outbox WHERE request_hash=decode('"
+                        + java.util.HexFormat.of().formatHex(mixed.hash()) + "','hex')"));
+        assertEquals(
+                4,
+                n("SELECT count(*) FROM memory.revision_relation WHERE revision_id IN "
+                        + "(SELECT revision_id FROM memory.create_receipt_item WHERE idempotency_key='" + key + "')"));
+        assertEquals(
+                2,
+                n("SELECT count(*) FROM memory.revision_relation WHERE relation_kind='SUPPORT' "
+                        + "AND revision_id IN (SELECT revision_id FROM memory.create_receipt_item "
+                        + "WHERE idempotency_key='" + key + "')"));
+        assertEquals(
+                2,
+                n("SELECT count(*) FROM memory.revision_relation WHERE relation_kind='COUNTER' "
+                        + "AND revision_id IN (SELECT revision_id FROM memory.create_receipt_item "
+                        + "WHERE idempotency_key='" + key + "')"));
+        assertEquals(
+                2,
+                n("SELECT count(*) FROM memory.record_succession s JOIN memory.record r "
+                        + "ON r.record_id=s.predecessor_record_id WHERE s.task_id='" + task.taskId()
+                        + "' AND r.current_revision_id=s.predecessor_revision_id"));
+        int facts = n("SELECT count(*) FROM memory.revision");
+        assertEquals(FormationSettlementOutcome.IDEMPOTENT_REPLAY, publish(submitted, mixed));
+        assertEquals(facts, n("SELECT count(*) FROM memory.revision"));
+        CreatePublication.Prepared changed =
+                prepare(List.of(named("different", MemoryType.EVENT, List.of(anchor("a")), List.of())));
+        assertEquals(FormationSettlementOutcome.IDEMPOTENCY_CONFLICT, publish(candidate(task, changed, key), changed));
+        try (Connection c =
+                DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
+            var receipt = new JdbcCreatePublicationWriter()
+                    .findReceipt(c, key, mixed.hash())
+                    .orElseThrow();
+            assertEquals(
+                    List.of("SUPERSEDE", "CREATE", "REVISE", "SUPERSEDE"),
+                    receipt.items().stream()
+                            .map(JdbcCreatePublicationWriter.PublishedItem::action)
+                            .toList());
+        }
+    }
+
+    @Test
+    void duplicateChangeTargetsAreRejectedBeforeSourceReadOrWrites() {
+        attempt();
+        UUID record = UUID.randomUUID();
+        UUID revision = UUID.randomUUID();
+        for (String second : List.of("REVISE", "SUPERSEDE")) {
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> prepare(List.of(
+                            change("REVISE", "first", MemoryType.CLAIM, record, revision, "a", List.of()),
+                            change(second, "second", MemoryType.CLAIM, record, revision, "b", List.of()))));
+        }
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> prepare(List.of(
+                        change("SUPERSEDE", "first", MemoryType.CLAIM, record, revision, "a", List.of()),
+                        change("SUPERSEDE", "second", MemoryType.CLAIM, record, revision, "b", List.of()))));
+        assertEquals(0, resolverCalls);
+        assertZero();
+    }
+
+    @Test
+    void staleSecondTargetRollsBackEntireMixedBatch() {
+        FormationAttempt initial = attempt();
+        CreatePublication.Prepared old = prepare(List.of(
+                item(MemoryType.CLAIM, List.of(anchor("a")), List.of()),
+                item(MemoryType.CLAIM, List.of(anchor("b")), List.of())));
+        UUID oldKey = UUID.randomUUID();
+        assertEquals(FormationSettlementOutcome.COMMITTED_WRITE, publish(candidate(initial, old, oldKey), old));
+        UUID first = receiptRecord(oldKey, 0);
+        UUID second = receiptRecord(oldKey, 1);
+        UUID firstRevision = receiptRevision(oldKey, 0);
+        newSource();
+        FormationAttempt task = attempt();
+        CreatePublication.Prepared mixed = prepare(List.of(
+                named("new", MemoryType.EVENT, List.of(anchor("a")), List.of()),
+                change("REVISE", "first", MemoryType.CLAIM, first, firstRevision, "b", List.of()),
+                change("SUPERSEDE", "second", MemoryType.CLAIM, second, UUID.randomUUID(), "c", List.of())));
+        assertEquals(
+                FormationSettlementOutcome.CURRENT_CONFLICT, publish(candidate(task, mixed, UUID.randomUUID()), mixed));
+        assertEquals(2, n("SELECT count(*) FROM memory.record"));
+        assertEquals(2, n("SELECT count(*) FROM memory.revision"));
+        assertEquals(1, n("SELECT count(*) FROM memory.create_receipt"));
+        assertEquals(2, n("SELECT count(*) FROM memory.projection_outbox"));
+        assertEquals(0, n("SELECT count(*) FROM memory.record_succession"));
+        assertEquals(2, n("SELECT count(*) FROM memory.record WHERE participation_state='ACTIVE'"));
+        assertEquals(
+                0,
+                n("SELECT count(*) FROM runtime.source_progress WHERE source_id='" + sourceId
+                        + "' AND processed_sequence IS NOT NULL"));
+    }
+
+    @Test
+    void lateAnchorAndRelationFailuresRollBackMixedBatch() {
+        FormationAttempt initial = attempt();
+        CreatePublication.Prepared old = prepare(List.of(item(MemoryType.CLAIM, List.of(anchor("a")), List.of())));
+        UUID oldKey = UUID.randomUUID();
+        assertEquals(FormationSettlementOutcome.COMMITTED_WRITE, publish(candidate(initial, old, oldKey), old));
+        newSource();
+        FormationAttempt task = attempt();
+        CreateItem first = named("first", MemoryType.EVENT, List.of(anchor("b")), List.of());
+        CreatePublication.Prepared anchorFailure = prepare(List.of(
+                first,
+                change(
+                        "SUPERSEDE",
+                        "second",
+                        MemoryType.CLAIM,
+                        receiptRecord(oldKey, 0),
+                        receiptRevision(oldKey, 0),
+                        "g",
+                        List.of())));
+        assertEquals(
+                FormationSettlementOutcome.RETRY_WAIT,
+                publish(candidate(task, anchorFailure, UUID.randomUUID()), anchorFailure));
+        assertEquals(1, n("SELECT count(*) FROM memory.record"));
+        assertEquals(1, n("SELECT count(*) FROM evidence.source_anchor"));
+        assertEquals(1, n("SELECT count(*) FROM memory.create_receipt"));
+        assertEquals(0, n("SELECT count(*) FROM memory.record_succession"));
+        FormationAttempt retry = control(T0.plusMinutes(92))
+                .claim("retry", Duration.ofMinutes(5))
+                .orElseThrow();
+        preparedAttempt = retry;
+        CreatePublication.Prepared relationFailure = prepare(List.of(
+                first,
+                change(
+                        "SUPERSEDE",
+                        "second",
+                        MemoryType.CLAIM,
+                        receiptRecord(oldKey, 0),
+                        receiptRevision(oldKey, 0),
+                        "c",
+                        List.of(new RevisionRef(UUID.randomUUID(), RelationKind.COUNTER)))));
+        assertEquals(
+                FormationSettlementOutcome.RETRY_WAIT,
+                publish(candidate(retry, relationFailure, UUID.randomUUID()), relationFailure));
+        assertEquals(1, n("SELECT count(*) FROM memory.record"));
+        assertEquals(1, n("SELECT count(*) FROM memory.revision"));
+        assertEquals(1, n("SELECT count(*) FROM evidence.source_anchor"));
+        assertEquals(1, n("SELECT count(*) FROM memory.create_receipt"));
+        assertEquals(1, n("SELECT count(*) FROM memory.projection_outbox"));
+        assertEquals(0, n("SELECT count(*) FROM memory.record_succession"));
+        assertEquals(
+                0,
+                n("SELECT count(*) FROM runtime.source_progress WHERE source_id='" + sourceId
+                        + "' AND processed_sequence IS NOT NULL"));
+    }
+
+    @Test
+    void sqlFailureOnSecondItemRollsBackFirstAndSettlement() {
+        FormationAttempt initial = attempt();
+        CreatePublication.Prepared old = prepare(List.of(item(MemoryType.CLAIM, List.of(anchor("a")), List.of())));
+        UUID oldKey = UUID.randomUUID();
+        assertEquals(FormationSettlementOutcome.COMMITTED_WRITE, publish(candidate(initial, old, oldKey), old));
+        newSource();
+        FormationAttempt task = attempt();
+        CreatePublication.Prepared mixed = prepare(List.of(
+                named("first", MemoryType.EVENT, List.of(anchor("b")), List.of()),
+                change(
+                        "SUPERSEDE",
+                        "second",
+                        MemoryType.CLAIM,
+                        receiptRecord(oldKey, 0),
+                        receiptRevision(oldKey, 0),
+                        "c",
+                        List.of())));
+        db.execute("CREATE FUNCTION public.reject_second_revision() RETURNS trigger LANGUAGE plpgsql AS $$ "
+                + "BEGIN IF NEW.content='changed-second' THEN RAISE EXCEPTION 'test second failure'; "
+                + "END IF; RETURN NEW; END $$");
+        db.execute("CREATE TRIGGER reject_second_revision BEFORE INSERT ON memory.revision "
+                + "FOR EACH ROW EXECUTE FUNCTION public.reject_second_revision()");
+        try {
+            assertEquals(
+                    FormationSettlementOutcome.RETRY_WAIT, publish(candidate(task, mixed, UUID.randomUUID()), mixed));
+        } finally {
+            db.execute("DROP TRIGGER reject_second_revision ON memory.revision");
+            db.execute("DROP FUNCTION public.reject_second_revision()");
+        }
+        assertEquals(1, n("SELECT count(*) FROM memory.record"));
+        assertEquals(1, n("SELECT count(*) FROM memory.revision"));
+        assertEquals(1, n("SELECT count(*) FROM evidence.source_anchor"));
+        assertEquals(1, n("SELECT count(*) FROM memory.create_receipt"));
+        assertEquals(1, n("SELECT count(*) FROM memory.projection_outbox"));
+        assertEquals(0, n("SELECT count(*) FROM memory.record_succession"));
+        assertEquals(
+                0,
+                n("SELECT count(*) FROM runtime.source_progress WHERE source_id='" + sourceId
+                        + "' AND processed_sequence IS NOT NULL"));
+    }
+
+    @Test
+    void oppositeActionOrdersTakeStableLocksAndOnlyOneBatchWins() throws Exception {
+        FormationAttempt initial = attempt();
+        CreatePublication.Prepared old = prepare(List.of(
+                item(MemoryType.CLAIM, List.of(anchor("a")), List.of()),
+                item(MemoryType.CLAIM, List.of(anchor("b")), List.of())));
+        UUID oldKey = UUID.randomUUID();
+        assertEquals(FormationSettlementOutcome.COMMITTED_WRITE, publish(candidate(initial, old, oldKey), old));
+        UUID first = receiptRecord(oldKey, 0);
+        UUID second = receiptRecord(oldKey, 1);
+        UUID firstRevision = receiptRevision(oldKey, 0);
+        UUID secondRevision = receiptRevision(oldKey, 1);
+        newSource();
+        FormationAttempt left = attempt();
+        CreatePublication.Prepared leftRequest = prepare(List.of(
+                change("SUPERSEDE", "left-first", MemoryType.CLAIM, first, firstRevision, "a", List.of()),
+                change("SUPERSEDE", "left-second", MemoryType.CLAIM, second, secondRevision, "b", List.of())));
+        FormationSettlementCandidate leftCandidate = candidate(left, leftRequest, UUID.randomUUID());
+        UUID leftSource = sourceId;
+        newSource();
+        FormationAttempt right = attempt();
+        CreatePublication.Prepared rightRequest = prepare(List.of(
+                change("SUPERSEDE", "right-second", MemoryType.CLAIM, second, secondRevision, "a", List.of()),
+                change("SUPERSEDE", "right-first", MemoryType.CLAIM, first, firstRevision, "b", List.of())));
+        FormationSettlementCandidate rightCandidate = candidate(right, rightRequest, UUID.randomUUID());
+        UUID rightSource = sourceId;
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            var leftFuture = pool.submit(() -> {
+                start.await();
+                return CreatePublication.settle(
+                        control(T0.plusMinutes(91)),
+                        leftCandidate,
+                        leftRequest,
+                        new JdbcCreatePublicationWriter(),
+                        ignored -> {});
+            });
+            var rightFuture = pool.submit(() -> {
+                start.await();
+                return CreatePublication.settle(
+                        control(T0.plusMinutes(91)),
+                        rightCandidate,
+                        rightRequest,
+                        new JdbcCreatePublicationWriter(),
+                        ignored -> {});
+            });
+            start.countDown();
+            var outcomes = List.of(
+                    leftFuture.get(20, java.util.concurrent.TimeUnit.SECONDS),
+                    rightFuture.get(20, java.util.concurrent.TimeUnit.SECONDS));
+            assertEquals(
+                    1,
+                    outcomes.stream()
+                            .filter(o -> o == FormationSettlementOutcome.COMMITTED_WRITE)
+                            .count());
+            assertEquals(
+                    1,
+                    outcomes.stream()
+                            .filter(o -> o == FormationSettlementOutcome.CURRENT_CONFLICT
+                                    || o == FormationSettlementOutcome.INVALID_RESULT)
+                            .count());
+        } finally {
+            pool.shutdownNow();
+            assertTrue(pool.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS));
+        }
+        assertEquals(2, n("SELECT count(*) FROM memory.record_succession"));
+        assertEquals(2, n("SELECT count(*) FROM memory.create_receipt"));
+        assertEquals(2, n("SELECT count(*) FROM memory.projection_outbox " + "WHERE event_kind='MEMORY_SUPERSEDED'"));
+        assertEquals(
+                1,
+                n("SELECT count(*) FROM runtime.source_progress WHERE source_id IN ('" + leftSource + "','"
+                        + rightSource + "') AND processed_sequence IS NOT NULL"));
     }
 
     @Test
@@ -1670,6 +2024,49 @@ class NestV2CanonicalCreateTest {
                 List.of(),
                 "successor",
                 new ExpectedCurrent(record, revision));
+    }
+
+    private static CreateItem change(
+            String action,
+            String ref,
+            MemoryType type,
+            UUID record,
+            UUID revision,
+            String anchor,
+            List<RevisionRef> relations) {
+        return new CreateItem(
+                action,
+                type,
+                "changed-" + ref,
+                "subject",
+                "world-1",
+                "observed",
+                null,
+                null,
+                null,
+                "formation",
+                List.of(anchor(anchor)),
+                relations,
+                ref,
+                new ExpectedCurrent(record, revision));
+    }
+
+    private static UUID receiptRecord(UUID key, int index) {
+        return db.fetchOne(
+                        "SELECT record_id FROM memory.create_receipt_item "
+                                + "WHERE idempotency_key=?::uuid AND item_index=?",
+                        key,
+                        index)
+                .get(0, UUID.class);
+    }
+
+    private static UUID receiptRevision(UUID key, int index) {
+        return db.fetchOne(
+                        "SELECT revision_id FROM memory.create_receipt_item "
+                                + "WHERE idempotency_key=?::uuid AND item_index=?",
+                        key,
+                        index)
+                .get(0, UUID.class);
     }
 
     private FormationAttempt attempt() {
@@ -1819,6 +2216,7 @@ class NestV2CanonicalCreateTest {
     }
 
     private static AnchorRef anchor(String locator) {
+        if ("g".equals(locator)) return new AnchorRef("g", "text-g", "game-1", "actor", "role");
         return new AnchorRef(locator, "text-" + locator, null, null, null);
     }
 
