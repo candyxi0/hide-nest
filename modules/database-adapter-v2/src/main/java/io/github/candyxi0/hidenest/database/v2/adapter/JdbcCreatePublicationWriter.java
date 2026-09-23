@@ -15,7 +15,9 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -100,6 +102,21 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
         }
         if (uuid(c, "SELECT idempotency_key FROM memory.create_receipt WHERE task_id=?", candidate.taskId()) != null)
             throw new SQLException("TASK_ALREADY_PUBLISHED");
+        List<UUID> recordIds = new ArrayList<>();
+        List<UUID> revisionIds = new ArrayList<>();
+        Map<String, UUID> localRevisions = new HashMap<>();
+        boolean localGraph = request.writeSet().items().stream()
+                .flatMap(item -> item.relations().stream())
+                .anyMatch(relation -> relation.itemRef() != null);
+        for (CreateItem item : request.writeSet().items()) {
+            UUID recordId =
+                    "REVISE".equals(item.action()) ? item.expectedCurrent().recordId() : UUID.randomUUID();
+            UUID revisionId = UUID.randomUUID();
+            recordIds.add(recordId);
+            revisionIds.add(revisionId);
+            if (item.itemRef() != null && localRevisions.put(item.itemRef(), revisionId) != null && localGraph)
+                throw new SQLException("DUPLICATE_ITEM_REF");
+        }
         UUID unit = UUID.randomUUID();
         execute(
                 c,
@@ -115,21 +132,12 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
                 candidate.sourceId(),
                 request.writeSet().sourceRef(),
                 request.writeSet().sourceVersion());
-        execute(
-                c,
-                "INSERT INTO memory.create_receipt(idempotency_key,request_hash,task_id,attempt_id,created_at) "
-                        + "VALUES(?,?,?,?,?)",
-                candidate.idempotencyKey(),
-                request.hash(),
-                candidate.taskId(),
-                candidate.attemptId(),
-                OffsetDateTime.now(ZoneOffset.UTC));
         for (int index = 0; index < request.writeSet().items().size(); index++) {
             CreateItem item = request.writeSet().items().get(index);
             boolean revise = "REVISE".equals(item.action());
             boolean supersede = "SUPERSEDE".equals(item.action());
-            UUID recordId = revise ? item.expectedCurrent().recordId() : UUID.randomUUID();
-            UUID revisionId = UUID.randomUUID();
+            UUID recordId = recordIds.get(index);
+            UUID revisionId = revisionIds.get(index);
             int revisionNo = 1;
             if (revise || supersede) {
                 UUID targetId = item.expectedCurrent().recordId();
@@ -221,28 +229,6 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
                         revisionId,
                         anchorId);
             }
-            for (RevisionRef relation : item.relations()) {
-                if (revisionId.equals(relation.revisionId())
-                        || !exists(c, "SELECT 1 FROM memory.revision WHERE revision_id=?", relation.revisionId()))
-                    throw new SQLException("INVALID_REVISION_RELATION");
-                if (relation.kind() == io.github.candyxi0.hidenest.memory.v2.CreateWriteSet.RelationKind.SUPPORT
-                        && (!hasAnchorPath(c, relation.revisionId()) || hasSupportCycle(c, relation.revisionId())))
-                    throw new SQLException("SUPPORT_PATH_REQUIRED");
-                if (exists(
-                        c,
-                        "SELECT 1 FROM memory.revision_relation WHERE revision_id=? AND target_revision_id=?",
-                        revisionId,
-                        relation.revisionId())) throw new SQLException("DUPLICATE_OR_CONFLICTING_RELATION");
-                execute(
-                        c,
-                        "INSERT INTO memory.revision_relation(revision_id,target_revision_id,relation_kind) "
-                                + "VALUES(?,?,?)",
-                        revisionId,
-                        relation.revisionId(),
-                        relation.kind().name());
-            }
-            if (item.type() == io.github.candyxi0.hidenest.memory.v2.CreateWriteSet.MemoryType.UNDERSTANDING
-                    && !hasAnchorPath(c, revisionId)) throw new SQLException("SUPPORT_PATH_REQUIRED");
             if (revise) {
                 int switched;
                 try (PreparedStatement p = c.prepareStatement(
@@ -272,6 +258,66 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
                     if (p.executeUpdate() != 1) throw new SQLException("CURRENT_CONFLICT");
                 }
             }
+        }
+        for (int index = 0; index < request.writeSet().items().size(); index++) {
+            CreateItem item = request.writeSet().items().get(index);
+            UUID revisionId = revisionIds.get(index);
+            for (RevisionRef relation : item.relations()) {
+                UUID target =
+                        relation.itemRef() == null ? relation.revisionId() : localRevisions.get(relation.itemRef());
+                if (target == null
+                        || revisionId.equals(target)
+                        || !exists(c, "SELECT 1 FROM memory.revision WHERE revision_id=?", target))
+                    throw new SQLException("INVALID_REVISION_RELATION");
+                if (relation.itemRef() == null
+                        && !exists(
+                                c,
+                                "SELECT 1 FROM memory.revision r JOIN runtime.formation_task t ON t.task_id=r.task_id "
+                                        + "WHERE r.revision_id=? AND t.state='COMMITTED_WRITE'",
+                                target)) throw new SQLException("UNCOMMITTED_REVISION_RELATION");
+                if (exists(
+                        c,
+                        "SELECT 1 FROM memory.revision_relation WHERE revision_id=? AND target_revision_id=?",
+                        revisionId,
+                        target)) throw new SQLException("DUPLICATE_OR_CONFLICTING_RELATION");
+                execute(
+                        c,
+                        "INSERT INTO memory.revision_relation(revision_id,target_revision_id,relation_kind) VALUES(?,?,?)",
+                        revisionId,
+                        target,
+                        relation.kind().name());
+            }
+        }
+        for (CreateItem item : request.writeSet().items()) {
+            for (RevisionRef relation : item.relations()) {
+                if (relation.kind() == io.github.candyxi0.hidenest.memory.v2.CreateWriteSet.RelationKind.SUPPORT) {
+                    UUID target =
+                            relation.itemRef() == null ? relation.revisionId() : localRevisions.get(relation.itemRef());
+                    if (!hasAnchorPath(c, target)) throw new SQLException("SUPPORT_PATH_REQUIRED");
+                }
+            }
+        }
+        for (int index = 0; index < revisionIds.size(); index++) {
+            UUID revisionId = revisionIds.get(index);
+            if (hasSupportCycle(c, revisionId)) throw new SQLException("SUPPORT_CYCLE");
+            if (request.writeSet().items().get(index).type()
+                            == io.github.candyxi0.hidenest.memory.v2.CreateWriteSet.MemoryType.UNDERSTANDING
+                    && !hasAnchorPath(c, revisionId)) throw new SQLException("SUPPORT_PATH_REQUIRED");
+        }
+        execute(
+                c,
+                "INSERT INTO memory.create_receipt(idempotency_key,request_hash,task_id,attempt_id,created_at) VALUES(?,?,?,?,?)",
+                candidate.idempotencyKey(),
+                request.hash(),
+                candidate.taskId(),
+                candidate.attemptId(),
+                OffsetDateTime.now(ZoneOffset.UTC));
+        for (int index = 0; index < request.writeSet().items().size(); index++) {
+            CreateItem item = request.writeSet().items().get(index);
+            boolean revise = "REVISE".equals(item.action());
+            boolean supersede = "SUPERSEDE".equals(item.action());
+            UUID recordId = recordIds.get(index);
+            UUID revisionId = revisionIds.get(index);
             execute(
                     c,
                     "INSERT INTO memory.create_receipt_item(idempotency_key,item_index,record_id,revision_id,action,"
@@ -311,13 +357,15 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
     private static boolean hasSupportCycle(Connection c, UUID revision) throws SQLException {
         return exists(
                 c,
-                "WITH RECURSIVE reach(id,path,cycle) AS ("
-                        + "SELECT ?::uuid,ARRAY[?::uuid],false UNION ALL "
-                        + "SELECT r.target_revision_id,x.path || r.target_revision_id,"
-                        + "r.target_revision_id=ANY(x.path) FROM memory.revision_relation r "
-                        + "JOIN reach x ON x.id=r.revision_id WHERE r.relation_kind='SUPPORT' AND NOT x.cycle) "
-                        + "SELECT 1 FROM reach WHERE cycle LIMIT 1",
-                revision,
+                "WITH RECURSIVE reachable(id) AS ("
+                        + "SELECT ?::uuid UNION SELECT r.target_revision_id FROM memory.revision_relation r "
+                        + "JOIN reachable x ON x.id=r.revision_id WHERE r.relation_kind='SUPPORT'), "
+                        + "walk(start_id,id) AS ("
+                        + "SELECT r.revision_id,r.target_revision_id FROM memory.revision_relation r "
+                        + "JOIN reachable x ON x.id=r.revision_id WHERE r.relation_kind='SUPPORT' UNION "
+                        + "SELECT w.start_id,r.target_revision_id FROM memory.revision_relation r "
+                        + "JOIN walk w ON w.id=r.revision_id WHERE r.relation_kind='SUPPORT') "
+                        + "SELECT 1 FROM walk WHERE start_id=id LIMIT 1",
                 revision);
     }
 

@@ -18,8 +18,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /** Prepares a fully verified immutable request before entering the S02-B settlement transaction. */
@@ -110,6 +112,19 @@ public final class CreatePublication {
                 .anyMatch(i -> i != null && ("REVISE".equals(i.action()) || "SUPERSEDE".equals(i.action())));
         if (replacement && set.items().size() != 1)
             throw new IllegalArgumentException("MIXED_OR_MULTIPLE_REPLACEMENT_UNSUPPORTED");
+        boolean localGraph = set.items().stream()
+                .filter(Objects::nonNull)
+                .flatMap(i -> i.relations() == null ? java.util.stream.Stream.empty() : i.relations().stream())
+                .anyMatch(r -> r != null && r.itemRef() != null);
+        Set<String> itemRefs = new HashSet<>();
+        if (localGraph) {
+            for (CreateItem item : set.items()) {
+                if (item == null || !"CREATE".equals(item.action()))
+                    throw new IllegalArgumentException("MIXED_OR_MULTIPLE_REPLACEMENT_UNSUPPORTED");
+                required(item.itemRef(), 128);
+                if (!itemRefs.add(item.itemRef())) throw new IllegalArgumentException("DUPLICATE_ITEM_REF");
+            }
+        }
         for (CreateItem item : set.items()) {
             if (item == null
                     || !("CREATE".equals(item.action())
@@ -174,9 +189,23 @@ public final class CreatePublication {
                 required(v.exactText(), MAX_ANCHOR_BYTES);
                 itemAnchors.add(new Verified(a, v, sha(v.exactText().getBytes(StandardCharsets.UTF_8))));
             }
-            for (RevisionRef r : item.relations())
-                if (r == null || r.revisionId() == null || r.kind() == null)
+            Set<String> targets = new HashSet<>();
+            for (RevisionRef r : item.relations()) {
+                if (r == null || r.kind() == null || (r.revisionId() == null) == (r.itemRef() == null))
                     throw new IllegalArgumentException("INVALID_RELATION");
+                String target;
+                if (r.itemRef() != null) {
+                    required(r.itemRef(), 128);
+                    if (!localGraph
+                            || !itemRefs.contains(r.itemRef())
+                            || r.itemRef().equals(item.itemRef()))
+                        throw new IllegalArgumentException("INVALID_ITEM_RELATION");
+                    target = "item:" + r.itemRef();
+                } else {
+                    target = "revision:" + r.revisionId();
+                }
+                if (!targets.add(target)) throw new IllegalArgumentException("DUPLICATE_OR_CONFLICTING_RELATION");
+            }
             verified.add(itemAnchors);
         }
         return new Prepared(
@@ -257,7 +286,8 @@ public final class CreatePublication {
                 }
                 out.writeInt(i.relations().size());
                 for (RevisionRef r : i.relations()) {
-                    put(out, r.revisionId().toString());
+                    // Preserve the exact bytes of every previously published revision-only request.
+                    put(out, r.itemRef() == null ? r.revisionId().toString() : "item:" + r.itemRef());
                     put(out, r.kind().name());
                 }
                 if (i.itemRef() != null || i.expectedCurrent() != null) {

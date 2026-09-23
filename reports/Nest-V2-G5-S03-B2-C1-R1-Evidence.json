@@ -1,0 +1,107 @@
+{
+  "task": "G5-S03-B2-C1-R1",
+  "status": "G5_S03_B2_C1_R1_IMPLEMENTATION_ACCEPTED",
+  "baselineHead": "eabf7777ce3280412648ad9a170848471341d509",
+  "baselineIndexTree": "5eb97bd57b18763d2c264024d0166aef481be14d",
+  "stagedFiles": 0,
+  "environment": {
+    "jdk": "25.0.4",
+    "postgresql": "18.4",
+    "database": "Testcontainers",
+    "statementTimeoutMs": 1500
+  },
+  "algorithmBound": {
+    "reachableNodes": "at most V distinct revision IDs",
+    "reachablePairs": "at most V squared distinct start/target pairs",
+    "cyclePredicate": "start_id = id after one or more SUPPORT edges",
+    "pathEnumeration": false,
+    "depthCutoff": false
+  },
+  "runs": [
+    {
+      "command": ".\\mvnw.cmd -pl modules/database-adapter-v2 -am '-Dtest=NestV2CanonicalCreateTest#denseAcyclicSupportGraphHasBoundedCycleCheck' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "phase": "old algorithm first run",
+      "exitCode": 1,
+      "result": "RETRY_WAIT instead of COMMITTED_WRITE"
+    },
+    {
+      "command": ".\\mvnw.cmd -pl modules/database-adapter-v2 -am '-Dtest=NestV2CanonicalCreateTest#denseAcyclicSupportGraphHasBoundedCycleCheck' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "phase": "old algorithm with SQLSTATE capture",
+      "exitCode": 1,
+      "sqlState": "57014",
+      "result": "statement timeout, RETRY_WAIT"
+    },
+    {
+      "command": ".\\mvnw.cmd -pl modules/database-adapter-v2 -am '-Dtest=NestV2CanonicalCreateTest#denseAcyclicSupportGraphHasBoundedCycleCheck' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "phase": "deduplicated algorithm",
+      "exitCode": 0,
+      "tests": 1,
+      "records": 64,
+      "supportRelations": 124,
+      "receiptItems": 64,
+      "outboxItems": 64
+    },
+    {
+      "command": ".\\mvnw.cmd -pl modules/database-adapter-v2 -am '-Dtest=NestV2CanonicalCreateTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "exitCode": 0,
+      "tests": 27,
+      "failures": 0
+    },
+    {
+      "command": ".\\mvnw.cmd -pl modules/database-adapter-v2 -am '-Dtest=NestV2*Test' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "exitCode": 0,
+      "tests": 48,
+      "failures": 0
+    },
+    {
+      "command": "scoped spotless:apply spotless:check for the R1 production and test Java files",
+      "exitCode": 0,
+      "files": 2
+    },
+    {
+      "command": ".\\mvnw.cmd '-DskipTests' package",
+      "exitCode": 0,
+      "modules": 14
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0
+    },
+    {
+      "command": "Node JSON.parse, PowerShell ConvertFrom-Json, strict duplicate-key check",
+      "exitCode": 0
+    },
+    {
+      "command": "Git/report/Evidence C1 plus R1 taskPathSet",
+      "exitCode": 0,
+      "paths": 8
+    },
+    {
+      "command": "docker ps -a and docker volume ls filtered by org.testcontainers label",
+      "exitCode": 0,
+      "remainingContainers": 0,
+      "remainingVolumes": 0
+    }
+  ],
+  "notRun": [
+    "real Worker",
+    "model calls",
+    "real sources",
+    "index",
+    "Retrieval",
+    "UI",
+    "B2-C2",
+    "B2-D"
+  ],
+  "openItem": "G5-FW-REL-01",
+  "taskPathSet": [
+    "modules/memory/src/main/java/io/github/candyxi0/hidenest/memory/v2/CreateWriteSet.java",
+    "modules/application/src/main/java/io/github/candyxi0/hidenest/application/v2/CreatePublication.java",
+    "modules/database-adapter-v2/src/main/java/io/github/candyxi0/hidenest/database/v2/adapter/JdbcCreatePublicationWriter.java",
+    "modules/database-adapter-v2/src/test/java/io/github/candyxi0/hidenest/database/v2/NestV2CanonicalCreateTest.java",
+    "reports/Nest-V2-G5-S03-B2-C1-执行报告.md",
+    "reports/Nest-V2-G5-S03-B2-C1-Evidence.json",
+    "reports/Nest-V2-G5-S03-B2-C1-R1-执行报告.md",
+    "reports/Nest-V2-G5-S03-B2-C1-R1-Evidence.json"
+  ]
+}

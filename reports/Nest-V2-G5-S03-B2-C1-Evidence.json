@@ -1,0 +1,109 @@
+{
+  "task": "G5-S03-B2-C1",
+  "status": "G5_S03_B2_C1_IMPLEMENTATION_ACCEPTED",
+  "baselineHead": "eabf7777ce3280412648ad9a170848471341d509",
+  "baselineIndexTree": "5eb97bd57b18763d2c264024d0166aef481be14d",
+  "stagedFiles": 0,
+  "environment": {
+    "jdk": "25.0.4",
+    "postgresql": "18.4",
+    "database": "Testcontainers"
+  },
+  "runs": [
+    {
+      "command": ".\\mvnw.cmd -pl modules/database-adapter-v2 -am -Dtest=NestV2CanonicalCreateTest -Dsurefire.failIfNoSpecifiedTests=false test",
+      "exitCode": 1,
+      "reason": "PowerShell split the unquoted -D argument"
+    },
+    {
+      "command": ".\\mvnw.cmd -pl modules/database-adapter-v2 -am '-Dtest=NestV2CanonicalCreateTest' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "exitCode": 0,
+      "tests": 22
+    },
+    {
+      "command": ".\\mvnw.cmd -pl modules/database-adapter-v2 -am '-Dtest=NestV2*Test' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "exitCode": 1,
+      "reason": "New frozen-boundary test expected processed=1; actual and correct value was 120"
+    },
+    {
+      "command": ".\\mvnw.cmd -pl modules/database-adapter-v2 -am '-Dtest=NestV2*Test' '-Dsurefire.failIfNoSpecifiedTests=false' test",
+      "exitCode": 0,
+      "tests": 47,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "command": ".\\mvnw.cmd '-DskipTests' package",
+      "exitCode": 0,
+      "modules": 14
+    },
+    {
+      "command": "spotless:check with spotlessFiles=**/v2/*.java",
+      "exitCode": 1,
+      "reason": "spotlessFiles requires a regular expression"
+    },
+    {
+      "command": "spotless:check with a pipe in a two-file spotlessFiles expression",
+      "exitCode": 1,
+      "reason": "Windows command layer interpreted the pipe"
+    },
+    {
+      "command": "scoped spotless:check for each of four changed Java files",
+      "exitCode": 0,
+      "files": 4
+    },
+    {
+      "command": "python -c",
+      "exitCode": 1,
+      "reason": "python executable unavailable; py succeeded"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0
+    },
+    {
+      "command": "Node JSON.parse, PowerShell ConvertFrom-Json, strict duplicate-key check",
+      "exitCode": 0
+    },
+    {
+      "command": "Git task pathSet versus report and Evidence",
+      "exitCode": 0,
+      "paths": 6
+    },
+    {
+      "command": "docker ps -a and docker volume ls filtered by org.testcontainers label",
+      "exitCode": 0,
+      "remainingContainers": 0,
+      "remainingVolumes": 0
+    }
+  ],
+  "checks": {
+    "sameBatchForwardAndBackward": "PASS",
+    "localAndCommittedSupportAndCounter": "PASS",
+    "noncontiguousDirectAnchors": "PASS",
+    "invalidGraphRollback": "PASS",
+    "idempotentReplayAndConflict": "PASS",
+    "legacyRevisionHash": "PASS",
+    "legacyCreateReviseSupersedeNoChange": "PASS",
+    "worldSourceAndSingleWinner": "PASS"
+  },
+  "notRun": [
+    "real Worker JSON Adapter",
+    "model calls",
+    "real sources",
+    "index",
+    "Retrieval",
+    "UI",
+    "B2-C2",
+    "B2-D"
+  ],
+  "openItem": "G5-FW-REL-01",
+  "taskPathSet": [
+    "modules/memory/src/main/java/io/github/candyxi0/hidenest/memory/v2/CreateWriteSet.java",
+    "modules/application/src/main/java/io/github/candyxi0/hidenest/application/v2/CreatePublication.java",
+    "modules/database-adapter-v2/src/main/java/io/github/candyxi0/hidenest/database/v2/adapter/JdbcCreatePublicationWriter.java",
+    "modules/database-adapter-v2/src/test/java/io/github/candyxi0/hidenest/database/v2/NestV2CanonicalCreateTest.java",
+    "reports/Nest-V2-G5-S03-B2-C1-执行报告.md",
+    "reports/Nest-V2-G5-S03-B2-C1-Evidence.json"
+  ]
+}

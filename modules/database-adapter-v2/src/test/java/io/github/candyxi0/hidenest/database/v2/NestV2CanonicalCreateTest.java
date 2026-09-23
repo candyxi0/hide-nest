@@ -323,6 +323,280 @@ class NestV2CanonicalCreateTest {
     }
 
     @Test
+    void sameBatchSupportResolvesForwardAndBackwardAndReplays() throws Exception {
+        FormationAttempt first = frozenAttempt();
+        CreatePublication.Prepared forward = prepare(List.of(
+                named(
+                        "understanding",
+                        MemoryType.UNDERSTANDING,
+                        List.of(),
+                        List.of(RevisionRef.item("event", RelationKind.SUPPORT))),
+                named("event", MemoryType.EVENT, List.of(anchor("mid-105"), anchor("edge-120")), List.of())));
+        UUID key = UUID.randomUUID();
+        FormationSettlementCandidate submitted = candidate(first, forward, key);
+        assertEquals(FormationSettlementOutcome.COMMITTED_WRITE, publish(submitted, forward));
+        UUID understanding = db.fetchOne(
+                        "SELECT revision_id FROM memory.create_receipt_item WHERE idempotency_key=?::uuid AND item_index=0",
+                        key)
+                .get(0, UUID.class);
+        UUID event = db.fetchOne(
+                        "SELECT revision_id FROM memory.create_receipt_item WHERE idempotency_key=?::uuid AND item_index=1",
+                        key)
+                .get(0, UUID.class);
+        assertEquals(
+                event,
+                db.fetchOne(
+                                "SELECT target_revision_id FROM memory.revision_relation WHERE revision_id=?::uuid",
+                                understanding)
+                        .get(0, UUID.class));
+        assertEquals(2, n("SELECT count(*) FROM memory.revision_anchor WHERE revision_id='" + event + "'"));
+        assertEquals(2, n("SELECT count(*) FROM memory.projection_outbox"));
+        assertEquals(120, n("SELECT processed_sequence FROM runtime.source_progress"));
+        assertEquals(FormationSettlementOutcome.IDEMPOTENT_REPLAY, publish(submitted, forward));
+        assertEquals(2, n("SELECT count(*) FROM memory.record"));
+        try (Connection c =
+                DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
+            var receipt = new JdbcCreatePublicationWriter()
+                    .findReceipt(c, key, forward.hash())
+                    .orElseThrow();
+            assertEquals(
+                    List.of(understanding, event),
+                    receipt.items().stream()
+                            .map(JdbcCreatePublicationWriter.PublishedItem::revisionId)
+                            .toList());
+        }
+        CreatePublication.Prepared changed = prepare(List.of(
+                named(
+                        "understanding",
+                        MemoryType.UNDERSTANDING,
+                        List.of(),
+                        List.of(RevisionRef.item("event", RelationKind.SUPPORT))),
+                named("event", MemoryType.EVENT, List.of(anchor("a")), List.of())));
+        assertEquals(FormationSettlementOutcome.IDEMPOTENCY_CONFLICT, publish(candidate(first, changed, key), changed));
+        newSource();
+        FormationAttempt second = attempt();
+        CreatePublication.Prepared backward = prepare(List.of(
+                named("event", MemoryType.EVENT, List.of(anchor("a")), List.of()),
+                named(
+                        "understanding",
+                        MemoryType.UNDERSTANDING,
+                        List.of(),
+                        List.of(RevisionRef.item("event", RelationKind.SUPPORT)))));
+        UUID secondKey = UUID.randomUUID();
+        assertEquals(
+                FormationSettlementOutcome.COMMITTED_WRITE, publish(candidate(second, backward, secondKey), backward));
+        UUID secondEvent = db.fetchOne(
+                        "SELECT revision_id FROM memory.create_receipt_item WHERE idempotency_key=?::uuid AND item_index=0",
+                        secondKey)
+                .get(0, UUID.class);
+        assertEquals(
+                secondEvent,
+                db.fetchOne(
+                                "SELECT target_revision_id FROM memory.revision_relation WHERE revision_id=(SELECT revision_id "
+                                        + "FROM memory.create_receipt_item WHERE idempotency_key=?::uuid AND item_index=1)",
+                                secondKey)
+                        .get(0, UUID.class));
+        assertEquals(
+                0,
+                n("SELECT count(*) FROM information_schema.columns WHERE table_schema='memory' "
+                        + "AND table_name IN ('revision_relation','create_receipt_item','projection_outbox') "
+                        + "AND column_name='item_ref'"));
+    }
+
+    @Test
+    void committedRevisionOnlyHashKeepsPublishedEncoding() {
+        CreateWriteSet legacy = new CreateWriteSet(
+                "w",
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                "s",
+                "v",
+                List.of(new CreateItem(
+                        "CREATE",
+                        MemoryType.EVENT,
+                        "c",
+                        "subject",
+                        "scope",
+                        "perspective",
+                        null,
+                        null,
+                        null,
+                        "f",
+                        List.of(new AnchorRef("a", "text-a", null, null, null)),
+                        List.of(new RevisionRef(
+                                UUID.fromString("00000000-0000-0000-0000-000000000002"), RelationKind.SUPPORT)))));
+        assertEquals(
+                "731adfda1734d7797e134e62862bec6ee2db918d9262623d0b48c687951ce7cb",
+                java.util.HexFormat.of().formatHex(CreatePublication.hash(legacy)));
+    }
+
+    @Test
+    void sameBatchCanSupportAndCounterLocalAndCommittedRevisions() {
+        FormationAttempt first = attempt();
+        CreatePublication.Prepared committed = prepare(List.of(
+                item(MemoryType.EVENT, List.of(anchor("a")), List.of()),
+                item(MemoryType.CLAIM, List.of(anchor("b")), List.of())));
+        UUID priorKey = UUID.randomUUID();
+        assertEquals(
+                FormationSettlementOutcome.COMMITTED_WRITE, publish(candidate(first, committed, priorKey), committed));
+        UUID oldSupport = db.fetchOne(
+                        "SELECT revision_id FROM memory.create_receipt_item "
+                                + "WHERE idempotency_key=?::uuid AND item_index=0",
+                        priorKey)
+                .get(0, UUID.class);
+        UUID oldCounter = db.fetchOne(
+                        "SELECT revision_id FROM memory.create_receipt_item "
+                                + "WHERE idempotency_key=?::uuid AND item_index=1",
+                        priorKey)
+                .get(0, UUID.class);
+        newSource();
+        FormationAttempt second = attempt();
+        CreatePublication.Prepared mixed = prepare(List.of(
+                named(
+                        "understanding",
+                        MemoryType.UNDERSTANDING,
+                        List.of(),
+                        List.of(
+                                RevisionRef.item("event", RelationKind.SUPPORT),
+                                new RevisionRef(oldSupport, RelationKind.SUPPORT),
+                                RevisionRef.item("claim", RelationKind.COUNTER),
+                                new RevisionRef(oldCounter, RelationKind.COUNTER))),
+                named("event", MemoryType.EVENT, List.of(anchor("b")), List.of()),
+                named("claim", MemoryType.CLAIM, List.of(anchor("c")), List.of())));
+        UUID key = UUID.randomUUID();
+        assertEquals(FormationSettlementOutcome.COMMITTED_WRITE, publish(candidate(second, mixed, key), mixed));
+        assertEquals(
+                4,
+                n("SELECT count(*) FROM memory.revision_relation WHERE revision_id=(SELECT revision_id "
+                        + "FROM memory.create_receipt_item WHERE idempotency_key='" + key + "' AND item_index=0)"));
+        assertEquals(2, n("SELECT count(*) FROM memory.revision_relation WHERE relation_kind='COUNTER'"));
+    }
+
+    @Test
+    void invalidLocalGraphsAndLateRelationFailureDoNotPublish() {
+        FormationAttempt a = attempt();
+        CreateItem event = named("event", MemoryType.EVENT, List.of(anchor("a")), List.of());
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> prepare(List.of(
+                        event,
+                        named(
+                                "event",
+                                MemoryType.UNDERSTANDING,
+                                List.of(),
+                                List.of(RevisionRef.item("event", RelationKind.SUPPORT))))));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> prepare(List.of(
+                        event,
+                        named(
+                                "understanding",
+                                MemoryType.UNDERSTANDING,
+                                List.of(),
+                                List.of(RevisionRef.item("missing", RelationKind.SUPPORT))))));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> prepare(List.of(named(
+                        "event",
+                        MemoryType.EVENT,
+                        List.of(anchor("a")),
+                        List.of(RevisionRef.item("event", RelationKind.SUPPORT))))));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> prepare(List.of(
+                        event,
+                        named(
+                                "understanding",
+                                MemoryType.UNDERSTANDING,
+                                List.of(),
+                                List.of(
+                                        RevisionRef.item("event", RelationKind.SUPPORT),
+                                        RevisionRef.item("event", RelationKind.COUNTER))))));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> prepare(List.of(
+                        named(
+                                "understanding",
+                                MemoryType.UNDERSTANDING,
+                                List.of(),
+                                List.of(RevisionRef.item("event", RelationKind.COUNTER))),
+                        event)));
+        CreatePublication.Prepared cycle = prepare(List.of(
+                named(
+                        "left",
+                        MemoryType.EVENT,
+                        List.of(anchor("a")),
+                        List.of(RevisionRef.item("right", RelationKind.SUPPORT))),
+                named(
+                        "right",
+                        MemoryType.EVENT,
+                        List.of(anchor("b")),
+                        List.of(RevisionRef.item("left", RelationKind.SUPPORT)))));
+        assertEquals(FormationSettlementOutcome.RETRY_WAIT, publish(candidate(a, cycle, UUID.randomUUID()), cycle));
+        assertZero();
+        FormationAttempt retry = control(T0.plusMinutes(92))
+                .claim("retry", Duration.ofMinutes(5))
+                .orElseThrow();
+        preparedAttempt = retry;
+        CreatePublication.Prepared lateFailure = prepare(List.of(
+                event,
+                named(
+                        "understanding",
+                        MemoryType.UNDERSTANDING,
+                        List.of(),
+                        List.of(
+                                RevisionRef.item("event", RelationKind.SUPPORT),
+                                new RevisionRef(UUID.randomUUID(), RelationKind.COUNTER)))));
+        assertEquals(
+                FormationSettlementOutcome.RETRY_WAIT,
+                publish(candidate(retry, lateFailure, UUID.randomUUID()), lateFailure));
+        assertZero();
+    }
+
+    @Test
+    void denseAcyclicSupportGraphHasBoundedCycleCheck() {
+        FormationAttempt a = attempt();
+        int layers = 32;
+        List<CreateItem> items = new java.util.ArrayList<>();
+        for (int layer = 0; layer < layers; layer++) {
+            for (String branch : List.of("a", "b")) {
+                List<RevisionRef> relations = layer == layers - 1
+                        ? List.of()
+                        : List.of(
+                                RevisionRef.item("node-" + (layer + 1) + "-a", RelationKind.SUPPORT),
+                                RevisionRef.item("node-" + (layer + 1) + "-b", RelationKind.SUPPORT));
+                items.add(named("node-" + layer + "-" + branch, MemoryType.EVENT, List.of(anchor("a")), relations));
+            }
+        }
+        CreatePublication.Prepared request = prepare(items);
+        FormationSettlementCandidate submitted = candidate(a, request, UUID.randomUUID());
+        int callsBeforeSettlement = resolverCalls;
+        var sqlState = new java.util.concurrent.atomic.AtomicReference<String>();
+        FormationSettlementOutcome outcome = CreatePublication.settle(
+                control(T0.plusMinutes(91)),
+                submitted,
+                request,
+                (connection, result, prepared) -> {
+                    try (var statement = connection.createStatement()) {
+                        statement.execute("SET LOCAL statement_timeout = '1500ms'");
+                    }
+                    try {
+                        new JdbcCreatePublicationWriter().commit(connection, result, prepared);
+                    } catch (java.sql.SQLException failure) {
+                        sqlState.set(failure.getSQLState());
+                        throw failure;
+                    }
+                },
+                ignored -> {});
+        assertEquals(callsBeforeSettlement, resolverCalls);
+        assertEquals(FormationSettlementOutcome.COMMITTED_WRITE, outcome, "SQLSTATE=" + sqlState.get());
+        assertEquals(64, n("SELECT count(*) FROM memory.record"));
+        assertEquals(124, n("SELECT count(*) FROM memory.revision_relation"));
+        assertEquals(64, n("SELECT count(*) FROM memory.create_receipt_item"));
+        assertEquals(64, n("SELECT count(*) FROM memory.projection_outbox"));
+        assertEquals(1, n("SELECT processed_sequence FROM runtime.source_progress"));
+    }
+
+    @Test
     void validationAndGovernanceRejectWithoutWrites() {
         FormationAttempt validationAttempt = attempt();
         assertThrows(
@@ -1460,6 +1734,7 @@ class NestV2CanonicalCreateTest {
             long position =
                     switch (locator) {
                         case "hist-50" -> 50L;
+                        case "mid-105" -> 105L;
                         case "edge-120" -> 120L;
                         case "future-121" -> 121L;
                         case "cross-119-121" -> 121L;
@@ -1523,6 +1798,24 @@ class NestV2CanonicalCreateTest {
                 "formation",
                 anchors,
                 relations);
+    }
+
+    private static CreateItem named(String ref, MemoryType type, List<AnchorRef> anchors, List<RevisionRef> relations) {
+        return new CreateItem(
+                "CREATE",
+                type,
+                "content",
+                "subject",
+                "world-1",
+                "observed",
+                null,
+                null,
+                null,
+                "formation",
+                anchors,
+                relations,
+                ref,
+                null);
     }
 
     private static AnchorRef anchor(String locator) {

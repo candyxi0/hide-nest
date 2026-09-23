@@ -3,7 +3,7 @@ package io.github.candyxi0.hidenest.memory.v2;
 import java.util.List;
 import java.util.UUID;
 
-/** Normalized in-memory publication command. Batch-local relation targets are not yet supported. */
+/** Normalized in-memory publication command. */
 public record CreateWriteSet(
         String worldRef, UUID sourceId, String sourceRef, String sourceVersion, List<CreateItem> items) {
     public CreateWriteSet {
@@ -77,5 +77,14 @@ public record CreateWriteSet(
 
     public record AnchorRef(String locator, String exactText, String frame, String actor, String speakingAs) {}
 
-    public record RevisionRef(UUID revisionId, RelationKind kind) {}
+    /** Exactly one target is present: a committed revision or a name local to this WriteSet. */
+    public record RevisionRef(UUID revisionId, String itemRef, RelationKind kind) {
+        public RevisionRef(UUID revisionId, RelationKind kind) {
+            this(revisionId, null, kind);
+        }
+
+        public static RevisionRef item(String itemRef, RelationKind kind) {
+            return new RevisionRef(null, itemRef, kind);
+        }
+    }
 }
