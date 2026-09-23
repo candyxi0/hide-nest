@@ -106,14 +106,27 @@ public final class CreatePublication {
                 resolverBoundary(candidate.toInclusive()),
                 resolverBinding(candidate.readBinding()));
         List<List<Verified>> verified = new ArrayList<>();
+        boolean revise = set.items().stream().anyMatch(i -> i != null && "REVISE".equals(i.action()));
+        if (revise && set.items().size() != 1)
+            throw new IllegalArgumentException("MIXED_OR_MULTIPLE_REVISE_UNSUPPORTED");
         for (CreateItem item : set.items()) {
             if (item == null
-                    || !"CREATE".equals(item.action())
+                    || !("CREATE".equals(item.action()) || "REVISE".equals(item.action()))
                     || item.type() == null
                     || item.anchors() == null
                     || item.relations() == null
                     || item.anchors().size() > 100
                     || item.relations().size() > 100) throw new IllegalArgumentException("INVALID_CREATE");
+            if ("REVISE".equals(item.action())) {
+                required(item.itemRef(), 128);
+                if (item.expectedCurrent() == null
+                        || item.expectedCurrent().recordId() == null
+                        || item.expectedCurrent().revisionId() == null)
+                    throw new IllegalArgumentException("EXPECTED_CURRENT_REQUIRED");
+            } else {
+                if (item.expectedCurrent() != null) throw new IllegalArgumentException("CREATE_EXPECTED_CURRENT");
+                optional(item.itemRef(), 128);
+            }
             required(item.content(), MAX_CONTENT_BYTES);
             required(item.subject(), 512);
             required(item.scope(), 512);
@@ -243,6 +256,19 @@ public final class CreatePublication {
                 for (RevisionRef r : i.relations()) {
                     put(out, r.revisionId().toString());
                     put(out, r.kind().name());
+                }
+                if (i.itemRef() != null || i.expectedCurrent() != null) {
+                    put(out, i.itemRef());
+                    put(
+                            out,
+                            i.expectedCurrent() == null
+                                    ? null
+                                    : i.expectedCurrent().recordId().toString());
+                    put(
+                            out,
+                            i.expectedCurrent() == null
+                                    ? null
+                                    : i.expectedCurrent().revisionId().toString());
                 }
             }
             return sha(bytes.toByteArray());

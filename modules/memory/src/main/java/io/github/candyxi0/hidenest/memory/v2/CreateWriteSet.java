@@ -3,7 +3,7 @@ package io.github.candyxi0.hidenest.memory.v2;
 import java.util.List;
 import java.util.UUID;
 
-/** Normalized in-memory command. References to other new items are intentionally unsupported in S03-A. */
+/** Normalized in-memory publication command. Batch-local relation targets are not yet supported. */
 public record CreateWriteSet(
         String worldRef, UUID sourceId, String sourceRef, String sourceVersion, List<CreateItem> items) {
     public CreateWriteSet {
@@ -22,12 +22,46 @@ public record CreateWriteSet(
             String uncertainty,
             String formationRef,
             List<AnchorRef> anchors,
-            List<RevisionRef> relations) {
+            List<RevisionRef> relations,
+            String itemRef,
+            ExpectedCurrent expectedCurrent) {
         public CreateItem {
             anchors = anchors == null ? null : List.copyOf(anchors);
             relations = relations == null ? null : List.copyOf(relations);
         }
+
+        public CreateItem(
+                String action,
+                MemoryType type,
+                String content,
+                String subject,
+                String scope,
+                String perspective,
+                String conditions,
+                String timeContext,
+                String uncertainty,
+                String formationRef,
+                List<AnchorRef> anchors,
+                List<RevisionRef> relations) {
+            this(
+                    action,
+                    type,
+                    content,
+                    subject,
+                    scope,
+                    perspective,
+                    conditions,
+                    timeContext,
+                    uncertainty,
+                    formationRef,
+                    anchors,
+                    relations,
+                    null,
+                    null);
+        }
     }
+
+    public record ExpectedCurrent(UUID recordId, UUID revisionId) {}
 
     public enum MemoryType {
         EVENT,

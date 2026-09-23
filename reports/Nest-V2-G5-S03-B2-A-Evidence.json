@@ -1,0 +1,37 @@
+{
+  "task": "G5-S03-B2-A",
+  "status": "G5_S03_B2_A_IMPLEMENTATION_ACCEPTED",
+  "baselineHead": "fd10e71ba648da82b22394b7d099ffc17d074963",
+  "stagedFiles": 0,
+  "environment": { "jdk": 25, "postgresql": "18.4", "database": "Testcontainers" },
+  "runs": [
+    { "name": "affected compile", "exitCode": 0 },
+    { "name": "database tests initial", "exitCode": 1, "reason": "Malformed process PATH caused Testcontainers InvalidPathException" },
+    { "name": "database tests after PATH repair", "exitCode": 1, "reason": "Docker engine was not running" },
+    { "name": "database tests after Docker startup", "exitCode": 1, "reason": "Existing migration-count assertions expected V003" },
+    { "name": "database tests final", "exitCode": 0, "tests": 36, "failures": 0, "errors": 0 },
+    { "name": "full repository package with tests skipped", "exitCode": 0 },
+    { "name": "affected module Spotless check with ratchetFrom=HEAD", "exitCode": 0 },
+    { "name": "git diff --check", "exitCode": 0 }
+  ],
+  "migrations": {
+    "emptyDatabaseV001ToV004": "PASS",
+    "v003ToV004WithExistingCreateRows": "PASS",
+    "repeatedMigration": "PASS",
+    "flywayValidate": "PASS"
+  },
+  "notRun": ["Ajv", "real Worker", "model calls", "real sources", "user experience", "S03-B later actions"],
+  "taskPathSet": [
+    "modules/memory/src/main/java/io/github/candyxi0/hidenest/memory/v2/CreateWriteSet.java",
+    "modules/application/src/main/java/io/github/candyxi0/hidenest/application/v2/CreatePublication.java",
+    "modules/runtime/src/main/java/io/github/candyxi0/hidenest/runtime/domain/FormationSettlementOutcome.java",
+    "modules/database-adapter-v2/src/main/java/io/github/candyxi0/hidenest/database/v2/adapter/JdbcCreatePublicationWriter.java",
+    "modules/database-adapter-v2/src/main/java/io/github/candyxi0/hidenest/database/v2/adapter/JooqFormationControlAdapter.java",
+    "modules/database-adapter-v2/src/main/resources/db/v2/migration/V004__canonical_revise.sql",
+    "modules/database-adapter-v2/src/test/java/io/github/candyxi0/hidenest/database/v2/NestV2CanonicalCreateTest.java",
+    "modules/database-adapter-v2/src/test/java/io/github/candyxi0/hidenest/database/v2/NestV2FormationControlTest.java",
+    "modules/database-adapter-v2/src/test/java/io/github/candyxi0/hidenest/database/v2/NestV2FormationIntakeTest.java",
+    "reports/Nest-V2-G5-S03-B2-A-执行报告.md",
+    "reports/Nest-V2-G5-S03-B2-A-Evidence.json"
+  ]
+}

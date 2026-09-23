@@ -264,6 +264,16 @@ public final class JooqFormationControlAdapter implements FormationControlPort {
                         siblings);
             });
         } catch (CanonicalCommitFailure failure) {
+            for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+                if ("CURRENT_CONFLICT".equals(cause.getMessage())) {
+                    fail(candidate.attemptId(), "CURRENT_CONFLICT");
+                    return FormationSettlementOutcome.CURRENT_CONFLICT;
+                }
+                if ("REVISE_TARGET_INVALID".equals(cause.getMessage())) {
+                    fail(candidate.attemptId(), "REVISE_TARGET_INVALID");
+                    return FormationSettlementOutcome.INVALID_RESULT;
+                }
+            }
             return fail(candidate.attemptId(), "CANONICAL_COMMIT_FAILED");
         } catch (SettlementFenceFailure failure) {
             return fail(candidate.attemptId(), "PROCESSED_FENCE_CONFLICT");

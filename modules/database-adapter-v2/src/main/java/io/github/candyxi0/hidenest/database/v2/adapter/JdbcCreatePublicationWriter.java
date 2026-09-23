@@ -21,7 +21,7 @@ import java.util.UUID;
 
 /** Joins the S02-B JDBC transaction. It neither opens a connection nor rereads a source. */
 public final class JdbcCreatePublicationWriter implements CreatePublication.Writer {
-    public record PublishedItem(int index, UUID recordId, UUID revisionId) {}
+    public record PublishedItem(int index, UUID recordId, UUID revisionId, String action, UUID expectedRevisionId) {}
 
     public record Receipt(UUID taskId, UUID attemptId, byte[] requestHash, List<PublishedItem> items) {
         public Receipt {
@@ -45,13 +45,18 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
                 byte[] actual = r.getBytes("request_hash");
                 if (!Arrays.equals(actual, expectedHash)) throw new SQLException("IDEMPOTENCY_CONFLICT");
                 List<PublishedItem> items = new ArrayList<>();
-                try (PreparedStatement q = c.prepareStatement("SELECT item_index,record_id,revision_id "
-                        + "FROM memory.create_receipt_item WHERE idempotency_key=? ORDER BY item_index")) {
+                try (PreparedStatement q =
+                        c.prepareStatement("SELECT item_index,record_id,revision_id,action,expected_revision_id "
+                                + "FROM memory.create_receipt_item WHERE idempotency_key=? ORDER BY item_index")) {
                     bind(q, key);
                     try (ResultSet rows = q.executeQuery()) {
                         while (rows.next())
                             items.add(new PublishedItem(
-                                    rows.getInt(1), rows.getObject(2, UUID.class), rows.getObject(3, UUID.class)));
+                                    rows.getInt(1),
+                                    rows.getObject(2, UUID.class),
+                                    rows.getObject(3, UUID.class),
+                                    rows.getString(4),
+                                    rows.getObject(5, UUID.class)));
                     }
                 }
                 return Optional.of(new Receipt(
@@ -121,26 +126,52 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
                 OffsetDateTime.now(ZoneOffset.UTC));
         for (int index = 0; index < request.writeSet().items().size(); index++) {
             CreateItem item = request.writeSet().items().get(index);
-            UUID recordId = UUID.randomUUID();
+            boolean revise = "REVISE".equals(item.action());
+            UUID recordId = revise ? item.expectedCurrent().recordId() : UUID.randomUUID();
             UUID revisionId = UUID.randomUUID();
+            int revisionNo = 1;
+            if (revise) {
+                try (PreparedStatement p = c.prepareStatement(
+                        "SELECT type,current_revision_id,participation_state FROM memory.record WHERE record_id=? FOR UPDATE")) {
+                    bind(p, recordId);
+                    try (ResultSet r = p.executeQuery()) {
+                        if (!r.next()
+                                || !"ACTIVE".equals(r.getString("participation_state"))
+                                || !item.type().name().equals(r.getString("type")))
+                            throw new SQLException("REVISE_TARGET_INVALID");
+                        if (!item.expectedCurrent().revisionId().equals(r.getObject("current_revision_id", UUID.class)))
+                            throw new SQLException("CURRENT_CONFLICT");
+                    }
+                }
+                try (PreparedStatement p = c.prepareStatement(
+                        "SELECT revision_no FROM memory.revision WHERE record_id=? AND revision_id=?")) {
+                    bind(p, recordId, item.expectedCurrent().revisionId());
+                    try (ResultSet r = p.executeQuery()) {
+                        if (!r.next()) throw new SQLException("CURRENT_CONFLICT");
+                        revisionNo = Math.addExact(r.getInt(1), 1);
+                    }
+                }
+            }
             for (Verified anchor : request.anchors().get(index)) {
                 if (anchor.source().frame() != null
                         && !item.scope().equals(anchor.source().frame()))
                     throw new SQLException("FRAME_SCOPE_MISMATCH");
             }
-            execute(
-                    c,
-                    "INSERT INTO memory.record(record_id,type,current_revision_id) VALUES(?,?,?)",
-                    recordId,
-                    item.type().name(),
-                    revisionId);
+            if (!revise)
+                execute(
+                        c,
+                        "INSERT INTO memory.record(record_id,type,current_revision_id) VALUES(?,?,?)",
+                        recordId,
+                        item.type().name(),
+                        revisionId);
             execute(
                     c,
                     "INSERT INTO memory.revision(revision_id,record_id,revision_no,content,subject,scope,"
                             + "perspective,conditions,time_context,uncertainty,formation_ref,task_id,created_at) "
-                            + "VALUES(?,?,1,?,?,?,?,?,?,?,?,?,?)",
+                            + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     revisionId,
                     recordId,
+                    revisionNo,
                     item.content(),
                     item.subject(),
                     item.scope(),
@@ -195,6 +226,11 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
                 if (relation.kind() == io.github.candyxi0.hidenest.memory.v2.CreateWriteSet.RelationKind.SUPPORT
                         && (!hasAnchorPath(c, relation.revisionId()) || hasSupportCycle(c, relation.revisionId())))
                     throw new SQLException("SUPPORT_PATH_REQUIRED");
+                if (exists(
+                        c,
+                        "SELECT 1 FROM memory.revision_relation WHERE revision_id=? AND target_revision_id=?",
+                        revisionId,
+                        relation.revisionId())) throw new SQLException("DUPLICATE_OR_CONFLICTING_RELATION");
                 execute(
                         c,
                         "INSERT INTO memory.revision_relation(revision_id,target_revision_id,relation_kind) "
@@ -205,23 +241,36 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
             }
             if (item.type() == io.github.candyxi0.hidenest.memory.v2.CreateWriteSet.MemoryType.UNDERSTANDING
                     && !hasAnchorPath(c, revisionId)) throw new SQLException("SUPPORT_PATH_REQUIRED");
+            if (revise) {
+                int switched;
+                try (PreparedStatement p = c.prepareStatement(
+                        "UPDATE memory.record SET current_revision_id=? WHERE record_id=? AND current_revision_id=?")) {
+                    bind(p, revisionId, recordId, item.expectedCurrent().revisionId());
+                    switched = p.executeUpdate();
+                }
+                if (switched != 1) throw new SQLException("CURRENT_CONFLICT");
+            }
             execute(
                     c,
-                    "INSERT INTO memory.create_receipt_item(idempotency_key,item_index,record_id,revision_id) "
-                            + "VALUES(?,?,?,?)",
+                    "INSERT INTO memory.create_receipt_item(idempotency_key,item_index,record_id,revision_id,action,expected_revision_id) "
+                            + "VALUES(?,?,?,?,?,?)",
                     candidate.idempotencyKey(),
                     index,
                     recordId,
-                    revisionId);
+                    revisionId,
+                    item.action(),
+                    revise ? item.expectedCurrent().revisionId() : null);
             execute(
                     c,
-                    "INSERT INTO memory.projection_outbox(event_id,event_kind,record_id,revision_id,request_hash,created_at) "
-                            + "VALUES(?,'MEMORY_CREATED',?,?,?,?)",
+                    "INSERT INTO memory.projection_outbox(event_id,event_kind,record_id,revision_id,request_hash,created_at,previous_revision_id) "
+                            + "VALUES(?,?,?,?,?,?,?)",
                     UUID.randomUUID(),
+                    revise ? "MEMORY_REVISED" : "MEMORY_CREATED",
                     recordId,
                     revisionId,
                     request.hash(),
-                    OffsetDateTime.now(ZoneOffset.UTC));
+                    OffsetDateTime.now(ZoneOffset.UTC),
+                    revise ? item.expectedCurrent().revisionId() : null);
         }
     }
 
@@ -294,7 +343,7 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
     private static void bind(PreparedStatement p, Object... args) throws SQLException {
         for (int i = 0; i < args.length; i++) {
             Object v = args[i];
-            if (v == null) p.setNull(i + 1, Types.VARCHAR);
+            if (v == null) p.setNull(i + 1, Types.OTHER);
             else if (v instanceof UUID id) p.setObject(i + 1, id);
             else if (v instanceof byte[] bytes) p.setBytes(i + 1, bytes);
             else p.setObject(i + 1, v);
