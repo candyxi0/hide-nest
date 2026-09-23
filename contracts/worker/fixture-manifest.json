@@ -1,36 +1,363 @@
 {
   "manifestVersion": "nest.worker.v1",
   "fixtures": [
-    {"id":"task.retrieval.no-query.valid","schemaRef":"contracts/worker/worker-task-envelope-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/retrieval-task-no-query.json","expectedValid":true},
-    {"id":"task.retrieval.sufficient.valid","schemaRef":"contracts/worker/worker-task-envelope-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/retrieval-task-sufficient.json","expectedValid":true},
-    {"id":"task.formation.valid","schemaRef":"contracts/worker/worker-task-envelope-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/formation-task.json","expectedValid":true},
-    {"id":"task.index.valid","schemaRef":"contracts/worker/worker-task-envelope-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/index-task.json","expectedValid":true},
-    {"id":"result.retrieval.no-query.valid","schemaRef":"contracts/worker/retrieval-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/retrieval-no-query.json","expectedValid":true},
-    {"id":"result.retrieval.sufficient.valid","schemaRef":"contracts/worker/retrieval-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/retrieval-sufficient.json","expectedValid":true},
-    {"id":"result.retrieval.no-support.valid","schemaRef":"contracts/worker/retrieval-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/retrieval-no-support.json","expectedValid":true},
-    {"id":"result.retrieval.failed.valid","schemaRef":"contracts/worker/retrieval-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/retrieval-failed.json","expectedValid":true},
-    {"id":"result.formation.create.valid","schemaRef":"contracts/worker/formation-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/formation-create.json","expectedValid":true},
-    {"id":"result.formation.revise.valid","schemaRef":"contracts/worker/formation-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/formation-revise.json","expectedValid":true},
-    {"id":"result.formation.supersede.valid","schemaRef":"contracts/worker/formation-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/formation-supersede.json","expectedValid":true},
-    {"id":"result.formation.no-change.valid","schemaRef":"contracts/worker/formation-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/formation-no-change.json","expectedValid":true},
-    {"id":"result.formation.source-incomplete.valid","schemaRef":"contracts/worker/formation-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/formation-source-incomplete.json","expectedValid":true},
-    {"id":"result.formation.budget-exhausted.valid","schemaRef":"contracts/worker/formation-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/formation-budget-exhausted.json","expectedValid":true},
-    {"id":"result.formation.failed.valid","schemaRef":"contracts/worker/formation-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/formation-failed.json","expectedValid":true},
-    {"id":"result.index.applied.valid","schemaRef":"contracts/worker/index-projection-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/index-applied.json","expectedValid":true},
-    {"id":"result.index.retry.valid","schemaRef":"contracts/worker/index-projection-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/valid/index-retry.json","expectedValid":true},
-    {"id":"task.unknown-top-level.invalid","schemaRef":"contracts/worker/worker-task-envelope-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/task-unknown-top-level.json","expectedValid":false,"expectedKeyword":"additionalProperties","expectedInstancePath":""},
-    {"id":"task.unknown-nested.invalid","schemaRef":"contracts/worker/worker-task-envelope-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/task-unknown-nested.json","expectedValid":false,"expectedKeyword":"additionalProperties","expectedInstancePath":"/budget"},
-    {"id":"task.missing-required.invalid","schemaRef":"contracts/worker/worker-task-envelope-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/task-missing-required.json","expectedValid":false,"expectedKeyword":"required","expectedInstancePath":""},
-    {"id":"task.bad-kind-capability.invalid","schemaRef":"contracts/worker/worker-task-envelope-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/task-bad-kind-capability.json","expectedValid":false,"expectedKeyword":"const","expectedInstancePath":"/allowedCapabilities/0"},
-    {"id":"task.bad-generation.invalid","schemaRef":"contracts/worker/worker-task-envelope-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/task-bad-generation.json","expectedValid":false,"expectedKeyword":"minimum","expectedInstancePath":"/generation"},
-    {"id":"task.bad-deadline.invalid","schemaRef":"contracts/worker/worker-task-envelope-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/task-bad-deadline.json","expectedValid":false,"expectedKeyword":"format","expectedInstancePath":"/deadlineAt"},
-    {"id":"task.bad-budget.invalid","schemaRef":"contracts/worker/worker-task-envelope-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/task-bad-budget.json","expectedValid":false,"expectedKeyword":"minimum","expectedInstancePath":"/budget/totalClockMs"},
-    {"id":"task.missing-current-user.invalid","schemaRef":"contracts/worker/worker-task-envelope-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/task-missing-current-user.json","expectedValid":false,"expectedKeyword":"minContains","expectedInstancePath":"/contextMaterials"},
-    {"id":"task.formation-missing-source-work.invalid","schemaRef":"contracts/worker/worker-task-envelope-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/task-formation-missing-source-work.json","expectedValid":false,"expectedKeyword":"required","expectedInstancePath":""},
-    {"id":"result.bad-combination.invalid","schemaRef":"contracts/worker/formation-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/formation-bad-combination.json","expectedValid":false,"expectedKeyword":"required","expectedInstancePath":"/writeSet/0"},
-    {"id":"result.no-change-leaks-write.invalid","schemaRef":"contracts/worker/formation-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/formation-no-change-write.json","expectedValid":false,"expectedKeyword":"minItems","expectedInstancePath":"/writeSet"},
-    {"id":"result.failed-without-code.invalid","schemaRef":"contracts/worker/formation-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/formation-failed-no-code.json","expectedValid":false,"expectedKeyword":"required","expectedInstancePath":""},
-    {"id":"result.retrieval-selected-on-no-support.invalid","schemaRef":"contracts/worker/retrieval-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/retrieval-no-support-selected.json","expectedValid":false,"expectedKeyword":"maxItems","expectedInstancePath":"/selected"},
-    {"id":"result.index.bad-generation.invalid","schemaRef":"contracts/worker/index-projection-result-v1.schema.json","fixturePath":"contracts/worker/fixtures/invalid/index-negative-generation.json","expectedValid":false,"expectedKeyword":"minimum","expectedInstancePath":"/projectionGeneration"}
+    {
+      "id": "task.retrieval.no-query.valid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/retrieval-task-no-query.json",
+      "expectedValid": true
+    },
+    {
+      "id": "task.retrieval.sufficient.valid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/retrieval-task-sufficient.json",
+      "expectedValid": true
+    },
+    {
+      "id": "task.formation.valid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/formation-task.json",
+      "expectedValid": true
+    },
+    {
+      "id": "task.index.valid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/index-task.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.retrieval.no-query.valid",
+      "schemaRef": "contracts/worker/retrieval-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/retrieval-no-query.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.retrieval.sufficient.valid",
+      "schemaRef": "contracts/worker/retrieval-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/retrieval-sufficient.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.retrieval.no-support.valid",
+      "schemaRef": "contracts/worker/retrieval-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/retrieval-no-support.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.retrieval.failed.valid",
+      "schemaRef": "contracts/worker/retrieval-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/retrieval-failed.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.formation.create.valid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/formation-create.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.formation.revise.valid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/formation-revise.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.formation.supersede.valid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/formation-supersede.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.formation.no-change.valid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/formation-no-change.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.formation.source-incomplete.valid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/formation-source-incomplete.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.formation.budget-exhausted.valid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/formation-budget-exhausted.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.formation.failed.valid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/formation-failed.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.index.applied.valid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/index-applied.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.index.retry.valid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/index-retry.json",
+      "expectedValid": true
+    },
+    {
+      "id": "task.unknown-top-level.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/task-unknown-top-level.json",
+      "expectedValid": false,
+      "expectedKeyword": "additionalProperties",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "task.unknown-nested.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/task-unknown-nested.json",
+      "expectedValid": false,
+      "expectedKeyword": "additionalProperties",
+      "expectedInstancePath": "/budget"
+    },
+    {
+      "id": "task.missing-required.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/task-missing-required.json",
+      "expectedValid": false,
+      "expectedKeyword": "required",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "task.bad-kind-capability.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/task-bad-kind-capability.json",
+      "expectedValid": false,
+      "expectedKeyword": "const",
+      "expectedInstancePath": "/allowedCapabilities/0"
+    },
+    {
+      "id": "task.bad-generation.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/task-bad-generation.json",
+      "expectedValid": false,
+      "expectedKeyword": "minimum",
+      "expectedInstancePath": "/generation"
+    },
+    {
+      "id": "task.bad-deadline.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/task-bad-deadline.json",
+      "expectedValid": false,
+      "expectedKeyword": "format",
+      "expectedInstancePath": "/deadlineAt"
+    },
+    {
+      "id": "task.bad-budget.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/task-bad-budget.json",
+      "expectedValid": false,
+      "expectedKeyword": "minimum",
+      "expectedInstancePath": "/budget/totalClockMs"
+    },
+    {
+      "id": "task.missing-current-user.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/task-missing-current-user.json",
+      "expectedValid": false,
+      "expectedKeyword": "minContains",
+      "expectedInstancePath": "/contextMaterials"
+    },
+    {
+      "id": "task.formation-missing-source-work.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/task-formation-missing-source-work.json",
+      "expectedValid": false,
+      "expectedKeyword": "required",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "result.bad-combination.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-bad-combination.json",
+      "expectedValid": false,
+      "expectedKeyword": "required",
+      "expectedInstancePath": "/writeSet/0"
+    },
+    {
+      "id": "result.no-change-leaks-write.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-no-change-write.json",
+      "expectedValid": false,
+      "expectedKeyword": "minItems",
+      "expectedInstancePath": "/writeSet"
+    },
+    {
+      "id": "result.failed-without-code.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-failed-no-code.json",
+      "expectedValid": false,
+      "expectedKeyword": "required",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "result.retrieval-selected-on-no-support.invalid",
+      "schemaRef": "contracts/worker/retrieval-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/retrieval-no-support-selected.json",
+      "expectedValid": false,
+      "expectedKeyword": "maxItems",
+      "expectedInstancePath": "/selected"
+    },
+    {
+      "id": "result.index.bad-generation.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-negative-generation.json",
+      "expectedValid": false,
+      "expectedKeyword": "minimum",
+      "expectedInstancePath": "/projectionGeneration"
+    },
+    {
+      "id": "result.formation.batch.event.first.valid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/formation-batch-event-first.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.formation.batch.understanding.first.valid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/formation-batch-understanding-first.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.formation.mixed.actions.valid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/formation-mixed-actions.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.formation.missing.item.ref.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-missing-item-ref.json",
+      "expectedValid": false,
+      "expectedKeyword": "required",
+      "expectedInstancePath": "/writeSet/0"
+    },
+    {
+      "id": "result.formation.bad.item.ref.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-bad-item-ref.json",
+      "expectedValid": false,
+      "expectedKeyword": "pattern",
+      "expectedInstancePath": "/writeSet/0/itemRef"
+    },
+    {
+      "id": "result.formation.create.expected.current.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-create-expected-current.json",
+      "expectedValid": false,
+      "expectedKeyword": "not",
+      "expectedInstancePath": "/writeSet/0"
+    },
+    {
+      "id": "result.formation.revise.missing.current.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-revise-missing-current.json",
+      "expectedValid": false,
+      "expectedKeyword": "required",
+      "expectedInstancePath": "/writeSet/0"
+    },
+    {
+      "id": "result.formation.supersede.missing.current.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-supersede-missing-current.json",
+      "expectedValid": false,
+      "expectedKeyword": "required",
+      "expectedInstancePath": "/writeSet/0"
+    },
+    {
+      "id": "result.formation.event.empty.anchor.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-event-empty-anchor.json",
+      "expectedValid": false,
+      "expectedKeyword": "minItems",
+      "expectedInstancePath": "/writeSet/0/sourceAnchors"
+    },
+    {
+      "id": "result.formation.claim.empty.anchor.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-claim-empty-anchor.json",
+      "expectedValid": false,
+      "expectedKeyword": "minItems",
+      "expectedInstancePath": "/writeSet/0/sourceAnchors"
+    },
+    {
+      "id": "result.formation.quote.empty.anchor.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-quote-empty-anchor.json",
+      "expectedValid": false,
+      "expectedKeyword": "minItems",
+      "expectedInstancePath": "/writeSet/0/sourceAnchors"
+    },
+    {
+      "id": "result.formation.understanding.no.evidence.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-understanding-no-evidence.json",
+      "expectedValid": false,
+      "expectedKeyword": "minItems",
+      "expectedInstancePath": "/writeSet/0/supporting"
+    },
+    {
+      "id": "result.formation.understanding.only.counter.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-understanding-only-counter.json",
+      "expectedValid": false,
+      "expectedKeyword": "minItems",
+      "expectedInstancePath": "/writeSet/0/supporting"
+    },
+    {
+      "id": "result.formation.bad.relation.ref.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-bad-relation-ref.json",
+      "expectedValid": false,
+      "expectedKeyword": "pattern",
+      "expectedInstancePath": "/writeSet/0/supporting/0"
+    },
+    {
+      "id": "result.formation.duplicate.support.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-duplicate-support.json",
+      "expectedValid": false,
+      "expectedKeyword": "uniqueItems",
+      "expectedInstancePath": "/writeSet/0/supporting"
+    },
+    {
+      "id": "result.formation.duplicate.counter.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-duplicate-counter.json",
+      "expectedValid": false,
+      "expectedKeyword": "uniqueItems",
+      "expectedInstancePath": "/writeSet/0/counterExamples"
+    },
+    {
+      "id": "result.formation.unknown.field.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-unknown-field.json",
+      "expectedValid": false,
+      "expectedKeyword": "additionalProperties",
+      "expectedInstancePath": "/writeSet/0"
+    },
+    {
+      "id": "result.formation.singular.anchor.invalid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/formation-singular-anchor.json",
+      "expectedValid": false,
+      "expectedKeyword": "additionalProperties",
+      "expectedInstancePath": "/writeSet/0"
+    },
+    {
+      "id": "result.formation.understanding.anchor.only.valid",
+      "schemaRef": "contracts/worker/formation-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/formation-understanding-anchor-only.json",
+      "expectedValid": true
+    }
   ]
 }

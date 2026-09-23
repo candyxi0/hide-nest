@@ -1,0 +1,89 @@
+{
+  "contractVersion": "nest.worker.v1",
+  "taskRef": "task:fixture-contract",
+  "worldRef": "world:alpha",
+  "taskKind": "FORMATION",
+  "generation": 2,
+  "executionStatus": "COMPLETED",
+  "resultType": "WRITE_SET",
+  "writeSet": [
+    {
+      "action": "CREATE",
+      "sourceAnchors": [
+        {
+          "sourceRef": "source:fixture-1",
+          "sourceVersion": "source-v1",
+          "locator": "fixture-locator-a"
+        }
+      ],
+      "type": "EVENT",
+      "content": "fixture content create",
+      "conditions": [
+        "fixture-condition"
+      ],
+      "subject": "fixture-subject",
+      "scope": "fixture-scope",
+      "perspective": "fixture-perspective",
+      "uncertainty": "fixture-uncertainty",
+      "supporting": [],
+      "counterExamples": [],
+      "itemRef": "item:event-1"
+    },
+    {
+      "action": "REVISE",
+      "sourceAnchors": [
+        {
+          "sourceRef": "source:fixture-1",
+          "sourceVersion": "source-v2",
+          "locator": "fixture-locator"
+        }
+      ],
+      "type": "CLAIM",
+      "content": "fixture content revise",
+      "conditions": [],
+      "subject": "fixture-subject",
+      "scope": "fixture-scope",
+      "perspective": "fixture-perspective",
+      "uncertainty": "fixture-uncertainty",
+      "supporting": [
+        "revision:source-2",
+        "item:event-1"
+      ],
+      "counterExamples": [],
+      "expectedCurrent": {
+        "memoryId": "memory:decision-1",
+        "revisionId": "revision:current-1"
+      },
+      "itemRef": "item:revise-1"
+    },
+    {
+      "action": "SUPERSEDE",
+      "sourceAnchors": [
+        {
+          "sourceRef": "source:fixture-1",
+          "sourceVersion": "source-v3",
+          "locator": "fixture-locator"
+        }
+      ],
+      "type": "QUOTE",
+      "content": "fixture content supersede",
+      "conditions": [],
+      "subject": "fixture-subject",
+      "scope": "fixture-scope",
+      "perspective": "fixture-perspective",
+      "uncertainty": "fixture-uncertainty",
+      "supporting": [
+        "revision:source-3"
+      ],
+      "counterExamples": [
+        "revision:source-3",
+        "item:event-1"
+      ],
+      "expectedCurrent": {
+        "memoryId": "memory:preference-1",
+        "revisionId": "revision:current-2"
+      },
+      "itemRef": "item:supersede-1"
+    }
+  ]
+}

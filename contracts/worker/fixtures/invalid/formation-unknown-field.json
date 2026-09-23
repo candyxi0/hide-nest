@@ -1,6 +1,6 @@
 {
   "contractVersion": "nest.worker.v1",
-  "taskRef": "task:formation-create",
+  "taskRef": "task:fixture-contract",
   "worldRef": "world:alpha",
   "taskKind": "FORMATION",
   "generation": 2,
@@ -34,7 +34,8 @@
         "revision:source-1"
       ],
       "counterExamples": [],
-      "itemRef": "item:create-1"
+      "itemRef": "item:create-1",
+      "priority": 99
     }
   ]
 }

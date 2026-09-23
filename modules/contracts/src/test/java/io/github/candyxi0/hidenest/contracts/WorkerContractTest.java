@@ -55,8 +55,9 @@ class WorkerContractTest {
                 String keyword = ContractTestSupport.text(entry, "expectedKeyword");
                 String instancePath = ContractTestSupport.text(entry, "expectedInstancePath");
                 assertTrue(
-                        errors.stream().anyMatch(error -> keyword.equals(error.getKeyword())
-                                && instancePath.equals(String.valueOf(error.getInstanceLocation()))),
+                        errors.stream()
+                                .anyMatch(error -> keyword.equals(error.getKeyword())
+                                        && instancePath.equals(String.valueOf(error.getInstanceLocation()))),
                         id + " did not fail at " + keyword + " / " + instancePath + ": " + errors);
             }
         }
@@ -79,7 +80,10 @@ class WorkerContractTest {
         for (JsonNode candidate : sufficient.path("candidateRefs")) {
             assertFalse(candidate.has("content"), "candidate ref must not contain正文");
             assertFalse(candidate.has("body"), "candidate ref must not contain正文");
-            assertTrue(sufficient.path("worldRef").asText().equals(candidate.path("worldRef").asText()));
+            assertTrue(sufficient
+                    .path("worldRef")
+                    .asText()
+                    .equals(candidate.path("worldRef").asText()));
         }
         String source = ContractTestSupport.readString(WORKER_ROOT.resolve("fixtures/valid/retrieval-sufficient.json"));
         JsonNode crossWorld = ContractTestSupport.JSON.readTree(source.replace(
@@ -90,9 +94,18 @@ class WorkerContractTest {
 
     @Test
     void formationExitKindsKeepNoChangeDistinctFromIncompleteAndFailure() throws Exception {
-        assertTrue("NO_LONG_TERM_CHANGE".equals(fixture("result.formation.no-change.valid").path("resultType").asText()));
-        assertTrue("SOURCE_INCOMPLETE".equals(fixture("result.formation.source-incomplete.valid").path("resultType").asText()));
-        assertTrue("BUDGET_EXHAUSTED".equals(fixture("result.formation.budget-exhausted.valid").path("resultType").asText()));
+        assertTrue("NO_LONG_TERM_CHANGE"
+                .equals(fixture("result.formation.no-change.valid")
+                        .path("resultType")
+                        .asText()));
+        assertTrue("SOURCE_INCOMPLETE"
+                .equals(fixture("result.formation.source-incomplete.valid")
+                        .path("resultType")
+                        .asText()));
+        assertTrue("BUDGET_EXHAUSTED"
+                .equals(fixture("result.formation.budget-exhausted.valid")
+                        .path("resultType")
+                        .asText()));
         assertFalse(fixture("result.formation.no-change.valid").has("writeSet"));
         assertFalse(fixture("result.formation.source-incomplete.valid").has("writeSet"));
     }
@@ -103,8 +116,7 @@ class WorkerContractTest {
         JsonNode result = ContractTestSupport.JSON.readTree(source.replace(
                 "\"navigation\":\"revision:current-1\"",
                 "\"navigation\":\"revision:current-1\",\"body\":\"must-be-rejected\""));
-        List<Error> errors = validateWorkerSchema(
-                "contracts/worker/retrieval-result-v1.schema.json", result);
+        List<Error> errors = validateWorkerSchema("contracts/worker/retrieval-result-v1.schema.json", result);
         assertFalse(errors.isEmpty(), "old candidate-with-body contract must be rejected");
     }
 
@@ -112,17 +124,23 @@ class WorkerContractTest {
     void workerJsonFixturePathSetHasNoOrphansOrManifestGaps() throws Exception {
         JsonNode manifest = ContractTestSupport.loadJson(MANIFEST);
         Set<String> manifestPaths = new HashSet<>();
-        for (JsonNode entry : manifest.path("fixtures")) manifestPaths.add(ContractTestSupport.text(entry, "fixturePath"));
+        for (JsonNode entry : manifest.path("fixtures"))
+            manifestPaths.add(ContractTestSupport.text(entry, "fixturePath"));
         Set<String> actualPaths = new HashSet<>();
         for (String kind : List.of("valid", "invalid")) {
             Path root = WORKER_ROOT.resolve("fixtures").resolve(kind);
             try (Stream<Path> files = Files.walk(root)) {
                 files.filter(Files::isRegularFile)
                         .filter(path -> path.getFileName().toString().endsWith(".json"))
-                        .forEach(path -> actualPaths.add(ContractTestSupport.REPO_ROOT.relativize(path).toString().replace('\\', '/')));
+                        .forEach(path -> actualPaths.add(ContractTestSupport.REPO_ROOT
+                                .relativize(path)
+                                .toString()
+                                .replace('\\', '/')));
             }
         }
-        assertTrue(manifestPaths.equals(actualPaths), "worker fixture manifest/path set mismatch: manifest=" + manifestPaths + " actual=" + actualPaths);
+        assertTrue(
+                manifestPaths.equals(actualPaths),
+                "worker fixture manifest/path set mismatch: manifest=" + manifestPaths + " actual=" + actualPaths);
     }
 
     @Test
@@ -130,10 +148,18 @@ class WorkerContractTest {
         assertEquals(
                 Set.of("EVENT", "CLAIM", "QUOTE", "UNDERSTANDING"),
                 Set.of(
-                        fixture("result.retrieval.sufficient.valid").at("/selected/0/type").asText(),
-                        fixture("result.formation.create.valid").at("/writeSet/0/type").asText(),
-                        fixture("result.formation.revise.valid").at("/writeSet/0/type").asText(),
-                        fixture("result.formation.supersede.valid").at("/writeSet/0/type").asText()));
+                        fixture("result.retrieval.sufficient.valid")
+                                .at("/selected/0/type")
+                                .asText(),
+                        fixture("result.formation.create.valid")
+                                .at("/writeSet/0/type")
+                                .asText(),
+                        fixture("result.formation.revise.valid")
+                                .at("/writeSet/0/type")
+                                .asText(),
+                        fixture("result.formation.supersede.valid")
+                                .at("/writeSet/0/type")
+                                .asText()));
         for (String legacy : List.of("FACT", "DECISION", "PREFERENCE", "RELATION", "EPISODE")) {
             ObjectNode retrieval = mutableFixture("result.retrieval.sufficient.valid");
             ((ObjectNode) retrieval.at("/selected/0")).put("type", legacy);
@@ -147,9 +173,14 @@ class WorkerContractTest {
     @Test
     void r2MultiAnchorWriteSetRequiresSourceVersionAndExactLocators() throws Exception {
         JsonNode anchors = fixture("result.formation.create.valid").at("/writeSet/0/sourceAnchors");
-        assertEquals("UNDERSTANDING", fixture("result.formation.create.valid").at("/writeSet/0/type").asText());
+        assertEquals(
+                "UNDERSTANDING",
+                fixture("result.formation.create.valid").at("/writeSet/0/type").asText());
         assertEquals(2, anchors.size(), "one memory change must support two disjoint source anchors");
-        assertFalse(anchors.get(0).path("locator").asText().equals(anchors.get(1).path("locator").asText()));
+        assertFalse(anchors.get(0)
+                .path("locator")
+                .asText()
+                .equals(anchors.get(1).path("locator").asText()));
 
         ObjectNode singular = mutableFixture("result.formation.create.valid");
         ObjectNode singularItem = (ObjectNode) singular.at("/writeSet/0");
@@ -158,8 +189,9 @@ class WorkerContractTest {
         assertRejected(FORMATION_SCHEMA, singular, "old singular sourceAnchor");
 
         ObjectNode empty = mutableFixture("result.formation.create.valid");
+        ((ObjectNode) empty.at("/writeSet/0")).put("type", "EVENT");
         empty.withArray("writeSet").get(0).withArray("sourceAnchors").removeAll();
-        assertRejected(FORMATION_SCHEMA, empty, "empty sourceAnchors");
+        assertRejected(FORMATION_SCHEMA, empty, "EVENT with empty sourceAnchors");
 
         ObjectNode missingVersion = mutableFixture("result.formation.create.valid");
         ((ObjectNode) missingVersion.at("/writeSet/0/sourceAnchors/0")).remove("sourceVersion");
@@ -176,11 +208,59 @@ class WorkerContractTest {
     }
 
     @Test
+    void formationBatchRefsAndActionShapesAreExpressibleInEitherOrder() throws Exception {
+        JsonNode eventFirst = fixture("result.formation.batch.event.first.valid");
+        JsonNode understandingFirst = fixture("result.formation.batch.understanding.first.valid");
+        assertEquals("item:event-1", eventFirst.at("/writeSet/1/supporting/0").asText());
+        assertEquals(
+                "item:event-1",
+                understandingFirst.at("/writeSet/0/supporting/0").asText());
+        assertEquals(0, eventFirst.at("/writeSet/1/sourceAnchors").size());
+
+        JsonNode mixed = fixture("result.formation.mixed.actions.valid");
+        assertEquals(
+                List.of("CREATE", "REVISE", "SUPERSEDE"),
+                List.of(
+                        mixed.at("/writeSet/0/action").asText(),
+                        mixed.at("/writeSet/1/action").asText(),
+                        mixed.at("/writeSet/2/action").asText()));
+        for (JsonNode item : mixed.path("writeSet"))
+            assertTrue(item.path("itemRef").asText().startsWith("item:"));
+        assertFalse(mixed.at("/writeSet/0").has("expectedCurrent"));
+        assertTrue(mixed.at("/writeSet/1").has("expectedCurrent"));
+        assertTrue(mixed.at("/writeSet/2").has("expectedCurrent"));
+        assertEquals("revision:source-2", mixed.at("/writeSet/1/supporting/0").asText());
+        assertEquals("item:event-1", mixed.at("/writeSet/1/supporting/1").asText());
+        assertEquals("item:event-1", mixed.at("/writeSet/2/counterExamples/1").asText());
+    }
+
+    @Test
+    void formationGraphFactsAreRuntimeSemanticValidationNotApplicableToSchema() throws Exception {
+        // RUNTIME_SEMANTIC_VALIDATION_NOT_APPLICABLE_TO_SCHEMA: these deliberately remain shape-valid.
+        // S03-B2 Core must reject unknown targets, self-reference, cross-item cycles and SUPPORT+COUNTER overlap.
+        for (String[] pair : List.of(
+                new String[] {"result.formation.create.valid", "item:missing"},
+                new String[] {"result.formation.create.valid", "item:create-1"})) {
+            ObjectNode result = mutableFixture(pair[0]);
+            result.withArray("writeSet").get(0).withArray("supporting").add(pair[1]);
+            assertTrue(validateWorkerSchema(FORMATION_SCHEMA, result).isEmpty());
+        }
+        ObjectNode overlap = mutableFixture("result.formation.batch.event.first.valid");
+        overlap.withArray("writeSet").get(1).withArray("counterExamples").add("item:event-1");
+        assertTrue(validateWorkerSchema(FORMATION_SCHEMA, overlap).isEmpty());
+        ObjectNode cycle = mutableFixture("result.formation.batch.event.first.valid");
+        cycle.withArray("writeSet").get(0).withArray("supporting").add("item:understanding-1");
+        assertTrue(validateWorkerSchema(FORMATION_SCHEMA, cycle).isEmpty());
+    }
+
+    @Test
     void r2TaskStartsWithCurrentTurnOrBoundedSourceWorkAndSeparatesExclusions() throws Exception {
         JsonNode retrieval = fixture("task.retrieval.sufficient.valid");
         assertTrue(retrieval.at("/contextMaterials/0/text").asText().startsWith("Synthetic turn:"));
-        assertEquals("CURRENT_USER_TURN", retrieval.at("/contextMaterials/0/kind").asText());
-        assertEquals("source:fixture-1", retrieval.at("/sourceExclusion/0/sourceRef").asText());
+        assertEquals(
+                "CURRENT_USER_TURN", retrieval.at("/contextMaterials/0/kind").asText());
+        assertEquals(
+                "source:fixture-1", retrieval.at("/sourceExclusion/0/sourceRef").asText());
         assertEquals("revision:old", retrieval.at("/deliveredRevisionRefs/0").asText());
         JsonNode formation = fixture("task.formation.valid");
         assertEquals("source-work:fixture-1", formation.path("sourceWorkRef").asText());
@@ -240,10 +320,16 @@ class WorkerContractTest {
     @Test
     void r2ResultExitsRejectHalfProductsAndContradictoryHistory() throws Exception {
         ObjectNode failedRetrieval = mutableFixture("result.retrieval.failed.valid");
-        failedRetrieval.set("selected", fixture("result.retrieval.no-support.valid").path("selected").deepCopy());
+        failedRetrieval.set(
+                "selected",
+                fixture("result.retrieval.no-support.valid").path("selected").deepCopy());
         assertRejected(RETRIEVAL_SCHEMA, failedRetrieval, "failed retrieval with selected");
         ObjectNode failedCandidates = mutableFixture("result.retrieval.failed.valid");
-        failedCandidates.set("candidateRefs", fixture("result.retrieval.no-support.valid").path("candidateRefs").deepCopy());
+        failedCandidates.set(
+                "candidateRefs",
+                fixture("result.retrieval.no-support.valid")
+                        .path("candidateRefs")
+                        .deepCopy());
         assertRejected(RETRIEVAL_SCHEMA, failedCandidates, "failed retrieval with candidateRefs");
         ObjectNode completedFailureCode = mutableFixture("result.retrieval.sufficient.valid");
         completedFailureCode.put("failureCode", "CORE_RESOLVE_FAILED");
@@ -262,10 +348,14 @@ class WorkerContractTest {
         writeWithFailure.put("failureCode", "FORMATION_FAILED");
         assertRejected(FORMATION_SCHEMA, writeWithFailure, "WRITE_SET with failure code");
         ObjectNode sourceIncompleteWithWrite = mutableFixture("result.formation.source-incomplete.valid");
-        sourceIncompleteWithWrite.set("writeSet", fixture("result.formation.create.valid").path("writeSet").deepCopy());
+        sourceIncompleteWithWrite.set(
+                "writeSet",
+                fixture("result.formation.create.valid").path("writeSet").deepCopy());
         assertRejected(FORMATION_SCHEMA, sourceIncompleteWithWrite, "SOURCE_INCOMPLETE with writeSet");
         ObjectNode budgetWithWrite = mutableFixture("result.formation.budget-exhausted.valid");
-        budgetWithWrite.set("writeSet", fixture("result.formation.create.valid").path("writeSet").deepCopy());
+        budgetWithWrite.set(
+                "writeSet",
+                fixture("result.formation.create.valid").path("writeSet").deepCopy());
         assertRejected(FORMATION_SCHEMA, budgetWithWrite, "BUDGET_EXHAUSTED with writeSet");
         ObjectNode wrongFailureStatus = mutableFixture("result.formation.source-incomplete.valid");
         wrongFailureStatus.put("resultType", "FAILED").put("failureCode", "FORMATION_FAILED");
@@ -281,7 +371,9 @@ class WorkerContractTest {
                 new String[] {"UNAVAILABLE", "UNAVAILABLE"})) {
             ObjectNode failedFormation = mutableFixture("result.formation.failed.valid");
             failedFormation.put("executionStatus", exit[0]).put("failureCode", exit[1]);
-            assertTrue(validateWorkerSchema(FORMATION_SCHEMA, failedFormation).isEmpty(), "valid Formation failure exit " + exit[0]);
+            assertTrue(
+                    validateWorkerSchema(FORMATION_SCHEMA, failedFormation).isEmpty(),
+                    "valid Formation failure exit " + exit[0]);
         }
         for (String[] exit : List.of(
                 new String[] {"FAILED", "CORE_RESOLVE_FAILED"},
@@ -291,7 +383,9 @@ class WorkerContractTest {
                 new String[] {"UNAVAILABLE", "INDEX_UNAVAILABLE"})) {
             ObjectNode failedResult = mutableFixture("result.retrieval.failed.valid");
             failedResult.put("executionStatus", exit[0]).put("failureCode", exit[1]);
-            assertTrue(validateWorkerSchema(RETRIEVAL_SCHEMA, failedResult).isEmpty(), "valid Retrieval failure exit " + exit[0]);
+            assertTrue(
+                    validateWorkerSchema(RETRIEVAL_SCHEMA, failedResult).isEmpty(),
+                    "valid Retrieval failure exit " + exit[0]);
         }
     }
 
@@ -317,7 +411,8 @@ class WorkerContractTest {
     private static JsonNode fixture(String id) throws IOException {
         for (JsonNode entry : ContractTestSupport.loadJson(MANIFEST).path("fixtures")) {
             if (id.equals(entry.path("id").asText())) {
-                return ContractTestSupport.loadJson(ContractTestSupport.REPO_ROOT.resolve(ContractTestSupport.text(entry, "fixturePath")));
+                return ContractTestSupport.loadJson(
+                        ContractTestSupport.REPO_ROOT.resolve(ContractTestSupport.text(entry, "fixturePath")));
             }
         }
         fail("missing worker fixture: " + id);
@@ -326,12 +421,10 @@ class WorkerContractTest {
 
     private static List<Error> validateWorkerSchema(String schemaRef, JsonNode instance) throws IOException {
         JsonNode schemaNode = ContractTestSupport.loadJson(ContractTestSupport.REPO_ROOT.resolve(schemaRef));
-        SchemaRegistryConfig config = SchemaRegistryConfig.builder()
-                .formatAssertionsEnabled(true)
-                .build();
+        SchemaRegistryConfig config =
+                SchemaRegistryConfig.builder().formatAssertionsEnabled(true).build();
         Schema schema = SchemaRegistry.withDefaultDialect(
-                        SpecificationVersion.DRAFT_2020_12,
-                        builder -> builder.schemaRegistryConfig(config))
+                        SpecificationVersion.DRAFT_2020_12, builder -> builder.schemaRegistryConfig(config))
                 .getSchema(schemaNode);
         return schema.validate(instance);
     }
@@ -350,7 +443,10 @@ class WorkerContractTest {
             try (Stream<Path> files = Files.walk(WORKER_ROOT.resolve("fixtures").resolve(kind))) {
                 files.filter(Files::isRegularFile)
                         .filter(path -> path.getFileName().toString().endsWith(".json"))
-                        .forEach(path -> actual.add(ContractTestSupport.REPO_ROOT.relativize(path).toString().replace('\\', '/')));
+                        .forEach(path -> actual.add(ContractTestSupport.REPO_ROOT
+                                .relativize(path)
+                                .toString()
+                                .replace('\\', '/')));
             }
         }
         assertTrue(manifestPaths.equals(actual), "manifest/fixture path set mismatch");

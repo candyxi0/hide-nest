@@ -1,6 +1,6 @@
 {
   "contractVersion": "nest.worker.v1",
-  "taskRef": "task:formation-create",
+  "taskRef": "task:fixture-contract",
   "worldRef": "world:alpha",
   "taskKind": "FORMATION",
   "generation": 2,
@@ -33,7 +33,10 @@
       "supporting": [
         "revision:source-1"
       ],
-      "counterExamples": [],
+      "counterExamples": [
+        "item:event-1",
+        "item:event-1"
+      ],
       "itemRef": "item:create-1"
     }
   ]

@@ -1,6 +1,6 @@
 {
   "contractVersion": "nest.worker.v1",
-  "taskRef": "task:formation-revise",
+  "taskRef": "task:fixture-contract",
   "worldRef": "world:alpha",
   "taskKind": "FORMATION",
   "generation": 2,
@@ -8,30 +8,29 @@
   "resultType": "WRITE_SET",
   "writeSet": [
     {
-      "action": "REVISE",
+      "action": "SUPERSEDE",
       "sourceAnchors": [
         {
           "sourceRef": "source:fixture-1",
-          "sourceVersion": "source-v2",
+          "sourceVersion": "source-v3",
           "locator": "fixture-locator"
         }
       ],
-      "type": "CLAIM",
-      "content": "fixture content revise",
+      "type": "QUOTE",
+      "content": "fixture content supersede",
       "conditions": [],
       "subject": "fixture-subject",
       "scope": "fixture-scope",
       "perspective": "fixture-perspective",
       "uncertainty": "fixture-uncertainty",
       "supporting": [
-        "revision:source-2"
+        "revision:source-3"
       ],
-      "counterExamples": [],
-      "expectedCurrent": {
-        "memoryId": "memory:decision-1",
-        "revisionId": "revision:current-1"
-      },
-      "itemRef": "item:revise-1"
+      "counterExamples": [
+        "revision:source-3",
+        "item:event-1"
+      ],
+      "itemRef": "item:supersede-1"
     }
   ]
 }

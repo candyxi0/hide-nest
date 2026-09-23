@@ -1,6 +1,6 @@
 {
   "contractVersion": "nest.worker.v1",
-  "taskRef": "task:formation-create",
+  "taskRef": "task:fixture-contract",
   "worldRef": "world:alpha",
   "taskKind": "FORMATION",
   "generation": 2,
@@ -9,19 +9,8 @@
   "writeSet": [
     {
       "action": "CREATE",
-      "sourceAnchors": [
-        {
-          "sourceRef": "source:fixture-1",
-          "sourceVersion": "source-v1",
-          "locator": "fixture-locator-a"
-        },
-        {
-          "sourceRef": "source:fixture-1",
-          "sourceVersion": "source-v1",
-          "locator": "fixture-locator-c"
-        }
-      ],
-      "type": "UNDERSTANDING",
+      "sourceAnchors": [],
+      "type": "QUOTE",
       "content": "fixture content create",
       "conditions": [
         "fixture-condition"

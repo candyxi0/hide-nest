@@ -1,0 +1,86 @@
+{
+  "ticket": "Nest-V2-G5-S03-B1",
+  "status": "G5_S03_B1_READY_FOR_COMMANDER_REVIEW",
+  "baseline_commit": "46448380691e03765277cde340d218641b63a96e",
+  "jdk": "25.0.4",
+  "contract_version": "nest.worker.v1",
+  "networknt_draft_2020_12": {
+    "status": "PASS",
+    "manifest_fixtures": 50,
+    "formation_result_fixtures": 29
+  },
+  "worker_directed_tests": {
+    "status": "PASS",
+    "tests": 13,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "contracts_full_tests": {
+    "status": "PASS",
+    "tests": 70,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "manifest_fixture_bidirectional_pathset": "PASS",
+  "affected_java_spotless": "PASS",
+  "contracts_module_spotless": "FAIL_PRE_EXISTING_UNRELATED_FORMAT_DIFFERENCES",
+  "full_repository_skip_tests_build": "PASS",
+  "git_diff_check": "PASS",
+  "staged_paths": 0,
+  "ajv_2020_format_crosscheck": "NOT_RUN",
+  "runtime_semantic_validation": "RUNTIME_SEMANTIC_VALIDATION_NOT_APPLICABLE_TO_SCHEMA",
+  "core_runtime_graph_validation": "NOT_RUN",
+  "real_worker_json": "NOT_RUN",
+  "model_semantic_quality": "NOT_RUN",
+  "real_source_adapter": "NOT_RUN",
+  "user_experience": "NOT_RUN",
+  "fw_rel_01": "OPEN_PENDING_B2_RUNTIME_VALIDATION",
+  "failure_history": [
+    {
+      "gate": "initial WorkerContractTest",
+      "status": "FAIL",
+      "reason": "Old empty-Anchor assertion conflicted with relation-only Understanding; scoped to Event and reran PASS"
+    },
+    {
+      "gate": "initial contracts module spotless",
+      "status": "FAIL",
+      "reason": "Pre-existing unrelated format differences plus changed WorkerContractTest; scoped changed-file check subsequently PASS"
+    }
+  ],
+  "task_paths": [
+    "contracts/worker/README.md",
+    "contracts/worker/fixture-manifest.json",
+    "contracts/worker/fixtures/invalid/formation-bad-combination.json",
+    "contracts/worker/fixtures/invalid/formation-bad-item-ref.json",
+    "contracts/worker/fixtures/invalid/formation-bad-relation-ref.json",
+    "contracts/worker/fixtures/invalid/formation-claim-empty-anchor.json",
+    "contracts/worker/fixtures/invalid/formation-create-expected-current.json",
+    "contracts/worker/fixtures/invalid/formation-duplicate-counter.json",
+    "contracts/worker/fixtures/invalid/formation-duplicate-support.json",
+    "contracts/worker/fixtures/invalid/formation-event-empty-anchor.json",
+    "contracts/worker/fixtures/invalid/formation-missing-item-ref.json",
+    "contracts/worker/fixtures/invalid/formation-quote-empty-anchor.json",
+    "contracts/worker/fixtures/invalid/formation-revise-missing-current.json",
+    "contracts/worker/fixtures/invalid/formation-singular-anchor.json",
+    "contracts/worker/fixtures/invalid/formation-supersede-missing-current.json",
+    "contracts/worker/fixtures/invalid/formation-understanding-no-evidence.json",
+    "contracts/worker/fixtures/invalid/formation-understanding-only-counter.json",
+    "contracts/worker/fixtures/invalid/formation-unknown-field.json",
+    "contracts/worker/fixtures/valid/formation-batch-event-first.json",
+    "contracts/worker/fixtures/valid/formation-batch-understanding-first.json",
+    "contracts/worker/fixtures/valid/formation-create.json",
+    "contracts/worker/fixtures/valid/formation-mixed-actions.json",
+    "contracts/worker/fixtures/valid/formation-revise.json",
+    "contracts/worker/fixtures/valid/formation-supersede.json",
+    "contracts/worker/fixtures/valid/formation-understanding-anchor-only.json",
+    "contracts/worker/formation-result-v1.schema.json",
+    "modules/contracts/src/test/java/io/github/candyxi0/hidenest/contracts/WorkerContractTest.java",
+    "reports/Nest-V2-G5-S03-B1-Evidence.json",
+    "reports/Nest-V2-G5-S03-B1-执行报告.md"
+  ],
+  "task_produced_forbidden_path_changes": 0,
+  "preexisting_user_content_preserved": true,
+  "stage_commit_push_deploy": false
+}
