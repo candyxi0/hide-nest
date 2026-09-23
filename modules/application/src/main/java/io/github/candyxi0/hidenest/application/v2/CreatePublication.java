@@ -106,18 +106,21 @@ public final class CreatePublication {
                 resolverBoundary(candidate.toInclusive()),
                 resolverBinding(candidate.readBinding()));
         List<List<Verified>> verified = new ArrayList<>();
-        boolean revise = set.items().stream().anyMatch(i -> i != null && "REVISE".equals(i.action()));
-        if (revise && set.items().size() != 1)
-            throw new IllegalArgumentException("MIXED_OR_MULTIPLE_REVISE_UNSUPPORTED");
+        boolean replacement = set.items().stream()
+                .anyMatch(i -> i != null && ("REVISE".equals(i.action()) || "SUPERSEDE".equals(i.action())));
+        if (replacement && set.items().size() != 1)
+            throw new IllegalArgumentException("MIXED_OR_MULTIPLE_REPLACEMENT_UNSUPPORTED");
         for (CreateItem item : set.items()) {
             if (item == null
-                    || !("CREATE".equals(item.action()) || "REVISE".equals(item.action()))
+                    || !("CREATE".equals(item.action())
+                            || "REVISE".equals(item.action())
+                            || "SUPERSEDE".equals(item.action()))
                     || item.type() == null
                     || item.anchors() == null
                     || item.relations() == null
                     || item.anchors().size() > 100
                     || item.relations().size() > 100) throw new IllegalArgumentException("INVALID_CREATE");
-            if ("REVISE".equals(item.action())) {
+            if ("REVISE".equals(item.action()) || "SUPERSEDE".equals(item.action())) {
                 required(item.itemRef(), 128);
                 if (item.expectedCurrent() == null
                         || item.expectedCurrent().recordId() == null

@@ -269,8 +269,9 @@ public final class JooqFormationControlAdapter implements FormationControlPort {
                     fail(candidate.attemptId(), "CURRENT_CONFLICT");
                     return FormationSettlementOutcome.CURRENT_CONFLICT;
                 }
-                if ("REVISE_TARGET_INVALID".equals(cause.getMessage())) {
-                    fail(candidate.attemptId(), "REVISE_TARGET_INVALID");
+                if ("REVISE_TARGET_INVALID".equals(cause.getMessage())
+                        || "SUPERSEDE_TARGET_INVALID".equals(cause.getMessage())) {
+                    fail(candidate.attemptId(), cause.getMessage());
                     return FormationSettlementOutcome.INVALID_RESULT;
                 }
             }

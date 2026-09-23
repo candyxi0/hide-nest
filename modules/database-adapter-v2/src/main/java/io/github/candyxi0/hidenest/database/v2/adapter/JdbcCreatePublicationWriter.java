@@ -127,17 +127,19 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
         for (int index = 0; index < request.writeSet().items().size(); index++) {
             CreateItem item = request.writeSet().items().get(index);
             boolean revise = "REVISE".equals(item.action());
+            boolean supersede = "SUPERSEDE".equals(item.action());
             UUID recordId = revise ? item.expectedCurrent().recordId() : UUID.randomUUID();
             UUID revisionId = UUID.randomUUID();
             int revisionNo = 1;
-            if (revise) {
+            if (revise || supersede) {
+                UUID targetId = item.expectedCurrent().recordId();
                 try (PreparedStatement p = c.prepareStatement(
                         "SELECT type,current_revision_id,participation_state FROM memory.record WHERE record_id=? FOR UPDATE")) {
-                    bind(p, recordId);
+                    bind(p, targetId);
                     try (ResultSet r = p.executeQuery()) {
-                        if (!r.next()
-                                || !"ACTIVE".equals(r.getString("participation_state"))
-                                || !item.type().name().equals(r.getString("type")))
+                        if (!r.next() || !"ACTIVE".equals(r.getString("participation_state")))
+                            throw new SQLException(supersede ? "SUPERSEDE_TARGET_INVALID" : "REVISE_TARGET_INVALID");
+                        if (revise && !item.type().name().equals(r.getString("type")))
                             throw new SQLException("REVISE_TARGET_INVALID");
                         if (!item.expectedCurrent().revisionId().equals(r.getObject("current_revision_id", UUID.class)))
                             throw new SQLException("CURRENT_CONFLICT");
@@ -145,10 +147,10 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
                 }
                 try (PreparedStatement p = c.prepareStatement(
                         "SELECT revision_no FROM memory.revision WHERE record_id=? AND revision_id=?")) {
-                    bind(p, recordId, item.expectedCurrent().revisionId());
+                    bind(p, targetId, item.expectedCurrent().revisionId());
                     try (ResultSet r = p.executeQuery()) {
                         if (!r.next()) throw new SQLException("CURRENT_CONFLICT");
-                        revisionNo = Math.addExact(r.getInt(1), 1);
+                        if (revise) revisionNo = Math.addExact(r.getInt(1), 1);
                     }
                 }
             }
@@ -250,27 +252,49 @@ public final class JdbcCreatePublicationWriter implements CreatePublication.Writ
                 }
                 if (switched != 1) throw new SQLException("CURRENT_CONFLICT");
             }
+            if (supersede) {
+                UUID predecessor = item.expectedCurrent().recordId();
+                UUID previous = item.expectedCurrent().revisionId();
+                execute(
+                        c,
+                        "INSERT INTO memory.record_succession(predecessor_record_id,predecessor_revision_id,"
+                                + "successor_record_id,successor_revision_id,task_id,created_at) VALUES(?,?,?,?,?,?)",
+                        predecessor,
+                        previous,
+                        recordId,
+                        revisionId,
+                        candidate.taskId(),
+                        OffsetDateTime.now(ZoneOffset.UTC));
+                try (PreparedStatement p = c.prepareStatement(
+                        "UPDATE memory.record SET participation_state='SUPERSEDED' WHERE record_id=? "
+                                + "AND current_revision_id=? AND participation_state='ACTIVE'")) {
+                    bind(p, predecessor, previous);
+                    if (p.executeUpdate() != 1) throw new SQLException("CURRENT_CONFLICT");
+                }
+            }
             execute(
                     c,
-                    "INSERT INTO memory.create_receipt_item(idempotency_key,item_index,record_id,revision_id,action,expected_revision_id) "
-                            + "VALUES(?,?,?,?,?,?)",
+                    "INSERT INTO memory.create_receipt_item(idempotency_key,item_index,record_id,revision_id,action,"
+                            + "expected_revision_id,predecessor_record_id) VALUES(?,?,?,?,?,?,?)",
                     candidate.idempotencyKey(),
                     index,
                     recordId,
                     revisionId,
                     item.action(),
-                    revise ? item.expectedCurrent().revisionId() : null);
+                    (revise || supersede) ? item.expectedCurrent().revisionId() : null,
+                    (revise || supersede) ? item.expectedCurrent().recordId() : null);
             execute(
                     c,
-                    "INSERT INTO memory.projection_outbox(event_id,event_kind,record_id,revision_id,request_hash,created_at,previous_revision_id) "
-                            + "VALUES(?,?,?,?,?,?,?)",
+                    "INSERT INTO memory.projection_outbox(event_id,event_kind,record_id,revision_id,request_hash,created_at,"
+                            + "previous_revision_id,predecessor_record_id) VALUES(?,?,?,?,?,?,?,?)",
                     UUID.randomUUID(),
-                    revise ? "MEMORY_REVISED" : "MEMORY_CREATED",
+                    supersede ? "MEMORY_SUPERSEDED" : revise ? "MEMORY_REVISED" : "MEMORY_CREATED",
                     recordId,
                     revisionId,
                     request.hash(),
                     OffsetDateTime.now(ZoneOffset.UTC),
-                    revise ? item.expectedCurrent().revisionId() : null);
+                    (revise || supersede) ? item.expectedCurrent().revisionId() : null,
+                    (revise || supersede) ? item.expectedCurrent().recordId() : null);
         }
     }
 

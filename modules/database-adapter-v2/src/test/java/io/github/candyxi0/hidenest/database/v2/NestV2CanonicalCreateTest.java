@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import io.github.candyxi0.hidenest.application.v2.CreatePublication;
 import io.github.candyxi0.hidenest.database.v2.adapter.JdbcCreatePublicationWriter;
+import io.github.candyxi0.hidenest.database.v2.adapter.JdbcRecordSuccessionReader;
 import io.github.candyxi0.hidenest.database.v2.adapter.JooqFormationControlAdapter;
 import io.github.candyxi0.hidenest.database.v2.adapter.JooqFormationIntakeAdapter;
 import io.github.candyxi0.hidenest.evidence.v2.SourceResolver;
@@ -99,6 +100,50 @@ class NestV2CanonicalCreateTest {
                     hash,
                     T0);
         });
+        assertEquals(1, flyway("4").migrate().migrationsExecuted);
+        legacy.newSource();
+        FormationAttempt reviseTask = legacy.attempt();
+        UUID revisedRevision = UUID.randomUUID();
+        UUID reviseKey = UUID.randomUUID();
+        db.transaction(config -> {
+            DSLContext tx = config.dsl();
+            tx.execute(
+                    "INSERT INTO memory.revision(revision_id,record_id,revision_no,content,subject,scope,"
+                            + "perspective,formation_ref,task_id,created_at) VALUES(?::uuid,?::uuid,2,'legacy-revised',"
+                            + "'subject','world-1','observed','formation',?::uuid,?::timestamptz)",
+                    revisedRevision,
+                    record,
+                    reviseTask.taskId(),
+                    T0);
+            tx.execute(
+                    "UPDATE memory.record SET current_revision_id=?::uuid WHERE record_id=?::uuid",
+                    revisedRevision,
+                    record);
+            tx.execute(
+                    "INSERT INTO memory.create_receipt(idempotency_key,request_hash,task_id,attempt_id,created_at) "
+                            + "VALUES(?::uuid,?,?::uuid,?::uuid,?::timestamptz)",
+                    reviseKey,
+                    hash,
+                    reviseTask.taskId(),
+                    reviseTask.attemptId(),
+                    T0);
+            tx.execute(
+                    "INSERT INTO memory.create_receipt_item(idempotency_key,item_index,record_id,revision_id,action,expected_revision_id) "
+                            + "VALUES(?::uuid,0,?::uuid,?::uuid,'REVISE',?::uuid)",
+                    reviseKey,
+                    record,
+                    revisedRevision,
+                    revision);
+            tx.execute(
+                    "INSERT INTO memory.projection_outbox(event_id,event_kind,record_id,revision_id,request_hash,created_at,previous_revision_id) "
+                            + "VALUES(?::uuid,'MEMORY_REVISED',?::uuid,?::uuid,?,?::timestamptz,?::uuid)",
+                    UUID.randomUUID(),
+                    record,
+                    revisedRevision,
+                    hash,
+                    T0,
+                    revision);
+        });
         assertEquals(1, flyway(null).migrate().migrationsExecuted);
         assertEquals(0, flyway(null).migrate().migrationsExecuted);
         flyway(null).validate();
@@ -111,6 +156,15 @@ class NestV2CanonicalCreateTest {
                 db.fetchOne("SELECT action FROM memory.create_receipt_item WHERE idempotency_key=?::uuid", key)
                         .get(0, String.class));
         assertEquals(1, legacy.n("SELECT count(*) FROM memory.projection_outbox WHERE event_kind='MEMORY_CREATED'"));
+        assertEquals(
+                record,
+                db.fetchOne("SELECT predecessor_record_id FROM memory.create_receipt_item " + "WHERE action='REVISE'")
+                        .get(0, UUID.class));
+        assertEquals(
+                record,
+                db.fetchOne("SELECT predecessor_record_id FROM memory.projection_outbox "
+                                + "WHERE event_kind='MEMORY_REVISED'")
+                        .get(0, UUID.class));
     }
 
     @AfterAll
@@ -147,7 +201,7 @@ class NestV2CanonicalCreateTest {
 
     @Test
     void migrationPermissionsAndNoV1Tables() {
-        assertEquals(4, n("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(5, n("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
         assertTrue(Boolean.TRUE.equals(db.fetchOne("SELECT has_column_privilege('hide_nest_api',"
                         + "'memory.record','current_revision_id','UPDATE')")
                 .get(0, Boolean.class)));
@@ -169,6 +223,7 @@ class NestV2CanonicalCreateTest {
                 "revision",
                 "revision_anchor",
                 "revision_relation",
+                "record_succession",
                 "create_receipt",
                 "create_receipt_item",
                 "projection_outbox")) {
@@ -1001,6 +1056,346 @@ class NestV2CanonicalCreateTest {
                 publish(candidate(blockedSource, gated, UUID.randomUUID()), gated));
         assertEquals(1, n("SELECT count(*) FROM memory.revision"));
         assertEquals(1, n("SELECT count(*) FROM memory.projection_outbox"));
+    }
+
+    @Test
+    void supersedeCreatesDistinctIdentityAndDirectReadWithoutCopyingEvidence() throws Exception {
+        FormationAttempt initial = attempt();
+        CreatePublication.Prepared create = prepare(List.of(item(MemoryType.CLAIM, List.of(anchor("a")), List.of())));
+        assertEquals(
+                FormationSettlementOutcome.COMMITTED_WRITE,
+                publish(candidate(initial, create, UUID.randomUUID()), create));
+        UUID oldRecord = db.fetchOne("SELECT record_id FROM memory.record").get(0, UUID.class);
+        UUID oldRevision =
+                db.fetchOne("SELECT current_revision_id FROM memory.record").get(0, UUID.class);
+        newSource();
+        FormationAttempt second = attempt();
+        CreateItem replacement = supersede(MemoryType.UNDERSTANDING, oldRecord, oldRevision, "b");
+        CreatePublication.Prepared request = prepare(List.of(replacement));
+        FormationSettlementCandidate submitted = candidate(second, request, UUID.randomUUID());
+        assertEquals(FormationSettlementOutcome.COMMITTED_WRITE, publish(submitted, request));
+        UUID successor = db.fetchOne("SELECT successor_record_id FROM memory.record_succession")
+                .get(0, UUID.class);
+        UUID firstRevision = db.fetchOne("SELECT successor_revision_id FROM memory.record_succession")
+                .get(0, UUID.class);
+        assertNotEquals(oldRecord, successor);
+        assertNotEquals(oldRevision, firstRevision);
+        assertEquals(
+                "SUPERSEDED",
+                db.fetchOne("SELECT participation_state FROM memory.record WHERE record_id=?::uuid", oldRecord)
+                        .get(0, String.class));
+        assertEquals(
+                oldRevision,
+                db.fetchOne("SELECT current_revision_id FROM memory.record WHERE record_id=?::uuid", oldRecord)
+                        .get(0, UUID.class));
+        assertEquals(
+                "content",
+                db.fetchOne("SELECT content FROM memory.revision WHERE revision_id=?::uuid", oldRevision)
+                        .get(0, String.class));
+        assertEquals(
+                "UNDERSTANDING",
+                db.fetchOne("SELECT type FROM memory.record WHERE record_id=?::uuid", successor)
+                        .get(0, String.class));
+        assertEquals(1, n("SELECT count(*) FROM memory.revision_anchor WHERE revision_id='" + oldRevision + "'"));
+        assertEquals(1, n("SELECT count(*) FROM memory.revision_anchor WHERE revision_id='" + firstRevision + "'"));
+        assertEquals(2, n("SELECT count(*) FROM evidence.source_anchor"));
+        assertEquals(1, n("SELECT revision_no FROM memory.revision WHERE revision_id='" + firstRevision + "'"));
+        assertEquals(
+                "MEMORY_SUPERSEDED",
+                db.fetchOne("SELECT event_kind FROM memory.projection_outbox WHERE record_id=?::uuid", successor)
+                        .get(0, String.class));
+        var reader = new JdbcRecordSuccessionReader(
+                new DriverManagerDataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()));
+        var direct = reader.findDirectSuccessor(oldRecord).orElseThrow();
+        assertEquals(oldRevision, direct.predecessorRevisionId());
+        assertEquals(successor, direct.successorRecordId());
+        assertTrue(reader.findDirectSuccessor(successor).isEmpty());
+        assertEquals(FormationSettlementOutcome.IDEMPOTENT_REPLAY, publish(submitted, request));
+        assertEquals(2, n("SELECT count(*) FROM memory.record"));
+        assertEquals(1, n("SELECT count(*) FROM memory.record_succession"));
+        CreatePublication.Prepared changed = prepare(List.of(new CreateItem(
+                "SUPERSEDE",
+                MemoryType.UNDERSTANDING,
+                "changed",
+                "subject",
+                "world-1",
+                "observed",
+                null,
+                null,
+                null,
+                "formation",
+                List.of(anchor("b")),
+                List.of(),
+                "successor",
+                new ExpectedCurrent(oldRecord, oldRevision))));
+        assertEquals(
+                FormationSettlementOutcome.IDEMPOTENCY_CONFLICT,
+                publish(candidate(second, changed, submitted.idempotencyKey()), changed));
+        newSource();
+        FormationAttempt third = attempt();
+        CreatePublication.Prepared stale = prepare(List.of(supersede(MemoryType.CLAIM, oldRecord, oldRevision, "c")));
+        assertEquals(
+                FormationSettlementOutcome.INVALID_RESULT, publish(candidate(third, stale, UUID.randomUUID()), stale));
+        assertEquals(2, n("SELECT count(*) FROM memory.record"));
+        assertEquals(1, n("SELECT count(*) FROM memory.record_succession"));
+    }
+
+    @Test
+    void supersedeFailedRelationRollsBackWholeSettlement() {
+        FormationAttempt initial = attempt();
+        CreatePublication.Prepared create = prepare(List.of(item(MemoryType.CLAIM, List.of(anchor("a")), List.of())));
+        assertEquals(
+                FormationSettlementOutcome.COMMITTED_WRITE,
+                publish(candidate(initial, create, UUID.randomUUID()), create));
+        UUID oldRecord = db.fetchOne("SELECT record_id FROM memory.record").get(0, UUID.class);
+        UUID oldRevision =
+                db.fetchOne("SELECT current_revision_id FROM memory.record").get(0, UUID.class);
+        newSource();
+        FormationAttempt second = attempt();
+        CreateItem invalid = new CreateItem(
+                "SUPERSEDE",
+                MemoryType.CLAIM,
+                "new",
+                "subject",
+                "world-1",
+                "observed",
+                null,
+                null,
+                null,
+                "formation",
+                List.of(anchor("b")),
+                List.of(new RevisionRef(UUID.randomUUID(), RelationKind.SUPPORT)),
+                "replacement",
+                new ExpectedCurrent(oldRecord, oldRevision));
+        CreatePublication.Prepared request = prepare(List.of(invalid));
+        assertEquals(
+                FormationSettlementOutcome.RETRY_WAIT, publish(candidate(second, request, UUID.randomUUID()), request));
+        assertEquals(
+                "ACTIVE",
+                db.fetchOne("SELECT participation_state FROM memory.record WHERE record_id=?::uuid", oldRecord)
+                        .get(0, String.class));
+        assertEquals(0, n("SELECT count(*) FROM memory.record_succession"));
+        assertEquals(1, n("SELECT count(*) FROM memory.record"));
+        assertEquals(1, n("SELECT count(*) FROM memory.create_receipt"));
+        assertEquals(1, n("SELECT count(*) FROM memory.projection_outbox"));
+        assertEquals(
+                0,
+                n("SELECT count(*) FROM runtime.source_progress WHERE source_id='" + sourceId
+                        + "' AND processed_sequence IS NOT NULL"));
+    }
+
+    @Test
+    void sameTypeCanSupersedeAgainButOldLookupStopsAtDirectSuccessor() throws Exception {
+        FormationAttempt initial = attempt();
+        CreatePublication.Prepared create = prepare(List.of(item(MemoryType.CLAIM, List.of(anchor("a")), List.of())));
+        assertEquals(
+                FormationSettlementOutcome.COMMITTED_WRITE,
+                publish(candidate(initial, create, UUID.randomUUID()), create));
+        UUID firstRecord = db.fetchOne("SELECT record_id FROM memory.record").get(0, UUID.class);
+        UUID firstRevision =
+                db.fetchOne("SELECT current_revision_id FROM memory.record").get(0, UUID.class);
+        newSource();
+        FormationAttempt second = attempt();
+        CreatePublication.Prepared next =
+                prepare(List.of(supersede(MemoryType.CLAIM, firstRecord, firstRevision, "b")));
+        assertEquals(
+                FormationSettlementOutcome.COMMITTED_WRITE, publish(candidate(second, next, UUID.randomUUID()), next));
+        UUID middleRecord = db.fetchOne(
+                        "SELECT successor_record_id FROM memory.record_succession "
+                                + "WHERE predecessor_record_id=?::uuid",
+                        firstRecord)
+                .get(0, UUID.class);
+        UUID middleRevision = db.fetchOne(
+                        "SELECT current_revision_id FROM memory.record WHERE record_id=?::uuid", middleRecord)
+                .get(0, UUID.class);
+        newSource();
+        FormationAttempt third = attempt();
+        CreatePublication.Prepared last =
+                prepare(List.of(supersede(MemoryType.CLAIM, middleRecord, middleRevision, "c")));
+        assertEquals(
+                FormationSettlementOutcome.COMMITTED_WRITE, publish(candidate(third, last, UUID.randomUUID()), last));
+        var reader = new JdbcRecordSuccessionReader(
+                new DriverManagerDataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()));
+        assertEquals(
+                middleRecord,
+                reader.findDirectSuccessor(firstRecord).orElseThrow().successorRecordId());
+        assertNotEquals(
+                middleRecord,
+                reader.findDirectSuccessor(middleRecord).orElseThrow().successorRecordId());
+        assertEquals(2, n("SELECT count(*) FROM memory.record_succession"));
+        assertEquals(1, n("SELECT count(*) FROM memory.record WHERE participation_state='ACTIVE'"));
+        assertFalse(priv("SELECT", "memory.record_succession"));
+        assertFalse(priv("INSERT", "memory.record_succession"));
+    }
+
+    @Test
+    void supersedeRequiresOneItemAndConcreteExpectedCurrent() {
+        FormationAttempt initial = attempt();
+        CreateItem incomplete = new CreateItem(
+                "SUPERSEDE",
+                MemoryType.CLAIM,
+                "new",
+                "subject",
+                "world-1",
+                "observed",
+                null,
+                null,
+                null,
+                "formation",
+                List.of(anchor("a")),
+                List.of(),
+                "replacement",
+                null);
+        assertThrows(IllegalArgumentException.class, () -> prepare(List.of(incomplete)));
+        CreateItem specified = supersede(MemoryType.CLAIM, UUID.randomUUID(), UUID.randomUUID(), "a");
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> prepare(List.of(specified, item(MemoryType.CLAIM, List.of(anchor("b")), List.of()))));
+        assertEquals(0, n("SELECT count(*) FROM memory.record"));
+        assertNotNull(initial);
+    }
+
+    @Test
+    void supersedeRejectsMissingRecordAndStaleRevisionWithoutPublishing() {
+        FormationAttempt initial = attempt();
+        CreatePublication.Prepared missing =
+                prepare(List.of(supersede(MemoryType.CLAIM, UUID.randomUUID(), UUID.randomUUID(), "a")));
+        assertEquals(
+                FormationSettlementOutcome.INVALID_RESULT,
+                publish(candidate(initial, missing, UUID.randomUUID()), missing));
+        assertEquals(0, n("SELECT count(*) FROM memory.create_receipt"));
+        assertEquals(0, n("SELECT count(*) FROM memory.record_succession"));
+        newSource();
+        FormationAttempt createAttempt = attempt();
+        CreatePublication.Prepared create = prepare(List.of(item(MemoryType.CLAIM, List.of(anchor("b")), List.of())));
+        assertEquals(
+                FormationSettlementOutcome.COMMITTED_WRITE,
+                publish(candidate(createAttempt, create, UUID.randomUUID()), create));
+        UUID record = db.fetchOne("SELECT record_id FROM memory.record").get(0, UUID.class);
+        newSource();
+        FormationAttempt staleAttempt = attempt();
+        CreatePublication.Prepared stale =
+                prepare(List.of(supersede(MemoryType.CLAIM, record, UUID.randomUUID(), "c")));
+        assertEquals(
+                FormationSettlementOutcome.CURRENT_CONFLICT,
+                publish(candidate(staleAttempt, stale, UUID.randomUUID()), stale));
+        assertEquals(0, n("SELECT count(*) FROM memory.record_succession"));
+        assertEquals(1, n("SELECT count(*) FROM memory.record WHERE participation_state='ACTIVE'"));
+        assertEquals(1, n("SELECT count(*) FROM memory.create_receipt"));
+    }
+
+    @Test
+    void twoSupersedesRacingSameCurrentPublishOnlyOneSuccessor() throws Exception {
+        raceReplacement(false);
+    }
+
+    @Test
+    void reviseAndSupersedeRacingSameCurrentPublishOnlyOneChange() throws Exception {
+        raceReplacement(true);
+    }
+
+    private void raceReplacement(boolean competingRevision) throws Exception {
+        FormationAttempt initial = attempt();
+        CreatePublication.Prepared create = prepare(List.of(item(MemoryType.CLAIM, List.of(anchor("a")), List.of())));
+        assertEquals(
+                FormationSettlementOutcome.COMMITTED_WRITE,
+                publish(candidate(initial, create, UUID.randomUUID()), create));
+        UUID record = db.fetchOne("SELECT record_id FROM memory.record").get(0, UUID.class);
+        UUID old = db.fetchOne("SELECT current_revision_id FROM memory.record").get(0, UUID.class);
+        newSource();
+        FormationAttempt left = attempt();
+        CreatePublication.Prepared leftRequest = prepare(List.of(supersede(MemoryType.CLAIM, record, old, "b")));
+        FormationSettlementCandidate leftCandidate = candidate(left, leftRequest, UUID.randomUUID());
+        UUID leftSource = sourceId;
+        newSource();
+        FormationAttempt right = attempt();
+        CreateItem rightItem = competingRevision
+                ? new CreateItem(
+                        "REVISE",
+                        MemoryType.CLAIM,
+                        "revised",
+                        "subject",
+                        "world-1",
+                        "observed",
+                        null,
+                        null,
+                        null,
+                        "formation",
+                        List.of(anchor("c")),
+                        List.of(),
+                        "revision",
+                        new ExpectedCurrent(record, old))
+                : supersede(MemoryType.CLAIM, record, old, "c");
+        CreatePublication.Prepared rightRequest = prepare(List.of(rightItem));
+        FormationSettlementCandidate rightCandidate = candidate(right, rightRequest, UUID.randomUUID());
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            var first = pool.submit(() -> {
+                start.await();
+                return CreatePublication.settle(
+                        control(T0.plusMinutes(91)),
+                        leftCandidate,
+                        leftRequest,
+                        new JdbcCreatePublicationWriter(),
+                        ignored -> {});
+            });
+            var second = pool.submit(() -> {
+                start.await();
+                return CreatePublication.settle(
+                        control(T0.plusMinutes(91)),
+                        rightCandidate,
+                        rightRequest,
+                        new JdbcCreatePublicationWriter(),
+                        ignored -> {});
+            });
+            start.countDown();
+            var outcomes = List.of(first.get(), second.get());
+            assertEquals(
+                    1,
+                    outcomes.stream()
+                            .filter(o -> o == FormationSettlementOutcome.COMMITTED_WRITE)
+                            .count());
+            assertEquals(
+                    1,
+                    outcomes.stream()
+                            .filter(o -> o == FormationSettlementOutcome.CURRENT_CONFLICT
+                                    || o == FormationSettlementOutcome.INVALID_RESULT)
+                            .count());
+        } finally {
+            pool.shutdownNow();
+        }
+        assertEquals(1, n("SELECT count(*) FROM memory.create_receipt_item WHERE action IN ('SUPERSEDE','REVISE')"));
+        assertEquals(
+                1,
+                n("SELECT count(*) FROM memory.projection_outbox "
+                        + "WHERE event_kind IN ('MEMORY_SUPERSEDED','MEMORY_REVISED')"));
+        assertEquals(
+                1,
+                n("SELECT count(*) FROM runtime.source_progress WHERE source_id IN ('" + leftSource + "','" + sourceId
+                        + "') AND processed_sequence IS NOT NULL"));
+        assertEquals(
+                1,
+                n("SELECT count(*) FROM memory.record_succession")
+                        + n("SELECT count(*) FROM memory.revision WHERE record_id='" + record + "' AND revision_no=2"));
+    }
+
+    private static CreateItem supersede(MemoryType type, UUID record, UUID revision, String anchor) {
+        return new CreateItem(
+                "SUPERSEDE",
+                type,
+                "successor",
+                "subject",
+                "world-1",
+                "observed",
+                null,
+                null,
+                null,
+                "formation",
+                List.of(anchor(anchor)),
+                List.of(),
+                "successor",
+                new ExpectedCurrent(record, revision));
     }
 
     private FormationAttempt attempt() {

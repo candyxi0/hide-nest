@@ -1,0 +1,45 @@
+{
+  "task": "G5-S03-B2-B",
+  "status": "G5_S03_B2_B_IMPLEMENTATION_ACCEPTED",
+  "baselineHead": "ebdafc97ad1cb85c3cd3e9e5a949d40f05e492d1",
+  "stagedFiles": 0,
+  "environment": { "jdk": 25, "postgresql": "18.4", "database": "Testcontainers" },
+  "runs": [
+    { "name": "database test initial command", "exitCode": 1, "reason": "PowerShell split an unquoted Maven -D property" },
+    { "name": "database test first execution", "exitCode": 1, "reason": "V003 fixture referenced V005 table" },
+    { "name": "database test second execution", "exitCode": 1, "reason": "Migration-count assertion expected one migration instead of V004 and V005" },
+    { "name": "database test intermediate", "exitCode": 0, "tests": 17 },
+    { "name": "database test with V004 stock rows", "exitCode": 0, "tests": 19 },
+    { "name": "database test with concurrency", "exitCode": 0, "tests": 21 },
+    { "name": "affected V2 suite initial", "exitCode": 1, "reason": "Two older tests expected four Flyway migrations" },
+    { "name": "affected V2 suite after migration-count repair", "exitCode": 0, "tests": 42 },
+    { "name": "affected V2 suite final", "exitCode": 0, "tests": 43, "failures": 0, "errors": 0 },
+    { "name": "unscoped Spotless check", "exitCode": 1, "reason": "Existing out-of-scope Java formatting" },
+    { "name": "scoped V2 Spotless check", "exitCode": 0 },
+    { "name": "full repository package with tests skipped", "exitCode": 0 },
+    { "name": "duplicate-key check first attempt", "exitCode": 1, "reason": "Python executable unavailable on host" },
+    { "name": "Node JSON.parse, PowerShell ConvertFrom-Json, and Node duplicate-key scanner", "exitCode": 0 },
+    { "name": "Git task pathSet and report cross-check", "exitCode": 0, "paths": 11 },
+    { "name": "git diff --check", "exitCode": 0 }
+  ],
+  "migrations": {
+    "emptyDatabaseV001ToV005": "PASS",
+    "v004ToV005WithExistingCreateAndReviseRows": "PASS",
+    "repeatedMigration": "PASS",
+    "flywayValidate": "PASS"
+  },
+  "notRun": ["Ajv", "real Worker", "model calls", "real sources", "index", "user experience", "B2-C", "B2-D"],
+  "taskPathSet": [
+    "modules/memory/src/main/java/io/github/candyxi0/hidenest/memory/v2/RecordSuccession.java",
+    "modules/application/src/main/java/io/github/candyxi0/hidenest/application/v2/CreatePublication.java",
+    "modules/database-adapter-v2/src/main/java/io/github/candyxi0/hidenest/database/v2/adapter/JdbcCreatePublicationWriter.java",
+    "modules/database-adapter-v2/src/main/java/io/github/candyxi0/hidenest/database/v2/adapter/JdbcRecordSuccessionReader.java",
+    "modules/database-adapter-v2/src/main/java/io/github/candyxi0/hidenest/database/v2/adapter/JooqFormationControlAdapter.java",
+    "modules/database-adapter-v2/src/main/resources/db/v2/migration/V005__canonical_supersede.sql",
+    "modules/database-adapter-v2/src/test/java/io/github/candyxi0/hidenest/database/v2/NestV2CanonicalCreateTest.java",
+    "modules/database-adapter-v2/src/test/java/io/github/candyxi0/hidenest/database/v2/NestV2FormationControlTest.java",
+    "modules/database-adapter-v2/src/test/java/io/github/candyxi0/hidenest/database/v2/NestV2FormationIntakeTest.java",
+    "reports/Nest-V2-G5-S03-B2-B-执行报告.md",
+    "reports/Nest-V2-G5-S03-B2-B-Evidence.json"
+  ]
+}
