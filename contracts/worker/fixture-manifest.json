@@ -20,12 +20,6 @@
       "expectedValid": true
     },
     {
-      "id": "task.index.valid",
-      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
-      "fixturePath": "contracts/worker/fixtures/valid/index-task.json",
-      "expectedValid": true
-    },
-    {
       "id": "result.retrieval.no-query.valid",
       "schemaRef": "contracts/worker/retrieval-result-v1.schema.json",
       "fixturePath": "contracts/worker/fixtures/valid/retrieval-no-query.json",
@@ -89,18 +83,6 @@
       "id": "result.formation.failed.valid",
       "schemaRef": "contracts/worker/formation-result-v1.schema.json",
       "fixturePath": "contracts/worker/fixtures/valid/formation-failed.json",
-      "expectedValid": true
-    },
-    {
-      "id": "result.index.applied.valid",
-      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
-      "fixturePath": "contracts/worker/fixtures/valid/index-applied.json",
-      "expectedValid": true
-    },
-    {
-      "id": "result.index.retry.valid",
-      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
-      "fixturePath": "contracts/worker/fixtures/valid/index-retry.json",
       "expectedValid": true
     },
     {
@@ -206,14 +188,6 @@
       "expectedValid": false,
       "expectedKeyword": "maxItems",
       "expectedInstancePath": "/selected"
-    },
-    {
-      "id": "result.index.bad-generation.invalid",
-      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
-      "fixturePath": "contracts/worker/fixtures/invalid/index-negative-generation.json",
-      "expectedValid": false,
-      "expectedKeyword": "minimum",
-      "expectedInstancePath": "/projectionGeneration"
     },
     {
       "id": "result.formation.batch.event.first.valid",
@@ -358,6 +332,246 @@
       "schemaRef": "contracts/worker/formation-result-v1.schema.json",
       "fixturePath": "contracts/worker/fixtures/valid/formation-understanding-anchor-only.json",
       "expectedValid": true
+    },
+    {
+      "id": "task.index.create-task.valid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/index-create-task.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.index.create-applied.valid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/index-create-applied.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.index.retry.valid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/index-retry.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.index.failed.valid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/index-failed.json",
+      "expectedValid": true
+    },
+    {
+      "id": "task.index.revise-task.valid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/index-revise-task.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.index.revise-applied.valid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/index-revise-applied.json",
+      "expectedValid": true
+    },
+    {
+      "id": "task.index.supersede-task.valid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/index-supersede-task.json",
+      "expectedValid": true
+    },
+    {
+      "id": "result.index.supersede-applied.valid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/valid/index-supersede-applied.json",
+      "expectedValid": true
+    },
+    {
+      "id": "task.index.task-missing-event.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-task-missing-event.json",
+      "expectedValid": false,
+      "expectedKeyword": "required",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "task.index.task-bad-event.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-task-bad-event.json",
+      "expectedValid": false,
+      "expectedKeyword": "pattern",
+      "expectedInstancePath": "/eventRef"
+    },
+    {
+      "id": "task.index.task-missing-material.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-task-missing-material.json",
+      "expectedValid": false,
+      "expectedKeyword": "required",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "task.index.task-bad-digest.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-task-bad-digest.json",
+      "expectedValid": false,
+      "expectedKeyword": "pattern",
+      "expectedInstancePath": "/materialDigest"
+    },
+    {
+      "id": "task.index.task-content-overflow.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-task-content-overflow.json",
+      "expectedValid": false,
+      "expectedKeyword": "maxLength",
+      "expectedInstancePath": "/projectionMaterial/content"
+    },
+    {
+      "id": "task.index.task-material-unknown.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-task-material-unknown.json",
+      "expectedValid": false,
+      "expectedKeyword": "additionalProperties",
+      "expectedInstancePath": "/projectionMaterial"
+    },
+    {
+      "id": "task.index.task-extra-context.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-task-extra-context.json",
+      "expectedValid": false,
+      "expectedKeyword": "not",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "task.index.task-revise-no-predecessor.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-task-revise-no-predecessor.json",
+      "expectedValid": false,
+      "expectedKeyword": "required",
+      "expectedInstancePath": "/projectionMaterial"
+    },
+    {
+      "id": "task.index.task-create-predecessor.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-task-create-predecessor.json",
+      "expectedValid": false,
+      "expectedKeyword": "not",
+      "expectedInstancePath": "/projectionMaterial"
+    },
+    {
+      "id": "result.index.missing-event.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-missing-event.json",
+      "expectedValid": false,
+      "expectedKeyword": "required",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "result.index.bad-digest.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-bad-digest.json",
+      "expectedValid": false,
+      "expectedKeyword": "pattern",
+      "expectedInstancePath": "/materialDigest"
+    },
+    {
+      "id": "result.index.bad-manifest.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-bad-manifest.json",
+      "expectedValid": false,
+      "expectedKeyword": "additionalProperties",
+      "expectedInstancePath": "/schemaManifest"
+    },
+    {
+      "id": "result.index.old-watermark.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-old-watermark.json",
+      "expectedValid": false,
+      "expectedKeyword": "additionalProperties",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "result.index.unknown-field.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-unknown-field.json",
+      "expectedValid": false,
+      "expectedKeyword": "additionalProperties",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "result.index.extra-body.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-extra-body.json",
+      "expectedValid": false,
+      "expectedKeyword": "additionalProperties",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "result.index.applied-failure-code.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-applied-failure-code.json",
+      "expectedValid": false,
+      "expectedKeyword": "not",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "result.index.applied-no-revision.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-applied-no-revision.json",
+      "expectedValid": false,
+      "expectedKeyword": "required",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "result.index.retry-applied-revision.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-retry-applied-revision.json",
+      "expectedValid": false,
+      "expectedKeyword": "not",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "result.index.retry-wrong-code.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-retry-wrong-code.json",
+      "expectedValid": false,
+      "expectedKeyword": "const",
+      "expectedInstancePath": "/failureCode"
+    },
+    {
+      "id": "result.index.failed-applied-revision.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-failed-applied-revision.json",
+      "expectedValid": false,
+      "expectedKeyword": "not",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "result.index.failed-no-code.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-failed-no-code.json",
+      "expectedValid": false,
+      "expectedKeyword": "required",
+      "expectedInstancePath": ""
+    },
+    {
+      "id": "task.index.task-related-evidence-leak.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-task-related-evidence-leak.json",
+      "expectedValid": false,
+      "expectedKeyword": "additionalProperties",
+      "expectedInstancePath": "/projectionMaterial/relatedRevisionMaterials/0"
+    },
+    {
+      "id": "task.index.task-related-content-overflow.invalid",
+      "schemaRef": "contracts/worker/worker-task-envelope-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-task-related-content-overflow.json",
+      "expectedValid": false,
+      "expectedKeyword": "maxLength",
+      "expectedInstancePath": "/projectionMaterial/relatedRevisionMaterials/0/content"
+    },
+    {
+      "id": "result.index.bad-projection-generation.invalid",
+      "schemaRef": "contracts/worker/index-projection-result-v1.schema.json",
+      "fixturePath": "contracts/worker/fixtures/invalid/index-bad-projection-generation.json",
+      "expectedValid": false,
+      "expectedKeyword": "minimum",
+      "expectedInstancePath": "/projectionGeneration"
     }
   ]
 }

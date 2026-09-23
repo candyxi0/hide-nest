@@ -14,9 +14,13 @@ import com.networknt.schema.SpecificationVersion;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -293,12 +297,12 @@ class WorkerContractTest {
         assertPair(fixture("task.retrieval.no-query.valid"), fixture("result.retrieval.no-query.valid"));
         assertPair(fixture("task.retrieval.sufficient.valid"), fixture("result.retrieval.sufficient.valid"));
         assertPair(fixture("task.formation.valid"), fixture("result.formation.create.valid"));
-        assertPair(fixture("task.index.valid"), fixture("result.index.applied.valid"));
+        assertPair(fixture("task.index.create-task.valid"), fixture("result.index.create-applied.valid"));
 
         for (String[] pair : List.of(
                 new String[] {"task.retrieval.sufficient.valid", "result.retrieval.sufficient.valid", RETRIEVAL_SCHEMA},
                 new String[] {"task.formation.valid", "result.formation.create.valid", FORMATION_SCHEMA},
-                new String[] {"task.index.valid", "result.index.applied.valid", INDEX_SCHEMA})) {
+                new String[] {"task.index.create-task.valid", "result.index.create-applied.valid", INDEX_SCHEMA})) {
             JsonNode task = fixture(pair[0]);
             ObjectNode stale = mutableFixture(pair[1]);
             stale.put("generation", task.path("generation").asInt() + 1);
@@ -315,6 +319,112 @@ class WorkerContractTest {
         ObjectNode wrongInput = mutableFixture("result.retrieval.sufficient.valid");
         wrongInput.put("inputVersion", "input-other");
         assertThrows(AssertionError.class, () -> assertPair(retrievalTask, wrongInput));
+    }
+
+    @Test
+    void indexProjectionPairsBindOneCommittedEventAndOneProjectionGeneration() throws Exception {
+        for (String name : List.of("create", "revise", "supersede")) {
+            JsonNode task = fixture("task.index." + name + "-task.valid");
+            JsonNode applied = fixture("result.index." + name + "-applied.valid");
+            assertTrue(validateWorkerSchema(TASK_SCHEMA, task).isEmpty());
+            assertTrue(validateWorkerSchema(INDEX_SCHEMA, applied).isEmpty());
+            assertPair(task, applied);
+        }
+        JsonNode task = fixture("task.index.create-task.valid");
+        for (String id : List.of("result.index.retry.valid", "result.index.failed.valid")) {
+            JsonNode result = fixture(id);
+            assertTrue(validateWorkerSchema(INDEX_SCHEMA, result).isEmpty());
+            assertPair(task, result);
+            assertFalse(result.has("appliedRevisionRef"), id + " must not claim a durable write");
+        }
+
+        ObjectNode applied = mutableFixture("result.index.create-applied.valid");
+        for (String field : List.of("taskRef", "worldRef", "eventRef", "materialDigest")) {
+            ObjectNode wrong = applied.deepCopy();
+            wrong.put(
+                    field,
+                    field.equals("materialDigest")
+                            ? "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+                            : field.equals("eventRef")
+                                    ? "event:40404040-4040-4040-8040-404040404040"
+                                    : field.equals("worldRef") ? "world:other" : "task:other");
+            assertTrue(validateWorkerSchema(INDEX_SCHEMA, wrong).isEmpty(), field + " stays shape-valid");
+            assertThrows(AssertionError.class, () -> assertPair(task, wrong), field + " must match the task");
+        }
+        for (String field : List.of("projectionGeneration", "generation")) {
+            ObjectNode wrong = applied.deepCopy();
+            wrong.put(field, applied.path(field).asInt() + 1);
+            assertTrue(validateWorkerSchema(INDEX_SCHEMA, wrong).isEmpty());
+            assertThrows(AssertionError.class, () -> assertPair(task, wrong), field + " must match the task");
+        }
+        for (String manifest : List.of("schemaManifest", "embeddingManifest")) {
+            ObjectNode wrong = applied.deepCopy();
+            ((ObjectNode) wrong.path(manifest)).put("version", "other");
+            assertTrue(validateWorkerSchema(INDEX_SCHEMA, wrong).isEmpty());
+            assertThrows(AssertionError.class, () -> assertPair(task, wrong), manifest + " must match the task");
+        }
+        ObjectNode wrongRevision = applied.deepCopy();
+        wrongRevision.put("appliedRevisionRef", "revision:dddddddd-dddd-4ddd-8ddd-dddddddddddd");
+        assertTrue(validateWorkerSchema(INDEX_SCHEMA, wrongRevision).isEmpty());
+        assertThrows(AssertionError.class, () -> assertPair(task, wrongRevision));
+
+        ObjectNode alteredMaterial = mutableFixture("task.index.create-task.valid");
+        ((ObjectNode) alteredMaterial.path("projectionMaterial")).put("content", "Different committed content");
+        assertTrue(validateWorkerSchema(TASK_SCHEMA, alteredMaterial).isEmpty());
+        assertThrows(AssertionError.class, () -> assertPair(alteredMaterial, applied));
+    }
+
+    @Test
+    void indexProjectionRelationArraysAcceptCanonical65And100ButReject101() throws Exception {
+        for (String[] location : List.of(
+                new String[] {"task.index.create-task.valid", "result.index.create-applied.valid", "/projectionMaterial"
+                },
+                new String[] {
+                    "task.index.revise-task.valid",
+                    "result.index.revise-applied.valid",
+                    "/projectionMaterial/relatedRevisionMaterials/0"
+                })) {
+            for (String field : List.of("supportingRevisionRefs", "counterRevisionRefs")) {
+                for (int count : List.of(65, 100, 101)) {
+                    ObjectNode task = mutableFixture(location[0]);
+                    ObjectNode material = (ObjectNode) task.at(location[2]);
+                    material.withArray(field).removeAll();
+                    for (int i = 1; i <= count; i++) {
+                        material.withArray(field).add(String.format("revision:%08x-0000-4000-8000-%012x", i, i));
+                    }
+                    task.put("materialDigest", projectionMaterialDigest(task.path("projectionMaterial")));
+                    List<Error> errors = validateWorkerSchema(TASK_SCHEMA, task);
+                    if (count <= 100) {
+                        assertTrue(
+                                errors.isEmpty(),
+                                location[2] + "/" + field + " with " + count + " refs must be valid: " + errors);
+                        ObjectNode result = mutableFixture(location[1]);
+                        result.put("materialDigest", task.path("materialDigest").asText());
+                        assertPair(task, result);
+                    } else {
+                        String path = location[2] + "/" + field;
+                        assertTrue(
+                                errors.stream()
+                                        .anyMatch(error -> "maxItems".equals(error.getKeyword())
+                                                && path.equals(String.valueOf(error.getInstanceLocation()))),
+                                path + " with 101 refs must fail maxItems: " + errors);
+                    }
+                }
+            }
+        }
+        // Per-array Schema limits cannot enforce Core's combined 100-relation invariant.
+        ObjectNode combinedOverflow = mutableFixture("task.index.create-task.valid");
+        ObjectNode primary = (ObjectNode) combinedOverflow.path("projectionMaterial");
+        for (int i = 1; i <= 60; i++) {
+            primary.withArray("supportingRevisionRefs").add(String.format("revision:%08x-0000-4000-8000-%012x", i, i));
+        }
+        for (int i = 61; i <= 101; i++) {
+            primary.withArray("counterRevisionRefs").add(String.format("revision:%08x-0000-4000-8000-%012x", i, i));
+        }
+        combinedOverflow.put("materialDigest", projectionMaterialDigest(primary));
+        assertTrue(
+                validateWorkerSchema(TASK_SCHEMA, combinedOverflow).isEmpty(),
+                "Core must reject a 60+41 relation total before issuing this shape-valid task");
     }
 
     @Test
@@ -397,7 +507,7 @@ class WorkerContractTest {
         assertFalse(validateWorkerSchema(schemaRef, instance).isEmpty(), label + " unexpectedly passed validation");
     }
 
-    private static void assertPair(JsonNode task, JsonNode result) {
+    private static void assertPair(JsonNode task, JsonNode result) throws Exception {
         for (String field : List.of("contractVersion", "taskRef", "worldRef", "taskKind", "generation")) {
             assertEquals(task.path(field), result.path(field), "task/result mismatch at " + field);
         }
@@ -406,6 +516,44 @@ class WorkerContractTest {
                 assertEquals(task.path(field), result.path(field), "retrieval target mismatch at " + field);
             }
         }
+        if ("INDEX_PROJECTION".equals(task.path("taskKind").asText())) {
+            assertEquals(
+                    projectionMaterialDigest(task.path("projectionMaterial")),
+                    task.path("materialDigest").asText(),
+                    "projection material digest mismatch");
+            for (String field : List.of(
+                    "eventRef", "projectionGeneration", "materialDigest", "schemaManifest", "embeddingManifest")) {
+                assertEquals(task.path(field), result.path(field), "index projection mismatch at " + field);
+            }
+            if ("APPLIED".equals(result.path("outcome").asText())) {
+                assertEquals(
+                        task.at("/projectionMaterial/revisionRef"),
+                        result.path("appliedRevisionRef"),
+                        "APPLIED must identify this event's committed revision");
+            }
+        }
+    }
+
+    private static String projectionMaterialDigest(JsonNode material) throws Exception {
+        byte[] canonical = ContractTestSupport.JSON.writeValueAsBytes(canonicalValue(material));
+        return "sha256:"
+                + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(canonical));
+    }
+
+    private static Object canonicalValue(JsonNode node) {
+        if (node.isObject()) {
+            TreeMap<String, Object> sorted = new TreeMap<>();
+            node.properties().forEach(entry -> sorted.put(entry.getKey(), canonicalValue(entry.getValue())));
+            return sorted;
+        }
+        if (node.isArray()) {
+            List<Object> values = new ArrayList<>();
+            node.forEach(value -> values.add(canonicalValue(value)));
+            return values;
+        }
+        if (node.isNull()) return null;
+        if (node.isIntegralNumber()) return node.asLong();
+        return node.asText();
     }
 
     private static JsonNode fixture(String id) throws IOException {

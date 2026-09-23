@@ -1,33 +1,34 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hide-nest.local/contracts/worker/index-projection-result-v1.schema.json",
-  "title": "Core to Cognitive Worker index projection result v1",
+  "title": "Cognitive Worker to Core single-event index projection result v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["contractVersion", "taskRef", "worldRef", "taskKind", "generation", "projectionGeneration", "embeddingManifest", "schemaManifest", "outcome", "idempotencyKey", "watermark", "revisionRefs"],
+  "required": ["contractVersion", "taskRef", "worldRef", "taskKind", "generation", "eventRef", "projectionGeneration", "materialDigest", "embeddingManifest", "schemaManifest", "outcome"],
   "properties": {
     "contractVersion": { "const": "nest.worker.v1" },
     "taskRef": { "type": "string", "pattern": "^task:[a-z0-9-]+$" },
     "worldRef": { "type": "string", "pattern": "^world:[a-z0-9-]+$" },
     "taskKind": { "const": "INDEX_PROJECTION" },
     "generation": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
-    "projectionGeneration": { "type": "integer", "minimum": 0 },
+    "eventRef": { "type": "string", "pattern": "^event:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+    "projectionGeneration": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+    "materialDigest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
     "embeddingManifest": {
       "type": "object", "additionalProperties": false, "required": ["modelRef", "dimensions", "version"],
-      "properties": { "modelRef": { "type": "string", "pattern": "^embedding:[a-z0-9-]+$" }, "dimensions": { "type": "integer", "minimum": 1, "maximum": 4096 }, "version": { "type": "string", "minLength": 1 } }
+      "properties": { "modelRef": { "type": "string", "pattern": "^embedding:[a-z0-9-]+$" }, "dimensions": { "type": "integer", "minimum": 1, "maximum": 4096 }, "version": { "type": "string", "minLength": 1, "maxLength": 128 } }
     },
     "schemaManifest": {
       "type": "object", "additionalProperties": false, "required": ["schemaRef", "version"],
-      "properties": { "schemaRef": { "type": "string", "pattern": "^index-schema:[a-z0-9-]+$" }, "version": { "type": "string", "minLength": 1 } }
+      "properties": { "schemaRef": { "type": "string", "pattern": "^index-schema:[a-z0-9-]+$" }, "version": { "type": "string", "minLength": 1, "maxLength": 128 } }
     },
     "outcome": { "enum": ["APPLIED", "RETRY_WAIT", "FAILED"] },
-    "idempotencyKey": { "type": "string", "pattern": "^projection:[a-z0-9-]+:[0-9]+$" },
-    "watermark": { "type": "object", "additionalProperties": false, "required": ["revisionRef", "sequence"], "properties": { "revisionRef": { "type": "string", "pattern": "^revision:[a-z0-9-]+$" }, "sequence": { "type": "integer", "minimum": 0 } } },
-    "revisionRefs": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^revision:[a-z0-9-]+$" } },
-    "failureCode": { "enum": ["INDEX_WRITE_UNAVAILABLE", "SCHEMA_MISMATCH"] }
+    "appliedRevisionRef": { "type": "string", "pattern": "^revision:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+    "failureCode": { "enum": ["INDEX_WRITE_UNAVAILABLE", "SCHEMA_MISMATCH", "MATERIAL_INVALID", "INDEX_WRITE_REJECTED"] }
   },
   "allOf": [
-    { "if": { "properties": { "outcome": { "enum": ["APPLIED", "RETRY_WAIT"] } } }, "then": { "not": { "required": ["failureCode"] } } },
-    { "if": { "properties": { "outcome": { "const": "FAILED" } } }, "then": { "required": ["failureCode"] } }
+    { "if": { "properties": { "outcome": { "const": "APPLIED" } }, "required": ["outcome"] }, "then": { "required": ["appliedRevisionRef"], "not": { "required": ["failureCode"] } } },
+    { "if": { "properties": { "outcome": { "const": "RETRY_WAIT" } }, "required": ["outcome"] }, "then": { "properties": { "failureCode": { "const": "INDEX_WRITE_UNAVAILABLE" } }, "required": ["failureCode"], "not": { "required": ["appliedRevisionRef"] } } },
+    { "if": { "properties": { "outcome": { "const": "FAILED" } }, "required": ["outcome"] }, "then": { "properties": { "failureCode": { "enum": ["SCHEMA_MISMATCH", "MATERIAL_INVALID", "INDEX_WRITE_REJECTED"] } }, "required": ["failureCode"], "not": { "required": ["appliedRevisionRef"] } } }
   ]
 }

@@ -92,6 +92,86 @@
         }
       }
     },
+    "eventRef": { "type": "string", "pattern": "^event:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+    "projectionGeneration": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+    "materialDigest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "embeddingManifest": {
+      "type": "object", "additionalProperties": false, "required": ["modelRef", "dimensions", "version"],
+      "properties": {
+        "modelRef": { "type": "string", "pattern": "^embedding:[a-z0-9-]+$" },
+        "dimensions": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "version": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "schemaManifest": {
+      "type": "object", "additionalProperties": false, "required": ["schemaRef", "version"],
+      "properties": {
+        "schemaRef": { "type": "string", "pattern": "^index-schema:[a-z0-9-]+$" },
+        "version": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "projectionMaterial": {
+      "type": "object", "additionalProperties": false,
+      "required": ["eventKind", "recordRef", "revisionRef", "revisionNo", "type", "content", "subject", "scope", "perspective", "conditions", "timeContext", "uncertainty", "supportingRevisionRefs", "counterRevisionRefs", "successorRefs"],
+      "properties": {
+        "eventKind": { "enum": ["MEMORY_CREATED", "MEMORY_REVISED", "MEMORY_SUPERSEDED"] },
+        "recordRef": { "type": "string", "pattern": "^record:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+        "revisionRef": { "type": "string", "pattern": "^revision:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+        "revisionNo": { "type": "integer", "minimum": 1 },
+        "type": { "enum": ["EVENT", "CLAIM", "QUOTE", "UNDERSTANDING"] },
+        "content": { "type": "string", "minLength": 1, "maxLength": 16384 },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "scope": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "perspective": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "conditions": { "type": ["string", "null"], "maxLength": 2048 },
+        "timeContext": { "type": ["string", "null"], "maxLength": 2048 },
+        "uncertainty": { "type": ["string", "null"], "maxLength": 2048 },
+        "supportingRevisionRefs": { "type": "array", "maxItems": 100, "uniqueItems": true, "items": { "type": "string", "pattern": "^revision:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" } },
+        "counterRevisionRefs": { "type": "array", "maxItems": 100, "uniqueItems": true, "items": { "type": "string", "pattern": "^revision:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" } },
+        "predecessor": {
+          "type": "object", "additionalProperties": false, "required": ["recordRef", "revisionRef"],
+          "properties": {
+            "recordRef": { "type": "string", "pattern": "^record:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+            "revisionRef": { "type": "string", "pattern": "^revision:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" }
+          }
+        },
+        "successorRefs": {
+          "type": "array", "maxItems": 16, "uniqueItems": true,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["recordRef", "revisionRef"],
+            "properties": {
+              "recordRef": { "type": "string", "pattern": "^record:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+              "revisionRef": { "type": "string", "pattern": "^revision:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" }
+            }
+          }
+        },
+        "relatedRevisionMaterials": {
+          "type": "array", "maxItems": 8, "uniqueItems": true,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["recordRef", "revisionRef", "type", "content", "subject", "scope", "perspective", "conditions", "timeContext", "uncertainty", "supportingRevisionRefs", "counterRevisionRefs"],
+            "properties": {
+              "recordRef": { "type": "string", "pattern": "^record:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+              "revisionRef": { "type": "string", "pattern": "^revision:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+              "type": { "enum": ["EVENT", "CLAIM", "QUOTE", "UNDERSTANDING"] },
+              "content": { "type": "string", "minLength": 1, "maxLength": 16384 },
+              "subject": { "type": "string", "minLength": 1, "maxLength": 512 },
+              "scope": { "type": "string", "minLength": 1, "maxLength": 512 },
+              "perspective": { "type": "string", "minLength": 1, "maxLength": 512 },
+              "conditions": { "type": ["string", "null"], "maxLength": 2048 },
+              "timeContext": { "type": ["string", "null"], "maxLength": 2048 },
+              "uncertainty": { "type": ["string", "null"], "maxLength": 2048 },
+              "supportingRevisionRefs": { "type": "array", "maxItems": 100, "uniqueItems": true, "items": { "type": "string", "pattern": "^revision:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" } },
+              "counterRevisionRefs": { "type": "array", "maxItems": 100, "uniqueItems": true, "items": { "type": "string", "pattern": "^revision:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" } }
+            }
+          }
+        }
+      },
+      "allOf": [
+        { "if": { "properties": { "eventKind": { "const": "MEMORY_CREATED" } }, "required": ["eventKind"] }, "then": { "not": { "required": ["predecessor"] } } },
+        { "if": { "properties": { "eventKind": { "enum": ["MEMORY_REVISED", "MEMORY_SUPERSEDED"] } }, "required": ["eventKind"] }, "then": { "required": ["predecessor"] } }
+      ]
+    },
     "outputContractVersion": { "type": "string", "const": "nest.worker.v1" }
   },
   "allOf": [
@@ -125,12 +205,26 @@
     {
       "if": { "properties": { "taskKind": { "const": "INDEX_PROJECTION" } } },
       "then": {
+        "required": ["eventRef", "projectionGeneration", "materialDigest", "embeddingManifest", "schemaManifest", "projectionMaterial"],
         "properties": {
           "allowedCapabilities": {
             "contains": { "const": "PROJECT_INDEX" },
             "items": { "const": "PROJECT_INDEX" }
           }
-        }
+        },
+        "not": { "anyOf": [
+          { "required": ["sessionRef"] }, { "required": ["targetTurnRef"] },
+          { "required": ["inputVersion"] }, { "required": ["sourceWorkRef"] },
+          { "required": ["sourceExclusion"] }, { "required": ["deliveredRevisionRefs"] },
+          { "required": ["contextMaterials"] }
+        ] }
+      },
+      "else": {
+        "not": { "anyOf": [
+          { "required": ["eventRef"] }, { "required": ["projectionGeneration"] },
+          { "required": ["materialDigest"] }, { "required": ["embeddingManifest"] },
+          { "required": ["schemaManifest"] }, { "required": ["projectionMaterial"] }
+        ] }
       }
     }
   ]

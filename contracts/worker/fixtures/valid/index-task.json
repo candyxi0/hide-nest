@@ -1,1 +1,0 @@
-{"contractVersion":"nest.worker.v1","taskRef":"task:index","worldRef":"world:alpha","taskKind":"INDEX_PROJECTION","attempt":1,"generation":7,"deadlineAt":"2026-09-22T10:00:00Z","budget":{"modelCalls":0,"toolCalls":1,"inputTokens":0,"outputTokens":0,"totalClockMs":30000},"allowedCapabilities":["PROJECT_INDEX"],"outputContractVersion":"nest.worker.v1"}
