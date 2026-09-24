@@ -1,0 +1,64 @@
+{
+  "task": "G5-S04-A1-B1",
+  "status": "G5_S04_A1_B1_READY_FOR_COMMANDER_REVIEW",
+  "commanderReview": {
+    "status": "IMPLEMENTATION_ACCEPTED",
+    "reviewDate": "2026-09-24",
+    "independentV2PostgresqlTests": 77,
+    "independentV2PostgresqlExitCode": 0,
+    "independentChangedJavaSpotlessExitCodes": [0, 0, 0],
+    "independentOfflinePackageExitCode": 0,
+    "independentEvidenceParsers": ["Node", "PowerShell", "strict Python"],
+    "taskPathSetCount": 5,
+    "taskPathSetDelta": 0,
+    "fullMemorySpotless": "KNOWN_BASELINE_DEBT_NOT_THIS_TASK_GATE",
+    "productExperience": "NOT_RUN"
+  },
+  "baselineHead": "1ae4a3b3c1ef8c71372a789ea46c89d98ffa624c",
+  "baselineIndexTree": "18c50cb5e1b87623fc3191b4fb38984a7c177ebf",
+  "taskPathSet": [
+    "modules/memory/src/main/java/io/github/candyxi0/hidenest/memory/v2/ProjectionMaterialRead.java",
+    "modules/database-adapter-v2/src/main/java/io/github/candyxi0/hidenest/database/v2/adapter/JdbcProjectionMaterialReader.java",
+    "modules/database-adapter-v2/src/test/java/io/github/candyxi0/hidenest/database/v2/NestV2ProjectionMaterialReadTest.java",
+    "reports/Nest-V2-G5-S04-A1-B1-执行报告.md",
+    "reports/Nest-V2-G5-S04-A1-B1-Evidence.json"
+  ],
+  "verification": {
+    "jdk": "25.0.4",
+    "postgresql": "18.4 Testcontainers, preexisting local pgvector image",
+    "focusedB1": { "tests": 6, "failures": 0, "errors": 0, "exitCode": 0 },
+    "completeV2": { "tests": 77, "preexistingTests": 71, "failures": 0, "errors": 0, "exitCode": 0 },
+    "changedJavaSpotless": { "files": 3, "exitCodes": [0, 0, 0] },
+    "wholeMemorySpotless": { "status": "KNOWN_BASELINE_DEBT_IN_UNCHANGED_FILES", "exitCode": 1 },
+    "offlineSkipTestsPackage": { "exitCode": 0 },
+    "gitDiffCheck": { "exitCode": 0 },
+    "evidenceParsing": { "nodeJsonParse": true, "powershellConvertFromJson": true, "strictDuplicateKeys": true },
+    "dockerAfterTests": { "runningContainers": 0, "newVolumes": 0, "leftoverDockerOrJavaTestProcesses": 0 },
+    "stagedPathCount": 0
+  },
+  "verified": [
+    "Core canonical projection material read",
+    "historical event revision and formal predecessor",
+    "combined relation bound without truncation",
+    "single PostgreSQL read-only repeatable-read snapshot",
+    "world and event identity fence",
+    "diagnostic incomplete result without partial body",
+    "Evidence exact_text excluded and canonical and delivery tables unchanged"
+  ],
+  "notRun": [
+    "B2 JSON runtime validation and digest",
+    "real Worker and derived index",
+    "Embedding and Retrieval",
+    "continuity experience"
+  ],
+  "priorFailedExits": [
+    { "stage": "PowerShell Maven argument parsing", "exitCode": 1 },
+    { "stage": "B1 test fixture DataSource compilation", "exitCode": 1 },
+    { "stage": "malformed inherited PATH in Testcontainers", "exitCode": 1 },
+    { "stage": "Docker Engine initially stopped", "exitCode": 1 },
+    { "stage": "synthetic duplicate Outbox fixture", "exitCode": 1 },
+    { "stage": "Spotless glob used instead of regex", "exitCode": 1 },
+    { "stage": "python command unavailable on inherited PATH", "exitCode": 1 },
+    { "stage": "PowerShell escaping in first report and Evidence path check", "exitCode": 1 }
+  ]
+}
