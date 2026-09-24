@@ -154,7 +154,7 @@ class NestV2CanonicalCreateTest {
                 FormationSettlementOutcome.COMMITTED_WRITE,
                 legacy.publish(legacy.candidate(supersedeTask, supersede, supersedeKey), supersede));
         assertEquals(1, legacy.n("SELECT count(*) FROM memory.record_succession"));
-        assertEquals(1, flyway(null).migrate().migrationsExecuted);
+        assertEquals(2, flyway(null).migrate().migrationsExecuted);
         assertEquals(0, flyway(null).migrate().migrationsExecuted);
         flyway(null).validate();
         assertEquals(
@@ -215,7 +215,7 @@ class NestV2CanonicalCreateTest {
 
     @Test
     void migrationPermissionsAndNoV1Tables() {
-        assertEquals(6, n("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
+        assertEquals(7, n("SELECT count(*) FROM public.flyway_schema_history WHERE success"));
         assertEquals(
                 0,
                 n("SELECT count(*) FROM pg_constraint WHERE conrelid='memory.record_succession'::regclass "

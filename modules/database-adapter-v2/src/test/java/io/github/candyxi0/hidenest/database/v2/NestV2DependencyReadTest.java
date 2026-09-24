@@ -58,7 +58,7 @@ class NestV2DependencyReadTest {
         dataSource = new DriverManagerDataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
         db = DSL.using(dataSource, SQLDialect.POSTGRES);
         assertEquals(
-                6,
+                7,
                 Flyway.configure()
                         .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                         .defaultSchema("public")
